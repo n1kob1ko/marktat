@@ -180,6 +180,8 @@ describe('Inserate', () => {
     expect(byParent.body.total).toBe(2);
     const byState = await request(server()).get('/v1/listings').query({ state: 'wien' }).expect(200);
     expect(byState.body.items.map((i: { title: string }) => i.title)).toEqual(['Stadtrad mit Korb']);
+    const byVertical = await request(server()).get('/v1/listings').query({ vertical: 'JOBS' }).expect(200);
+    expect(byVertical.body.total).toBe(0);
   });
 
   it('sucht Orte über PLZ und Namen', async () => {

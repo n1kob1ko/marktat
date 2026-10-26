@@ -1,17 +1,17 @@
 import { z } from 'zod';
-import { ITEM_CONDITIONS, PRICE_TYPES } from '../enums.js';
+import { ITEM_CONDITIONS, PRICE_TYPES, VERTICALS } from '../enums.js';
 
 /** Obergrenze: 1 Mrd. Euro in Cent – deckt auch Immobilien ab. */
 export const MAX_PRICE_CENTS = 100_000_000_000;
 
 export const listingTitleSchema = z
-  .string()
+  .string({ error: 'Bitte gib einen Titel ein.' })
   .trim()
   .min(5, 'Der Titel muss mindestens 5 Zeichen lang sein.')
   .max(90, 'Der Titel darf höchstens 90 Zeichen lang sein.');
 
 export const listingDescriptionSchema = z
-  .string()
+  .string({ error: 'Bitte gib eine Beschreibung ein.' })
   .trim()
   .min(20, 'Die Beschreibung muss mindestens 20 Zeichen lang sein.')
   .max(5000, 'Die Beschreibung darf höchstens 5000 Zeichen lang sein.');
@@ -29,11 +29,11 @@ const priceCentsSchema = z
 const listingFields = {
   title: listingTitleSchema,
   description: listingDescriptionSchema,
-  categoryId: z.string().min(1, 'Bitte wähle eine Kategorie.'),
-  priceType: z.enum(PRICE_TYPES),
+  categoryId: z.string({ error: 'Bitte wähle eine Kategorie.' }).min(1, 'Bitte wähle eine Kategorie.'),
+  priceType: z.enum(PRICE_TYPES, { error: 'Bitte wähle eine Preisart.' }),
   priceCents: priceCentsSchema.nullable().optional(),
   condition: z.enum(ITEM_CONDITIONS).nullable().optional(),
-  locationId: z.number().int().positive('Bitte wähle einen Ort.'),
+  locationId: z.number({ error: 'Bitte gib eine PLZ ein und wähle einen Ort.' }).int().positive('Bitte wähle einen Ort.'),
   attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
 };
 
@@ -76,8 +76,9 @@ export type UpdateListingInput = z.infer<typeof updateListingSchema>;
 
 export const listingQuerySchema = z.object({
   q: z.string().trim().max(100).optional(),
-  categoryId: z.string().optional(),
-  state: z.string().optional(),
+  categoryId: z.string().max(40).optional(),
+  vertical: z.enum(VERTICALS).optional(),
+  state: z.string().max(40).optional(),
   page: z.coerce.number().int().min(1).max(500).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(24),
 });

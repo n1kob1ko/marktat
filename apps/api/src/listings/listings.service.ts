@@ -184,6 +184,9 @@ export class ListingsService {
     if (query.categoryId) {
       where.categoryId = { in: await this.categories.subtreeIds(query.categoryId) };
     }
+    if (query.vertical) {
+      where.vertical = query.vertical;
+    }
     if (query.state) {
       where.location = { district: { state: { slug: query.state } } };
     }
@@ -217,10 +220,6 @@ export class ListingsService {
     const isStaff = viewer?.role === 'ADMIN' || viewer?.role === 'MODERATOR';
     if (effectiveStatus(listing) !== 'ACTIVE' && !isOwner && !isStaff) {
       throw new NotFoundException('Dieses Inserat ist nicht mehr verfügbar.');
-    }
-    if (!isOwner && effectiveStatus(listing) === 'ACTIVE') {
-      // Zählt Aufrufe ohne den Eigentümer; genaue Statistiken folgen in Phase 4.
-      await this.prisma.listing.update({ where: { id }, data: { viewCount: { increment: 1 } } });
     }
     return toListingDetail(listing, viewer?.id);
   }
