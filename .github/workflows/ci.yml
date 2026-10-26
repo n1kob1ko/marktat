@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    name: Build, Lint, Typecheck, Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      # Nur Entwicklungswerte aus .env.example – CI braucht keine echten Zugangsdaten.
+      - run: cp .env.example .env
+      - name: Datenbank starten (PostGIS)
+        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db
+      - run: pnpm build
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - name: API-Integrationstests
+        run: pnpm --filter @marktat/api test:e2e
+
+  e2e:
+    name: Browser-Tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: cp .env.example .env
+      - name: Lokale Umgebung starten
+        run: pnpm infra:up --wait
+      - run: pnpm db:migrate
+      - run: pnpm db:seed
+      - run: pnpm build
+      - name: Playwright-Browser installieren
+        run: pnpm --filter @marktat/web exec playwright install --with-deps chromium
+      - name: API und Web starten
+        run: |
+          (cd apps/api && nohup pnpm start > ../../api.log 2>&1 &)
+          (cd apps/web && nohup pnpm start > ../../web.log 2>&1 &)
+          for i in $(seq 1 60); do
+            curl -sf http://localhost:4000/v1/health \
+              && curl -sf -o /dev/null http://localhost:3000/ \
+              && curl -sf -o /dev/null http://localhost:54321/auth/v1/health \
+              && exit 0
+            sleep 2
+          done
+          cat api.log web.log
+          exit 1
+      - run: pnpm --filter @marktat/web test:e2e
+      - if: failure()
+        run: cat api.log web.log
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: apps/web/playwright-report
+          retention-days: 7

@@ -1,0 +1,62 @@
+/*
+ * MarktAT-Designtokens (Tailwind CSS v4).
+ * Farben: „Tanne“ (Primär, tiefes Grün), „Marille“ (Akzent, Apricot), „Kalk“ (warme Neutraltöne).
+ * Alle Text-/Hintergrundkombinationen der Komponenten erfüllen WCAG 2.2 AA (Kontrast ≥ 4.5:1).
+ */
+@theme {
+  --color-brand-50: #ecf6f1;
+  --color-brand-100: #d2ebdf;
+  --color-brand-200: #a6d6bf;
+  --color-brand-300: #6fb999;
+  --color-brand-400: #3d9874;
+  --color-brand-500: #1f7a5b;
+  --color-brand-600: #156249;
+  --color-brand-700: #0f4c3a;
+  --color-brand-800: #0b3a2c;
+  --color-brand-900: #072a20;
+
+  --color-accent-50: #fef3e8;
+  --color-accent-100: #fde2c6;
+  --color-accent-300: #f7b177;
+  --color-accent-500: #f28c38;
+  --color-accent-600: #d9731f;
+  --color-accent-700: #a95614;
+
+  --color-ink-950: #121715;
+  --color-ink-900: #1c2321;
+  --color-ink-700: #3a4441;
+  --color-ink-600: #4b5552;
+  --color-ink-500: #5b6461;
+  --color-ink-400: #858d8a;
+  --color-ink-300: #a9b0ad;
+
+  --color-canvas: #f6f4ef;
+  --color-surface: #ffffff;
+  --color-line: #e4e1d9;
+  --color-line-strong: #cfcbc0;
+
+  --color-danger-50: #fef3f2;
+  --color-danger-600: #b42318;
+  --color-danger-700: #912018;
+  --color-success-50: #ecfdf3;
+  --color-success-700: #067647;
+  --color-warning-50: #fffaeb;
+  --color-warning-700: #b54708;
+
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-card: 1rem;
+  --shadow-card: 0 1px 2px rgb(18 23 21 / 0.04), 0 4px 16px -4px rgb(18 23 21 / 0.08);
+  --shadow-card-hover: 0 2px 4px rgb(18 23 21 / 0.06), 0 12px 32px -8px rgb(18 23 21 / 0.16);
+}
+
+/* Pfeil für native Auswahllisten (Select) */
+@utility select-chevron {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%235b6461'%3E%3Cpath d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z'/%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-repeat: no-repeat;
+  background-size: 1.25rem;
+  padding-right: 2.5rem;
+}

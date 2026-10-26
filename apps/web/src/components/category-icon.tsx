@@ -1,0 +1,62 @@
+import {
+  Baby,
+  Bike,
+  Briefcase,
+  Building,
+  Car,
+  CarFront,
+  Caravan,
+  Clock,
+  Cog,
+  Flower2,
+  GraduationCap,
+  Hourglass,
+  House,
+  Laptop,
+  Package,
+  School,
+  Shirt,
+  Smartphone,
+  Sofa,
+  SquareParking,
+  Store,
+  Trees,
+  Truck,
+  WashingMachine,
+  Wrench,
+  type LucideIcon,
+} from 'lucide-react';
+
+/** Icons aus dem Kategorie-Seed (Feld `icon`) auf lucide-Komponenten abbilden. */
+const ICONS: Record<string, LucideIcon> = {
+  smartphone: Smartphone,
+  sofa: Sofa,
+  shirt: Shirt,
+  bike: Bike,
+  baby: Baby,
+  'washing-machine': WashingMachine,
+  'flower-2': Flower2,
+  wrench: Wrench,
+  package: Package,
+  car: Car,
+  'car-front': CarFront,
+  caravan: Caravan,
+  truck: Truck,
+  cog: Cog,
+  building: Building,
+  house: House,
+  trees: Trees,
+  store: Store,
+  'square-parking': SquareParking,
+  briefcase: Briefcase,
+  clock: Clock,
+  'graduation-cap': GraduationCap,
+  school: School,
+  hourglass: Hourglass,
+  laptop: Laptop,
+};
+
+export function CategoryIcon({ name, className }: { name: string | null; className?: string }) {
+  const Icon = (name && ICONS[name]) || Package;
+  return <Icon className={className} aria-hidden="true" />;
+}
