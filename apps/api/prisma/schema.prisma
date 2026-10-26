@@ -1,0 +1,251 @@
+// MarktAT – Datenbankschema (PostgreSQL 16 + PostGIS)
+// Überblick und geplante Erweiterungen: docs/datenmodell.md
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+/// Die vier Hauptbereiche der Plattform
+enum Vertical {
+  MARKETPLACE
+  VEHICLES
+  REAL_ESTATE
+  JOBS
+}
+
+enum AccountType {
+  PRIVATE
+  BUSINESS
+}
+
+enum UserRole {
+  USER
+  MODERATOR
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+  DELETED
+}
+
+enum PriceType {
+  FIXED
+  NEGOTIABLE
+  FREE
+  ON_REQUEST
+}
+
+enum ListingStatus {
+  DRAFT
+  PENDING_REVIEW
+  ACTIVE
+  PAUSED
+  EXPIRED
+  REJECTED
+  DELETED
+}
+
+enum ItemCondition {
+  NEW
+  LIKE_NEW
+  GOOD
+  ACCEPTABLE
+  DEFECTIVE
+}
+
+// ---------------------------------------------------------------------------
+// Benutzer
+// ---------------------------------------------------------------------------
+
+/// Profil zu einem Supabase-Auth-Benutzer. `id` entspricht `auth.users.id` (JWT-Claim `sub`).
+/// Passwörter und Sitzungen verwaltet ausschließlich Supabase Auth.
+model User {
+  id                    String      @id @db.Uuid
+  email                 String      @unique
+  displayName           String      @map("display_name")
+  accountType           AccountType @default(PRIVATE) @map("account_type")
+  role                  UserRole    @default(USER)
+  status                UserStatus  @default(ACTIVE)
+  avatarUrl             String?     @map("avatar_url")
+  bio                   String?
+  phone                 String?
+  /// Pflichtangaben gewerblicher Anbieter (Kennzeichnung nach DSA / ECG)
+  companyName           String?     @map("company_name")
+  companyRegisterNumber String?     @map("company_register_number")
+  vatId                 String?     @map("vat_id")
+  companyAddress        String?     @map("company_address")
+  termsAcceptedAt       DateTime?   @map("terms_accepted_at")
+  termsVersion          String?     @map("terms_version")
+  lastSeenAt            DateTime?   @map("last_seen_at")
+  createdAt             DateTime    @default(now()) @map("created_at")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+  deletedAt             DateTime?   @map("deleted_at")
+
+  listings  Listing[]
+  auditLogs AuditLog[]
+
+  @@index([status])
+  @@map("users")
+}
+
+// ---------------------------------------------------------------------------
+// Geografie: Bundesland -> Bezirk -> Ort (PLZ)
+// ---------------------------------------------------------------------------
+
+model State {
+  /// 1 = Burgenland … 9 = Wien (Statistik-Austria-Kennziffer)
+  id        Int        @id
+  /// ISO 3166-2, z. B. "AT-9"
+  code      String     @unique
+  slug      String     @unique
+  name      String
+  districts District[]
+
+  @@map("states")
+}
+
+/// Politischer Bezirk bzw. Statutarstadt; in Wien die 23 Gemeindebezirke.
+model District {
+  /// Bezirkskennziffer von Statistik Austria, z. B. 101 = Eisenstadt (Stadt), 901 = Wien 1., Innere Stadt
+  id        Int        @id
+  stateId   Int        @map("state_id")
+  slug      String
+  name      String
+  state     State      @relation(fields: [stateId], references: [id])
+  locations Location[]
+
+  @@unique([stateId, slug])
+  @@map("districts")
+}
+
+/// Ort mit Postleitzahl. Eine PLZ kann mehrere Orte umfassen und umgekehrt.
+model Location {
+  id         Int                                    @id @default(autoincrement())
+  postalCode String                                 @map("postal_code") @db.VarChar(4)
+  place      String
+  slug       String
+  districtId Int                                    @map("district_id")
+  latitude   Float
+  longitude  Float
+  /// Wird aus latitude/longitude befüllt (siehe Seed); für Umkreissuche mit ST_DWithin
+  geom       Unsupported("geography(Point, 4326)")?
+  district   District                               @relation(fields: [districtId], references: [id])
+  listings   Listing[]
+
+  @@unique([postalCode, place])
+  @@index([postalCode])
+  @@index([districtId])
+  @@index([geom], type: Gist)
+  @@map("locations")
+}
+
+// ---------------------------------------------------------------------------
+// Kategorien und Inserate
+// ---------------------------------------------------------------------------
+
+model Category {
+  id              String     @id @default(cuid())
+  parentId        String?    @map("parent_id")
+  vertical        Vertical
+  slug            String
+  /// Eindeutiger Pfad für SEO-URLs, z. B. "marktplatz/elektronik/handys-smartphones"
+  path            String     @unique
+  name            String
+  icon            String?
+  sortOrder       Int        @default(0) @map("sort_order")
+  isActive        Boolean    @default(true) @map("is_active")
+  /// Definition kategorieabhängiger Felder (Typ, Label, Pflicht, Optionen) – ab Phase 2/5
+  attributeSchema Json?      @map("attribute_schema")
+  parent          Category?  @relation("CategoryTree", fields: [parentId], references: [id])
+  children        Category[] @relation("CategoryTree")
+  listings        Listing[]
+
+  @@index([parentId])
+  @@index([vertical, isActive])
+  @@map("categories")
+}
+
+model Listing {
+  id          String         @id @default(cuid())
+  slug        String
+  sellerId    String         @map("seller_id") @db.Uuid
+  categoryId  String?        @map("category_id")
+  vertical    Vertical       @default(MARKETPLACE)
+  title       String
+  description String         @default("")
+  priceType   PriceType?     @map("price_type")
+  /// Preis in Cent. BigInt, damit auch Immobilienpreise abbildbar sind.
+  priceCents  BigInt?        @map("price_cents")
+  condition   ItemCondition?
+  /// Kategorieabhängige Zusatzfelder (validiert gegen Category.attributeSchema)
+  attributes  Json           @default("{}")
+  status      ListingStatus  @default(DRAFT)
+  locationId  Int?           @map("location_id")
+  viewCount   Int            @default(0) @map("view_count")
+  publishedAt DateTime?      @map("published_at")
+  expiresAt   DateTime?      @map("expires_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  deletedAt   DateTime?      @map("deleted_at")
+
+  seller   User           @relation(fields: [sellerId], references: [id])
+  category Category?      @relation(fields: [categoryId], references: [id])
+  location Location?      @relation(fields: [locationId], references: [id])
+  images   ListingImage[]
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([sellerId, status])
+  @@index([categoryId, status])
+  @@index([locationId])
+  @@index([expiresAt])
+  @@map("listings")
+}
+
+/// Bilder eines Inserats (Upload nach Cloudflare R2 ab Phase 2)
+model ListingImage {
+  id         String   @id @default(cuid())
+  listingId  String   @map("listing_id")
+  storageKey String   @map("storage_key")
+  url        String
+  width      Int?
+  height     Int?
+  sortOrder  Int      @default(0) @map("sort_order")
+  createdAt  DateTime @default(now()) @map("created_at")
+  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, sortOrder])
+  @@map("listing_images")
+}
+
+// ---------------------------------------------------------------------------
+// Sicherheit
+// ---------------------------------------------------------------------------
+
+/// Protokoll sicherheitsrelevanter Ereignisse. Enthält keine Passwörter, Tokens oder Volltext-IPs.
+model AuditLog {
+  id         BigInt   @id @default(autoincrement())
+  actorId    String?  @map("actor_id") @db.Uuid
+  action     String
+  entityType String?  @map("entity_type")
+  entityId   String?  @map("entity_id")
+  /// Gekürzte IP (IPv4 /24, IPv6 /48) – datensparsam nach DSGVO
+  ipPrefix   String?  @map("ip_prefix")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at")
+  actor      User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
