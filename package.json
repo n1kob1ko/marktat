@@ -17,7 +17,7 @@
     "infra:up": "docker compose -f infra/docker-compose.yml --env-file .env up -d",
     "infra:down": "docker compose -f infra/docker-compose.yml --env-file .env down",
     "db:migrate": "pnpm --filter @marktat/api db:migrate",
-    "db:seed": "pnpm --filter @marktat/api db:seed",
+    "db:seed": "pnpm --filter @marktat/shared build && pnpm --filter @marktat/api db:generate && pnpm --filter @marktat/api db:seed",
     "format": "prettier --write \"**/*.{ts,tsx,js,mjs,json,md,css}\""
   },
   "devDependencies": {
