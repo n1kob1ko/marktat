@@ -46,7 +46,17 @@ export interface ApiError {
   statusCode: number;
   message: string;
   errors?: { path: string; message: string }[];
+  /** Maschinenlesbarer Grund, z. B. MFA_REQUIRED oder STEP_UP_REQUIRED (siehe docs/sicherheit.md) */
+  code?: string;
 }
+
+/** Fehlercodes der Zwei-Faktor-Anmeldung */
+export const AUTH_ERROR_CODES = {
+  /** Admin-Bereich verlangt eine mit dem zweiten Faktor bestätigte Sitzung */
+  mfaRequired: 'MFA_REQUIRED',
+  /** Kritische Aktion: Code aus der Authenticator-App erneut eingeben */
+  stepUpRequired: 'STEP_UP_REQUIRED',
+} as const;
 
 export interface MeResponse {
   id: string;
@@ -74,6 +84,8 @@ export interface MeResponse {
   status: UserStatus;
   /** Aktuelle Sperre mit Begründung (nur bei status = SUSPENDED) */
   suspension: { decisionId: string | null; statement: string | null; since: string } | null;
+  /** Nur bei GET /me: Sicherheitsniveau der Sitzung und ob für das Konto 2FA Pflicht ist */
+  security?: { level: 'aal1' | 'aal2'; mfaRequired: boolean; stepUpMaxAgeMinutes: number };
   createdAt: string;
 }
 
@@ -697,4 +709,11 @@ export interface DealerDashboard {
   topListings: { id: string; title: string; views: number; favorites: number; inquiries: number }[];
   profileComplete: boolean;
   missingProfileFields: string[];
+}
+
+/** Bestätigter Faktor der Zwei-Faktor-Anmeldung (ohne Geheimnisse) */
+export interface MfaFactorSummary {
+  friendlyName: string | null;
+  createdAt: string;
+  type: string;
 }

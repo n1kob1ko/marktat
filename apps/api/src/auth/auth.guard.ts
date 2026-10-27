@@ -10,6 +10,7 @@ import type { Request } from 'express';
 import { UsersService } from '../users/users.service.js';
 import { ALLOW_SUSPENDED_KEY, IS_PUBLIC_KEY } from './decorators.js';
 import { SupabaseJwtService } from './supabase-jwt.service.js';
+import { sessionSecurity } from './auth.types.js';
 
 /**
  * Globaler Guard: Jede Route verlangt ein gültiges Supabase-Token, außer sie ist mit @Public() markiert.
@@ -44,7 +45,7 @@ export class AuthGuard implements CanActivate {
     if (user.status === 'SUSPENDED' && !this.reflector.getAllAndOverride<boolean>(ALLOW_SUSPENDED_KEY, targets)) {
       throw new ForbiddenException('Dein Konto ist gesperrt. Begründung und Einspruch findest du in deinem Konto.');
     }
-    request.user = user;
+    request.user = { ...user, ...sessionSecurity(claims) };
     return true;
   }
 

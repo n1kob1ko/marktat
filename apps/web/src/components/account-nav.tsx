@@ -17,11 +17,14 @@ const NAV = [
   { href: '/konto/datenschutz', label: 'Datenschutz' },
 ];
 
+/** Nur für Moderation und Administration: Zwei-Faktor-Anmeldung */
+const SECURITY = { href: '/konto/sicherheit', label: 'Sicherheit' };
+
 /** Reiter im Kontobereich; „Nachrichten“ zeigt die Zahl ungelesener Nachrichten live. */
-export function AccountNav() {
+export function AccountNav({ showSecurity = false }: { showSecurity?: boolean }) {
   const pathname = usePathname();
   const unread = useUnread();
-  return <AccountNavList pathname={pathname} unreadMessages={unread?.messages ?? 0} />;
+  return <AccountNavList pathname={pathname} unreadMessages={unread?.messages ?? 0} showSecurity={showSecurity} />;
 }
 
 /** Ohne aktiven Reiter – Platzhalter, solange der Pfad bei dynamischen Seiten noch nicht feststeht */
@@ -29,11 +32,12 @@ export function AccountNavFallback() {
   return <AccountNavList pathname={null} unreadMessages={0} />;
 }
 
-function AccountNavList({ pathname, unreadMessages }: { pathname: string | null; unreadMessages: number }) {
+function AccountNavList({ pathname, unreadMessages, showSecurity = false }: { pathname: string | null; unreadMessages: number; showSecurity?: boolean }) {
+  const items = showSecurity ? [...NAV, SECURITY] : NAV;
   return (
     <nav aria-label="Kontobereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
       <ul className="flex gap-1">
-        {NAV.map((item) => {
+        {items.map((item) => {
           const active = pathname !== null && (item.href === '/konto' ? pathname === '/konto' : pathname.startsWith(item.href));
           return (
             <li key={item.href} className="shrink-0">

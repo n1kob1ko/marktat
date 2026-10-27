@@ -49,7 +49,7 @@ export async function createTestApp(options: { meiliUrl?: string; stripe?: Strip
 
 /** Erzeugt ein Access-Token wie Supabase Auth es ausstellt (HS256, gleiche Claims). */
 export async function tokenFor(
-  user: { id?: string; email?: string; metadata?: Record<string, unknown> } = {},
+  user: { id?: string; email?: string; metadata?: Record<string, unknown>; claims?: Record<string, unknown> } = {},
 ) {
   const id = user.id ?? randomUUID();
   const email = user.email ?? `test-${id.slice(0, 8)}@example.at`;
@@ -57,6 +57,7 @@ export async function tokenFor(
     email,
     role: 'authenticated',
     user_metadata: user.metadata ?? { display_name: 'Testperson' },
+    ...user.claims,
   })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(id)
@@ -66,6 +67,16 @@ export async function tokenFor(
     .setExpirationTime('1h')
     .sign(new TextEncoder().encode(process.env.SUPABASE_JWT_SECRET!));
   return { id, email, token, auth: { Authorization: `Bearer ${token}` } };
+}
+
+/** Token derselben Person mit Sicherheitsniveau: aal2 mit TOTP-Bestätigung vor `mfaAgeSeconds` Sekunden */
+export function mfaToken(account: { id: string; email: string }, mfaAgeSeconds: number | null) {
+  const now = Math.floor(Date.now() / 1000);
+  const claims =
+    mfaAgeSeconds === null
+      ? { aal: 'aal1', amr: [{ method: 'password', timestamp: now }] }
+      : { aal: 'aal2', amr: [{ method: 'password', timestamp: now - mfaAgeSeconds }, { method: 'totp', timestamp: now - mfaAgeSeconds }] };
+  return tokenFor({ id: account.id, email: account.email, claims });
 }
 
 /** Löscht alle Bewegungsdaten und den Test-Suchindex, Stammdaten (Geo, Kategorien) bleiben erhalten. */

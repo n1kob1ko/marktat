@@ -12,6 +12,8 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { openApiSchema } from '../common/openapi.js';
 import { UsersService } from './users.service.js';
+import { loadEnv, staffMfaRequired } from '../config/env.js';
+import { isStaffRole } from '../auth/mfa.guard.js';
 
 @ApiTags('Benutzer')
 @Controller()
@@ -22,8 +24,17 @@ export class UsersController {
   @AllowSuspended()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eigenes Profil (wird beim ersten Aufruf angelegt)' })
-  me(@CurrentUser() user: AuthUser) {
-    return this.users.getMe(user.id);
+  async me(@CurrentUser() user: AuthUser) {
+    const env = loadEnv();
+    const me = await this.users.getMe(user.id);
+    return {
+      ...me,
+      security: {
+        level: user.aal,
+        mfaRequired: isStaffRole(user.role) && staffMfaRequired(env),
+        stepUpMaxAgeMinutes: env.STEP_UP_MAX_AGE_MINUTES,
+      },
+    };
   }
 
   @Patch('me')

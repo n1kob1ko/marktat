@@ -15,6 +15,7 @@ import { api, ApiError } from '@/lib/api';
 import { requireStaff } from '@/lib/auth';
 import { ENTITY_ID, UUID } from '@/lib/admin';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
+import { stepUpCodeError, stepUpFailure, stepUpToken } from '@/lib/mfa';
 
 /**
  * Aktionen im Admin-Bereich. Die Web-App prüft nur Form und IDs; ob jemand die Aktion ausführen darf,
@@ -36,6 +37,8 @@ function values(formData: FormData, keys: string[]): Record<string, string> {
 }
 
 function failure(error: unknown, kept?: Record<string, string>): FormState {
+  const stepUp = stepUpFailure(error, kept);
+  if (stepUp) return stepUp;
   if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values: kept };
   throw error;
 }
@@ -130,9 +133,11 @@ export async function decideUserAction(_prev: FormState, formData: FormData): Pr
     delete parsed.data.reason;
     delete parsed.data.ground;
   }
-  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  const session = await requireStaff(`/admin/nutzer/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
   try {
-    await api(`/admin/users/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+    await api(`/admin/users/${id}/decisions`, { method: 'POST', token: auth.token, body: parsed.data });
   } catch (error) {
     return failure(error, kept);
   }
@@ -163,9 +168,11 @@ export async function changeRoleAction(_prev: FormState, formData: FormData): Pr
   if (!UUID.test(id)) return invalid;
   const parsed = changeRoleSchema.safeParse({ role: text(formData, 'role') });
   if (!parsed.success) return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Ungültige Rolle.' };
-  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  const session = await requireStaff(`/admin/nutzer/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError);
   try {
-    await api(`/admin/users/${id}/role`, { method: 'PUT', token, body: parsed.data });
+    await api(`/admin/users/${id}/role`, { method: 'PUT', token: auth.token, body: parsed.data });
   } catch (error) {
     return failure(error);
   }
@@ -199,4 +206,23 @@ export async function retryDeletionAction(_prev: FormState, formData: FormData):
   }
   revalidatePath(`/admin/nutzer/${id}`);
   return { status: 'success', message: 'Die Löschung wurde erneut gestartet.' };
+}
+
+/** 2FA eines anderen Kontos zurücksetzen (z. B. Gerät verloren) – kritische Aktion mit Bestätigungscode */
+export async function resetMfaAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  if (formData.get('confirm') !== 'on') {
+    return { status: 'error', message: 'Bitte bestätige, dass du die Identität der Person geprüft hast.', fieldErrors: { confirm: ['Bitte bestätigen.'] } };
+  }
+  const session = await requireStaff(`/admin/nutzer/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError);
+  try {
+    await api(`/admin/users/${id}/mfa/reset`, { method: 'POST', token: auth.token });
+  } catch (error) {
+    return failure(error);
+  }
+  // Der Abschnitt zeigt danach „Nicht eingerichtet“ – die Bestätigung kommt als Hinweis über der Seite
+  redirect(`/admin/nutzer/${id}?hinweis=2fa-zurueckgesetzt`);
 }

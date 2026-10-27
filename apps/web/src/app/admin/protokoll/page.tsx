@@ -27,6 +27,7 @@ const ACTION_OPTIONS = [
   { value: 'user.', label: 'Konten (Anlage, Profil, Blockieren)' },
   { value: 'listing.', label: 'Inserate (Anlage, Status, Bilder)' },
   { value: 'retention.', label: 'Aufbewahrung' },
+  { value: 'security.', label: 'Zwei-Faktor-Anmeldung' },
 ];
 
 export default function AuditPage({ searchParams }: PageProps<'/admin/protokoll'>) {

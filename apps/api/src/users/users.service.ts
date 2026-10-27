@@ -3,7 +3,7 @@ import { ACCOUNT_TYPES, displayNameSchema, type NotificationSettingsInput, type 
 import type { AccountType } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
-import type { AuthUser, SupabaseClaims } from '../auth/auth.types.js';
+import type { AccountUser, AuthUser, SupabaseClaims } from '../auth/auth.types.js';
 import { toMe, toPublicSeller } from './users.mapper.js';
 
 const LAST_SEEN_INTERVAL_MS = 15 * 60_000;
@@ -20,7 +20,7 @@ export class UsersService {
    * Legt beim ersten Aufruf das App-Profil an bzw. gleicht die E-Mail ab.
    * Rollen werden NIE aus dem Token übernommen (user_metadata ist vom Benutzer veränderbar).
    */
-  async syncFromClaims(claims: SupabaseClaims, ip?: string): Promise<AuthUser> {
+  async syncFromClaims(claims: SupabaseClaims, ip?: string): Promise<AccountUser> {
     const email = claims.email?.toLowerCase();
     if (!email) throw new BadRequestException('Das Konto hat keine E-Mail-Adresse.');
 

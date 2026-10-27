@@ -27,7 +27,8 @@
     "geo:import": "tsx prisma/seed/geo-import.ts",
     "r2:check": "tsx scripts/r2-check.ts",
     "search:reindex": "tsx scripts/search-reindex.ts",
-    "admin:role": "tsx scripts/admin-role.ts"
+    "admin:role": "tsx scripts/admin-role.ts",
+    "admin:mfa-reset": "tsx scripts/admin-mfa-reset.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1157.0",

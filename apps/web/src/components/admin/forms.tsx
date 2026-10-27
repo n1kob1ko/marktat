@@ -5,6 +5,7 @@ import { Alert, Checkbox, Field, Select, Textarea } from '@marktat/ui';
 import { DECISION_GROUND_LABELS, DECISION_GROUNDS, REPORT_REASON_LABELS, REPORT_REASONS, type ReportReason } from '@marktat/shared';
 import { initialFormState, type FormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
+import { StepUpField } from '@/components/security/step-up-field';
 import {
   decideAppealAction,
   decideListingAction,
@@ -49,7 +50,10 @@ export function DecisionForm({
   version,
   reportId,
   defaultReason,
+  stepUp,
 }: {
+  /** Kritische Aktion (Kontosperre): Bestätigungscode abfragen, wenn die Sitzung 2FA nutzt */
+  stepUp?: { enabled: boolean; maxAgeMinutes: number };
   target: 'listing' | 'user';
   id: string;
   options: DecisionOption[];
@@ -116,6 +120,7 @@ export function DecisionForm({
         <Textarea name="internalNote" rows={2} maxLength={1000} className="min-h-20" defaultValue={state.values?.internalNote} />
       </Field>
       {errors.version ? <p className="text-sm font-medium text-danger-600">{errors.version[0]}</p> : null}
+      <StepUpField enabled={Boolean(stepUp?.enabled)} maxAgeMinutes={stepUp?.maxAgeMinutes} error={errors.mfaCode} />
       <SubmitButton variant={selected?.restrictive ? 'danger' : 'primary'}>{selected ? `${selected.label} – bestätigen` : 'Entscheiden'}</SubmitButton>
     </form>
   );

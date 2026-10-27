@@ -28,11 +28,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
       const status = exception.getStatus();
       const body = exception.getResponse();
       if (typeof body === 'object' && body !== null && 'message' in body) {
-        const { message, errors } = body as { message: unknown; errors?: unknown };
+        const { message, errors, code } = body as { message: unknown; errors?: unknown; code?: unknown };
         return response.status(status).json({
           statusCode: status,
           message: Array.isArray(message) ? message.join(' ') : String(message),
           ...(errors ? { errors } : {}),
+          ...(typeof code === 'string' ? { code } : {}),
         });
       }
       return response.status(status).json({ statusCode: status, message: String(body) });

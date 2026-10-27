@@ -21,4 +21,6 @@ export function applyTestEnv() {
   // Eigene Warteschlangen; E-Mails zu Nachrichten sofort statt nach der Wartezeit (Mailpit aus pnpm infra:up)
   process.env.QUEUE_PREFIX = 'marktat_test';
   process.env.MESSAGE_EMAIL_DELAY_SECONDS = '0';
+  // 2FA-Pflicht für das Team schalten einzelne Tests gezielt ein (security.e2e-spec.ts)
+  process.env.STAFF_MFA_REQUIRED = 'false';
 }

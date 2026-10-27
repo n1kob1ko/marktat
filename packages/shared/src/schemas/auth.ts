@@ -64,3 +64,20 @@ export const resetPasswordSchema = z
     path: ['passwordConfirm'],
     message: 'Die Passwörter stimmen nicht überein.',
   });
+
+// --- Zwei-Faktor-Anmeldung (TOTP) -------------------------------------------------
+
+/** 6-stelliger Code aus der Authenticator-App; Leerzeichen (z. B. „123 456“) werden entfernt. */
+export const totpCodeSchema = z
+  .string()
+  .transform((v) => v.replace(/\s+/g, ''))
+  .pipe(z.string().regex(/^\d{6}$/, 'Bitte gib den 6-stelligen Code aus deiner Authenticator-App ein.'));
+
+export const mfaFactorNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Bitte gib dem Gerät einen Namen, z. B. „Handy“.')
+  .max(40, 'Höchstens 40 Zeichen.');
+
+export const mfaEventSchema = z.object({ event: z.enum(['enrolled', 'removed']) });
+export type MfaEventInput = z.infer<typeof mfaEventSchema>;

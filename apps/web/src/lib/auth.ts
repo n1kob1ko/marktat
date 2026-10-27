@@ -5,6 +5,7 @@ import { cache } from 'react';
 import type { MeResponse } from '@marktat/shared';
 import { api, ApiError } from './api';
 import { createSupabaseServerClient } from './supabase/server';
+import { getAssurance, needsSecondFactor } from './mfa';
 
 /** Je Anfrage nur einmal gelesen (Layout und Seite fragen beide) */
 export const getAccessToken = cache(async (): Promise<string | null> => {
@@ -50,6 +51,10 @@ export async function requireUser(
   if (!token || !user) {
     redirect(`/anmelden?weiter=${encodeURIComponent(returnTo)}`);
   }
+  // Passwort stimmt, aber der zweite Faktor fehlt noch (Anmeldung abgebrochen oder Sitzung von vor der Einrichtung)
+  if (needsSecondFactor(await getAssurance())) {
+    redirect(`/anmelden/zwei-faktor?weiter=${encodeURIComponent(returnTo)}`);
+  }
   if (user.status === 'SUSPENDED' && !options.allowSuspended) {
     redirect('/konto/entscheidungen');
   }
@@ -68,6 +73,8 @@ export function isStaff(user: Pick<MeResponse, 'role' | 'status'> | null): boole
 export async function requireStaff(returnTo: string): Promise<{ user: MeResponse; token: string }> {
   const { user, token } = await requireUser(returnTo);
   if (!isStaff(user)) notFound();
+  // 2FA-Pflicht (STAFF_MFA_REQUIRED): ohne eingerichteten zweiten Faktor zuerst zur Einrichtung
+  if (user.security?.mfaRequired && user.security.level !== 'aal2') redirect('/konto/sicherheit?grund=pflicht');
   return { user, token };
 }
 

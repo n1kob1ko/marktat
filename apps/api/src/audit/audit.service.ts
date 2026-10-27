@@ -54,7 +54,11 @@ export type AuditAction =
   | 'admin.product_updated'
   | 'admin.billing_settings_updated'
   | 'admin.billing_mode_changed'
-  | 'user.logo_updated';
+  | 'user.logo_updated'
+  // Phase 8: Zwei-Faktor-Anmeldung
+  | 'security.mfa_enrolled'
+  | 'security.mfa_removed'
+  | 'admin.mfa_reset';
 
 /** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
 export const IMPORTANT_AUDIT_PREFIXES = [
@@ -66,6 +70,7 @@ export const IMPORTANT_AUDIT_PREFIXES = [
   'billing.payment',
   'billing.booking_refunded',
   'billing.webhook_rejected',
+  'security.',
 ];
 
 export interface AuditEvent {
