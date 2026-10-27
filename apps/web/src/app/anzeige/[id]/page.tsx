@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
 import { Badge, Button, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
-import { formatDate, ITEM_CONDITION_LABELS, type ListingDetail } from '@marktat/shared';
+import { ATTRIBUTE_FIELDS, formatDate, ITEM_CONDITION_LABELS, type ListingDetail } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { getAccessToken } from '@/lib/auth';
 import { PriceTag } from '@/components/price-tag';
@@ -90,6 +90,25 @@ async function ListingContent({
                 </div>
               ) : null}
             </dl>
+            {Object.entries(listing.attributes).length ? (
+              <section className="mt-8">
+                <h2 className="font-sans text-lg font-semibold tracking-normal">Weitere Angaben</h2>
+                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                  {Object.entries(listing.attributes).map(([key, value]) => {
+                    const field = Object.values(ATTRIBUTE_FIELDS).flat().find((item) => item.key === key);
+                    if (!field) return null;
+                    return (
+                      <div key={key} className="rounded-lg bg-canvas p-3">
+                        <dt className="text-xs text-ink-500">{field.label}</dt>
+                        <dd className="mt-1 font-semibold text-ink-900">
+                          {typeof value === 'number' ? value.toLocaleString('de-AT') : String(value)}{field.unit ? ` ${field.unit}` : ''}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </section>
+            ) : null}
             <h2 className="mt-8 font-sans text-lg font-semibold tracking-normal">Beschreibung</h2>
             <div className="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-800">
               {listing.description || <span className="text-ink-400">Keine Beschreibung.</span>}
