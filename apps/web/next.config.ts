@@ -64,6 +64,8 @@ const csp = [
 ].join('; ');
 
 const nextConfig: NextConfig = {
+  // Für das Docker-Image (apps/web/Dockerfile): eigenständiger Server ohne node_modules des ganzen Monorepos
+  ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' as const, outputFileTracingRoot: repoRoot } : {}),
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,

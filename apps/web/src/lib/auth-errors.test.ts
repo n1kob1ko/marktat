@@ -16,4 +16,8 @@ describe('authErrorMessage', () => {
     expect(authErrorMessage({ name: 'AuthRetryableFetchError', status: 0 })).toMatch(/gerade nicht erreichbar/);
     expect(authErrorMessage({ code: 'invalid_credentials', status: 400 })).toMatch(/falsch/);
   });
+  it('erklärt einen fehlgeschlagenen E-Mail-Versand', () => {
+    expect(authErrorMessage({ code: 'unexpected_failure', status: 500, message: 'Error sending confirmation email' })).toMatch(/E-Mail konnte gerade nicht verschickt/);
+    expect(authErrorMessage({ status: 500, message: 'Error sending recovery email' })).toMatch(/E-Mail konnte/);
+  });
 });

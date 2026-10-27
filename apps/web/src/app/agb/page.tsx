@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
+import { Fact } from '@/components/legal-fact';
 import { LegalPage } from '@/components/legal-page';
+import { OPERATOR } from '@/content/operator';
 
 export const metadata: Metadata = { title: 'Nutzungsbedingungen' };
 
@@ -7,6 +9,9 @@ export default function TermsPage() {
   return (
     <LegalPage title="Nutzungsbedingungen">
       <p>Version: 2026-10-entwurf. Bei der Registrierung wird diese Version gespeichert.</p>
+      <p>
+        Vertragspartner: <Fact value={OPERATOR.name} />. Während der Beta-Phase sind alle Leistungen kostenlos.
+      </p>
       <h2>Zu regeln (Gliederung)</h2>
       <ul>
         <li>Vertragspartner, Geltungsbereich, Mindestalter</li>

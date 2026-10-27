@@ -1,0 +1,117 @@
+name: Deployment
+
+# Nur von Hand (Actions → Deployment → Run workflow). Ausgerollt wird ausschließlich ein Stand von main, dessen
+# CI-Lauf erfolgreich war. Ablauf und Einrichtung: docs/deployment.md
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Commit auf main (leer = neuester Stand von main)'
+        required: false
+        default: ''
+
+concurrency:
+  group: deployment
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Prüfen, bauen, ausrollen
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Umgebung „production“ in den Repository-Einstellungen: Secrets und optional eine Freigabe vor jedem Lauf
+    environment: production
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+    env:
+      API_IMAGE: ghcr.io/${{ github.repository_owner }}/marktat-api
+      WEB_IMAGE: ghcr.io/${{ github.repository_owner }}/marktat-web
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Nur getestete Stände von main
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REF: ${{ inputs.ref }}
+        run: |
+          sha="$(git rev-parse --verify "${REF:-origin/main}^{commit}")"
+          git merge-base --is-ancestor "$sha" origin/main || { echo "::error::$sha ist nicht auf main"; exit 1; }
+          green="$(gh api "repos/${{ github.repository }}/actions/workflows/ci.yml/runs?head_sha=$sha&status=success" --jq '.total_count')"
+          [ "$green" -gt 0 ] || { echo "::error::Für $sha gibt es keinen erfolgreichen CI-Lauf – erst grün, dann ausrollen."; exit 1; }
+          git checkout --quiet "$sha"
+          echo "TAG=${sha:0:12}" >> "$GITHUB_ENV"
+          echo "Version: ${sha:0:12}"
+
+      - name: SSH-Zugang zum Server
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ] \
+            || { echo '::error::Secrets DEPLOY_HOST, DEPLOY_SSH_KEY und DEPLOY_KNOWN_HOSTS in der Umgebung production fehlen'; exit 1; }
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          # Server-Schlüssel fest hinterlegt: keine Verbindung zu einem untergeschobenen Server
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf 'Host marktat\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/id_deploy\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$DEPLOY_HOST" > ~/.ssh/config
+
+      # Öffentliche Werte für das Web-Image (Adressen, Anon-Key) kommen aus der .env auf dem Server – eine Quelle
+      - name: Öffentliche Werte vom Server lesen
+        run: |
+          ssh marktat "grep -E '^(WEB_DOMAIN|API_DOMAIN|SUPABASE_ANON_KEY|R2_ACCOUNT_ID|R2_JURISDICTION|R2_ENDPOINT)=' /opt/marktat/.env" \
+            | sed -E 's/="(.*)"$/=\1/' > build.env
+          set -a; . ./build.env; set +a
+          [ -n "${WEB_DOMAIN:-}" ] && [ -n "${API_DOMAIN:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ] \
+            || { echo '::error::WEB_DOMAIN, API_DOMAIN oder SUPABASE_ANON_KEY fehlt in /opt/marktat/.env'; exit 1; }
+          cat build.env >> "$GITHUB_ENV"
+
+      - name: Images bauen und hochladen
+        run: |
+          echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          docker build -f apps/api/Dockerfile -t "$API_IMAGE:$TAG" .
+          docker build -f apps/web/Dockerfile -t "$WEB_IMAGE:$TAG" \
+            --build-arg WEB_URL="https://$WEB_DOMAIN" \
+            --build-arg API_URL="https://$API_DOMAIN" \
+            --build-arg SUPABASE_URL="https://$API_DOMAIN" \
+            --build-arg SUPABASE_ANON_KEY="$SUPABASE_ANON_KEY" \
+            --build-arg R2_ACCOUNT_ID="${R2_ACCOUNT_ID:-}" \
+            --build-arg R2_JURISDICTION="${R2_JURISDICTION:-default}" \
+            --build-arg R2_ENDPOINT="${R2_ENDPOINT:-}" \
+            --build-arg ALLOW_INDEXING=false \
+            .
+          docker push --quiet "$API_IMAGE:$TAG"
+          docker push --quiet "$WEB_IMAGE:$TAG"
+
+      - name: Konfiguration auf den Server kopieren
+        run: |
+          tar -czf release.tgz -C infra/production compose.yml Caddyfile postgres-init.sh deploy.sh backup.sh \
+            env.production.example generate-secrets.mjs -C .. email-templates
+          ssh marktat "mkdir -p /opt/marktat/releases/$TAG && tar -xzf - -C /opt/marktat/releases/$TAG" < release.tgz
+
+      - name: Ausrollen (Sicherung, Migrationen, Start, Healthchecks; bei Fehler zurück zur vorigen Version)
+        run: |
+          # Kurzlebiger Zugang zur Registry nur für diesen Lauf (das Token verfällt mit dem Job)
+          echo "${{ github.token }}" | ssh marktat "docker login ghcr.io -u '${{ github.actor }}' --password-stdin" > /dev/null
+          ssh marktat "/opt/marktat/releases/$TAG/deploy.sh deploy $TAG"
+
+      - name: Registry-Zugang auf dem Server entfernen
+        if: always()
+        run: ssh marktat 'docker logout ghcr.io' > /dev/null 2>&1 || true
+
+      - name: Erreichbarkeit von außen
+        run: |
+          curl -fsS --retry 6 --retry-delay 5 --retry-all-errors "https://$API_DOMAIN/v1/health/ready"
+          echo
+          code="$(curl -sS -o /dev/null -w '%{http_code}' --retry 6 --retry-delay 5 --retry-all-errors "https://$WEB_DOMAIN/")"
+          # 401 = Zugangsschutz (BETA_BASIC_AUTH) aktiv
+          [ "$code" = 200 ] || [ "$code" = 401 ] || { echo "::error::Web-App antwortet mit HTTP $code"; exit 1; }
+          echo "Web-App: HTTP $code – Version $TAG ist online."

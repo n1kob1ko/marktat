@@ -1,0 +1,6 @@
+# Generalprobe: Produktions-Caddyfile plus Adresse für den S3-Ersatz
+import /etc/caddy/Caddyfile.prod
+
+s3.{$WEB_DOMAIN} {
+	reverse_proxy s3:4569
+}

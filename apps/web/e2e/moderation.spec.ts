@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
 import { expect, test, type Browser, type BrowserContextOptions, type Page, type TestInfo } from '@playwright/test';
-import { PASSWORD, publishBike, registerConfirmed, signInHere } from './accounts';
+import { PASSWORD, publishBike, registerConfirmed, setRole, signInHere } from './accounts';
 import { waitForMail } from './mailpit';
 
 /**
@@ -11,7 +9,6 @@ import { waitForMail } from './mailpit';
  */
 test.describe.configure({ mode: 'serial' });
 
-const REPO_ROOT = path.resolve(__dirname, '../../..');
 
 function contextOptions(testInfo: TestInfo): BrowserContextOptions {
   const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, locale, timezoneId, baseURL } = testInfo.project.use;
@@ -21,10 +18,6 @@ function contextOptions(testInfo: TestInfo): BrowserContextOptions {
 async function newPage(browser: Browser, testInfo: TestInfo) {
   const context = await browser.newContext(contextOptions(testInfo));
   return { context, page: await context.newPage() };
-}
-
-function setRoleViaCli(email: string, role: 'ADMIN' | 'MODERATOR' | 'USER') {
-  execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', '--email', email, '--role', role], { cwd: REPO_ROOT, stdio: 'pipe' });
 }
 
 async function expectNotFound(page: Page, url: string) {
@@ -65,7 +58,7 @@ test('Melden, moderieren, Einspruch und Sperre – mit getrennten Rollen', async
   await registerConfirmed(moderator.page, 'Moritz Moderation', emails.moderator);
   const admin = await newPage(browser, testInfo);
   await registerConfirmed(admin.page, 'Adele Admin', emails.admin);
-  setRoleViaCli(emails.admin, 'ADMIN');
+  setRole(emails.admin, 'ADMIN');
 
   // --- Ohne Rolle gibt es den Admin-Bereich nicht ---
   await expectNotFound(reporter.page, '/admin');

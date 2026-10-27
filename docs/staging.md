@@ -1,6 +1,9 @@
 # Staging-Strategie (nur Konzept – nichts bereitgestellt)
 
-> Stand 27.10.2026: Es gibt **keine** Staging- oder Produktionsumgebung. Dieses Dokument beschreibt, wie eine
+> Stand 27.10.2026: Es gibt **keine** Staging- oder Produktionsumgebung. Die Produktion ist seit Phase 9 fertig
+> vorbereitet ([deployment.md](deployment.md)); eine zweite Umgebung lässt sich mit denselben Dateien auf einem
+> weiteren Server aufsetzen. Bis dahin ersetzt die lokale Generalprobe (`infra/production/probe/`) Staging.
+> Dieses Dokument beschreibt, wie eine
 > Staging-Umgebung aussehen soll. Bereitstellung, Anbieterwahl und alle Kosten brauchen Nikos Freigabe.
 
 ## Ziel

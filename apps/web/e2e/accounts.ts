@@ -1,5 +1,9 @@
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import { waitForMailLink } from './mailpit';
+
+const REPO_ROOT = path.resolve(__dirname, '../../..');
 
 export const PASSWORD = 'Sicheres-Passwort-2026';
 
@@ -39,4 +43,16 @@ export async function publishBike(page: Page, title: string): Promise<string> {
   await page.getByRole('link', { name: 'Fertig' }).click();
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   return page.url().split('?')[0]!;
+}
+
+/**
+ * Rolle über die Kommandozeile setzen – so entsteht auch online das erste Administratorkonto (admin:role).
+ * Standard: gegen die lokale Datenbank. Für die Generalprobe (docs/deployment.md) E2E_ROLE_COMMAND setzen, z. B.
+ * `docker compose -p marktat-probe exec -T api pnpm --silent admin:role --`; E-Mail und Rolle werden angehängt.
+ */
+export function setRole(email: string, role: 'ADMIN' | 'MODERATOR' | 'USER') {
+  const args = ['--email', email, '--role', role];
+  const custom = process.env.E2E_ROLE_COMMAND?.trim().split(/\s+/);
+  if (custom?.length) execFileSync(custom[0]!, [...custom.slice(1), ...args], { stdio: 'pipe' });
+  else execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', ...args], { cwd: REPO_ROOT, stdio: 'pipe' });
 }

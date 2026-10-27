@@ -5,7 +5,11 @@
 export const serverEnv = {
   supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || 'http://localhost:54321',
   supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '',
-  apiUrl: process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:4000',
+  /**
+   * Adresse der API für Aufrufe vom Next.js-Server. Auf dem Server direkt über das interne Docker-Netz
+   * (API_INTERNAL_URL, wird zur Laufzeit gelesen); der Browser nutzt weiter die öffentliche Adresse.
+   */
+  apiUrl: process.env.API_INTERNAL_URL || process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:4000',
   webUrl: process.env.NEXT_PUBLIC_WEB_URL || process.env.WEB_URL || 'http://localhost:3000',
   /** Suchmaschinen zulassen (erst nach dem Start; wird beim Build festgelegt, siehe next.config.ts) */
   allowIndexing: process.env.ALLOW_INDEXING === 'true',
