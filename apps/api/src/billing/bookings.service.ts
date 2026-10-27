@@ -256,6 +256,12 @@ export class BookingsService implements OnModuleInit {
     const booking = await this.requireOwnBooking(user.id, bookingId);
     if (booking.status === 'PENDING_PAYMENT') {
       if (booking.payment?.checkoutSessionId) {
+        // Schon bezahlt (Webhook noch unterwegs oder Abbruch-Link nachträglich geöffnet): aktivieren statt verwerfen
+        const session = await this.stripe.retrieveCheckoutSession(booking.payment.checkoutSessionId).catch(() => null);
+        if (session?.payment_status === 'paid') {
+          await this.activatePaid(bookingId, session);
+          return this.toDto(await this.requireOwnBooking(user.id, bookingId));
+        }
         await this.stripe.expireCheckoutSession(booking.payment.checkoutSessionId).catch((error: Error) => {
           this.logger.warn(`Checkout ${booking.payment?.checkoutSessionId} nicht beendet: ${error.message}`);
         });

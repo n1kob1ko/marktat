@@ -214,6 +214,15 @@ describe('Monetarisierung im kostenpflichtigen Betrieb (Stripe-Testdouble)', () 
     expect((await prisma.listing.findUniqueOrThrow({ where: { id: listing.id } })).bumpedAt).toBeNull();
   });
 
+  it('verwirft eine bereits bezahlte Buchung nicht, wenn danach der Abbruch-Link geöffnet wird', async () => {
+    const { seller, booking, sessionId, listing } = await pendingHighlight();
+    stripe.pay(sessionId);
+    const res = await request(server()).post(`/v1/bookings/${booking.id}/cancel`).set(seller.auth).expect(200);
+    expect(res.body.status).toBe('ACTIVE');
+    expect(stripe.expired).toHaveLength(0);
+    expect((await request(server()).get(`/v1/listings/${listing.id}`).expect(200)).body.highlighted).toBe(true);
+  });
+
   it('beendet die Leistung bei voller Rückerstattung und verfällt offene Zahlungen', async () => {
     const { booking, sessionId, listing } = await pendingHighlight();
     const paid = stripe.pay(sessionId);
