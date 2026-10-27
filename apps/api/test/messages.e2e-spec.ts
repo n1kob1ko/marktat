@@ -309,7 +309,7 @@ describe('Nachrichten', () => {
       await send(other.seller, other.conversationId, 'Nicht für Verena').expect(201);
 
       await request(server()).post(`/v1/conversations/${conversationId}/read`).set(seller.auth).expect(200);
-      expect(await next()).toMatchObject({ type: 'read', conversationId, unread: { messages: 0 } });
+      expect(await next()).toMatchObject({ type: 'read', conversationId, byMe: true, unread: { messages: 0 } });
     } finally {
       controller.abort();
       await reader.cancel().catch(() => undefined);

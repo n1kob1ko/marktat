@@ -233,8 +233,14 @@ export class MessagesService implements OnModuleInit {
     const unread = await this.unread(user.id);
     if (count > 0) {
       const partnerId = conversation.buyerId === user.id ? conversation.sellerId : conversation.buyerId;
-      this.realtime.publish(user.id, { type: 'read', conversationId: conversation.id, readAt: readAt.toISOString(), unread });
-      this.realtime.publish(partnerId, { type: 'read', conversationId: conversation.id, readAt: readAt.toISOString(), unread: await this.unread(partnerId) });
+      this.realtime.publish(user.id, { type: 'read', conversationId: conversation.id, readAt: readAt.toISOString(), byMe: true, unread });
+      this.realtime.publish(partnerId, {
+        type: 'read',
+        conversationId: conversation.id,
+        readAt: readAt.toISOString(),
+        byMe: false,
+        unread: await this.unread(partnerId),
+      });
     }
     return unread;
   }
@@ -501,7 +507,7 @@ function displayName(user: Pick<UserRow, 'displayName' | 'accountType' | 'compan
 
 function sendBlockedReason(partner: UserRow, blockedByMe: boolean, blockedMe: boolean): string | null {
   if (isInactive(partner)) return 'Diese Person ist nicht mehr auf MarktAT aktiv.';
-  if (blockedByMe) return 'Du hast diese Person blockiert.';
+  if (blockedByMe) return 'Du hast diese Person blockiert. Über das Menü oben kannst du die Blockierung aufheben.';
   if (blockedMe) return 'Du kannst dieser Person keine Nachrichten mehr senden.';
   return null;
 }

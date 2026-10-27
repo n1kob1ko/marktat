@@ -2,10 +2,12 @@ import Link from 'next/link';
 import { ImageIcon, MapPin } from 'lucide-react';
 import { Badge } from '@marktat/ui';
 import type { ListingSummary } from '@marktat/shared';
+import { FavoriteButton } from './favorites/favorite-button';
 import { PriceTag } from './price-tag';
 import { RelativeDate } from './relative-date';
 
-export function ListingCard({ listing }: { listing: ListingSummary }) {
+/** `favorite`: bekannter Merkstatus (sonst wird er nachgeladen), `false` bei `showFavorite={false}` blendet das Herz aus. */
+export function ListingCard({ listing, favorite, showFavorite = true }: { listing: ListingSummary; favorite?: boolean; showFavorite?: boolean }) {
   return (
     <article className="group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]">
       <div className="relative aspect-[4/3] bg-canvas">
@@ -22,6 +24,7 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
             Händler
           </Badge>
         ) : null}
+        {showFavorite ? <FavoriteButton listingId={listing.id} title={listing.title} initial={favorite} className="absolute top-2.5 right-2.5" /> : null}
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal text-ink-900">

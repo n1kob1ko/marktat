@@ -61,12 +61,15 @@ export class FavoritesService {
     await this.prisma.favorite.deleteMany({ where: { userId: user.id, listingId } });
   }
 
-  /** Welche der angegebenen Inserate gemerkt sind (für Herzen auf Karten). */
-  async lookup(user: AuthUser, listingIds: string[]): Promise<string[]> {
+  /** Welche der angegebenen Inserate gemerkt sind und welche der Person selbst gehören (dort kein Herz). */
+  async lookup(user: AuthUser, listingIds: string[]): Promise<{ listingIds: string[]; ownListingIds: string[] }> {
     const ids = [...new Set(listingIds)].filter((id) => ENTITY_ID.test(id)).slice(0, 100);
-    if (!ids.length) return [];
-    const rows = await this.prisma.favorite.findMany({ where: { userId: user.id, listingId: { in: ids } }, select: { listingId: true } });
-    return rows.map((row) => row.listingId);
+    if (!ids.length) return { listingIds: [], ownListingIds: [] };
+    const [favorites, own] = await Promise.all([
+      this.prisma.favorite.findMany({ where: { userId: user.id, listingId: { in: ids } }, select: { listingId: true } }),
+      this.prisma.listing.findMany({ where: { sellerId: user.id, id: { in: ids } }, select: { id: true } }),
+    ]);
+    return { listingIds: favorites.map((row) => row.listingId), ownListingIds: own.map((row) => row.id) };
   }
 
   async isFavorite(userId: string, listingId: string): Promise<boolean> {

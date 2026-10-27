@@ -38,7 +38,9 @@ describe('Merkliste', () => {
     const detail = await request(server()).get(`/v1/listings/${listing.id}`).set(buyer.auth).expect(200);
     expect(detail.body.isFavorite).toBe(true);
     const lookup = await request(server()).get(`/v1/me/favorites/ids?listingIds=${listing.id},kaputt`).set(buyer.auth).expect(200);
-    expect(lookup.body).toEqual({ listingIds: [listing.id] });
+    expect(lookup.body).toEqual({ listingIds: [listing.id], ownListingIds: [] });
+    const ownLookup = await request(server()).get(`/v1/me/favorites/ids?listingIds=${listing.id}`).set(seller.auth).expect(200);
+    expect(ownLookup.body).toEqual({ listingIds: [], ownListingIds: [listing.id] });
 
     await request(server()).delete(`/v1/me/favorites/${listing.id}`).set(buyer.auth).expect(204);
     await request(server()).delete(`/v1/me/favorites/${listing.id}`).set(buyer.auth).expect(204);

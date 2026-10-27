@@ -237,5 +237,6 @@ export interface UnreadSummary {
 export type RealtimeEvent =
   | { type: 'ready'; unread: UnreadSummary }
   | { type: 'message'; message: ChatMessage; unread: UnreadSummary }
-  | { type: 'read'; conversationId: string; readAt: string; unread: UnreadSummary }
+  /** byMe: in einem anderen Fenster selbst gelesen; sonst hat die andere Person meine Nachrichten gelesen */
+  | { type: 'read'; conversationId: string; readAt: string; byMe: boolean; unread: UnreadSummary }
   | { type: 'ping' };

@@ -21,9 +21,9 @@ export class FavoritesController {
   }
 
   @Get('ids')
-  @ApiOperation({ summary: 'Welche der angegebenen Inserate gemerkt sind (listingIds=a,b,c; max. 100)' })
-  async lookup(@CurrentUser() user: AuthUser, @Query('listingIds') listingIds?: string) {
-    return { listingIds: await this.favorites.lookup(user, (listingIds ?? '').split(',').map((id) => id.trim())) };
+  @ApiOperation({ summary: 'Welche der angegebenen Inserate gemerkt sind bzw. eigene sind (listingIds=a,b,c; max. 100)' })
+  lookup(@CurrentUser() user: AuthUser, @Query('listingIds') listingIds?: string) {
+    return this.favorites.lookup(user, (listingIds ?? '').split(',').map((id) => id.trim()));
   }
 
   @Put(':listingId')

@@ -14,6 +14,7 @@ import {
   parseSearchParams,
   peekFilterScope,
   searchFiltersFor,
+  toSearchParams,
   type CategoryNode,
   type SearchQuery,
   type SearchResult,
@@ -25,6 +26,7 @@ import { activeFilters, findCategoryByPath, resetHref, scopeLabel, searchHref } 
 import { ListingCard } from '@/components/listing-card';
 import { SearchFilters } from '@/components/search/search-filters';
 import { SortSelect } from '@/components/search/sort-select';
+import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 
 export const metadata: Metadata = {
   title: 'Anzeigen suchen',
@@ -93,6 +95,13 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
   const sortHrefs = Object.fromEntries(sorts.map((sort) => [sort, searchHref({ ...query, sort, page: 1 }, filters)]));
   const formKey = searchHref(query, filters);
 
+  // „Suche speichern“: alle Filter außer Seite; Name und Beschreibung aus den aktiven Filtern
+  const saveParams = toSearchParams(query, filters);
+  delete saveParams.seite;
+  delete saveParams.pageSize;
+  const saveLabels = [...(query.q ? [`„${query.q}“`] : []), ...chips.map((chip) => chip.label)];
+  const saveName = (saveLabels.join(' · ') || heading).replace(/[„“]/g, '').slice(0, 80);
+
   return (
     <div className="grid gap-5 lg:grid-cols-[18rem_1fr] lg:gap-8">
       <aside aria-label="Filter" className="lg:self-start">
@@ -113,7 +122,12 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
               </p>
             ) : null}
           </div>
-          {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} /> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasActiveFilters(query) ? (
+              <SaveSearchButton params={saveParams} labels={saveLabels} defaultName={saveName} returnTo={searchHref({ ...query, page: 1 }, filters)} />
+            ) : null}
+            {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} /> : null}
+          </div>
         </div>
 
         {chips.length ? (
