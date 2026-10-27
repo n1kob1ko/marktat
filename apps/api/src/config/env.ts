@@ -46,6 +46,11 @@ const envSchema = z
       .optional()
       .transform((v) => (v ? v : undefined))
       .pipe(z.url().optional()),
+    /** Meilisearch für die Volltextsuche. Leer = Suche nur über PostgreSQL (Fallback). */
+    MEILI_URL: optional.pipe(z.url().optional()),
+    MEILI_MASTER_KEY: optional,
+    /** Name des Suchindex (Tests verwenden einen eigenen) */
+    MEILI_INDEX: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('listings'),
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',

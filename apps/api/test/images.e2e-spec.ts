@@ -3,7 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import sharp from 'sharp';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, resetData, tokenFor } from './helpers.js';
+import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
 
 /** Signierte URLs zeigen auf API_URL; im Test gehen sie direkt an die Test-App. */
 const pathOf = (url: string) => {
@@ -36,7 +36,7 @@ describe('Inseratsbilder', () => {
         where: { path: 'marktplatz/sport-freizeit/fahrraeder' },
       })
     ).id;
-    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010' } })).id;
+    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } })).id;
   });
   beforeEach(async () => {
     await resetData(prisma);
@@ -106,6 +106,7 @@ describe('Inseratsbilder', () => {
       `http://localhost:4000/v1/images/${ticket.imageId}/large`,
     );
     expect(detail.body.imageUrl).toBe(`http://localhost:4000/v1/images/${ticket.imageId}/thumb`);
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.items[0].imageUrl).toBe(detail.body.imageUrl);
 

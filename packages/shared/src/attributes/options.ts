@@ -155,6 +155,26 @@ export const PARKING_TYPES = opts([
 
 // --- Jobs ----------------------------------------------------------------------
 
+/** Berufsbereiche angelehnt an die Berufsbereiche des AMS (vereinfacht). */
+export const JOB_FIELDS = opts([
+  ['office', 'Büro, Verwaltung, Assistenz'],
+  ['sales', 'Verkauf, Handel, Kundenservice'],
+  ['hospitality', 'Gastronomie, Hotellerie, Tourismus'],
+  ['it', 'IT, Software, Telekommunikation'],
+  ['engineering', 'Technik, Ingenieurwesen, Forschung'],
+  ['trades', 'Handwerk, Bau, Installation'],
+  ['production', 'Produktion, Industrie'],
+  ['logistics', 'Lager, Logistik, Transport'],
+  ['health', 'Gesundheit, Pflege, Soziales'],
+  ['education', 'Bildung, Kinderbetreuung'],
+  ['finance', 'Finanzen, Recht, Steuern'],
+  ['marketing', 'Marketing, Medien, Design'],
+  ['cleaning', 'Reinigung, Hausbetreuung'],
+  ['agriculture', 'Land- und Forstwirtschaft, Umwelt'],
+  ['public', 'Öffentlicher Dienst, Sicherheit'],
+  OTHER,
+]);
+
 export const EMPLOYMENT_TYPES = opts([
   ['employee', 'Angestelltenverhältnis'],
   ['worker', 'Arbeiterverhältnis'],

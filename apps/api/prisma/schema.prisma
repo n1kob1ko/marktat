@@ -131,22 +131,25 @@ model District {
 
 /// Ort mit Postleitzahl. Eine PLZ kann mehrere Orte umfassen und umgekehrt.
 model Location {
-  id         Int                                    @id @default(autoincrement())
-  postalCode String                                 @map("postal_code") @db.VarChar(4)
-  place      String
-  slug       String
-  districtId Int                                    @map("district_id")
-  latitude   Float
-  longitude  Float
+  id           Int                                    @id @default(autoincrement())
+  postalCode   String                                 @map("postal_code") @db.VarChar(4)
+  place        String
+  /// Gemeinde laut Statistik Austria (z. B. „Innsbruck“ für den Ortsteil „Wilten“), in Wien „Wien“
+  municipality String?
+  slug         String
+  districtId   Int                                    @map("district_id")
+  latitude     Float
+  longitude    Float
   /// Wird aus latitude/longitude befüllt (siehe Seed); für Umkreissuche mit ST_DWithin
-  geom       Unsupported("geography(Point, 4326)")?
-  district   District                               @relation(fields: [districtId], references: [id])
-  listings   Listing[]
+  geom         Unsupported("geography(Point, 4326)")?
+  district     District                               @relation(fields: [districtId], references: [id])
+  listings     Listing[]
 
   @@unique([postalCode, place])
   @@index([postalCode])
   @@index([districtId])
   @@index([geom], type: Gist)
+  @@index([place(ops: raw("gin_trgm_ops"))], type: Gin)
   @@map("locations")
 }
 
@@ -223,27 +226,27 @@ enum ImageStatus {
 /// Bilder eines Inserats. Rohdateien liegen privat unter `uploadKey`, nur verarbeitete Varianten
 /// (ohne EXIF, WebP) unter `storageKey` werden ausgeliefert. Reihenfolge: `sortOrder` 0 = Hauptbild.
 model ListingImage {
-  id               String      @id @default(cuid())
-  listingId        String      @map("listing_id")
-  status           ImageStatus @default(PENDING)
+  id           String      @id @default(cuid())
+  listingId    String      @map("listing_id")
+  status       ImageStatus @default(PENDING)
   /// Schlüssel der unverarbeiteten Datei, z. B. "uploads/<listingId>/<imageId>"; nach Verarbeitung null
-  uploadKey        String?     @map("upload_key")
+  uploadKey    String?     @map("upload_key")
   /// Präfix der Varianten, z. B. "images/<listingId>/<imageId>" (+ "/large.webp", "/thumb.webp")
-  storageKey       String      @map("storage_key")
+  storageKey   String      @map("storage_key")
   /// Vom Browser angekündigter Typ und Größe (nur Plausibilität, maßgeblich ist die Prüfung nach dem Upload)
-  declaredType     String      @map("declared_type")
-  declaredSize     Int         @map("declared_size")
+  declaredType String      @map("declared_type")
+  declaredSize Int         @map("declared_size")
   /// Tatsächlich erkannter Typ der Originaldatei
-  detectedType     String?     @map("detected_type")
-  width            Int?
-  height           Int?
+  detectedType String?     @map("detected_type")
+  width        Int?
+  height       Int?
   /// Gesamtgröße der gespeicherten Varianten in Byte
-  storedBytes      Int?        @map("stored_bytes")
-  sortOrder        Int         @default(0) @map("sort_order")
-  createdAt        DateTime    @default(now()) @map("created_at")
-  updatedAt        DateTime    @updatedAt @map("updated_at")
-  processedAt      DateTime?   @map("processed_at")
-  listing          Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  storedBytes  Int?        @map("stored_bytes")
+  sortOrder    Int         @default(0) @map("sort_order")
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  processedAt  DateTime?   @map("processed_at")
+  listing      Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
 
   @@index([listingId, status, sortOrder])
   @@index([status, createdAt])

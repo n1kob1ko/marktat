@@ -8,6 +8,7 @@ const CACHE_TTL_MS = 5 * 60_000;
 interface CategoryIndex {
   tree: CategoryNode[];
   byId: Map<string, Category>;
+  byPath: Map<string, Category>;
   childrenOf: Map<string, string[]>;
   loadedAt: number;
 }
@@ -45,6 +46,22 @@ export class CategoriesService {
     return result;
   }
 
+  async findByPath(path: string): Promise<Category | undefined> {
+    return (await this.index()).byPath.get(path);
+  }
+
+  /** Namen einer Kategorie und ihrer Oberkategorien je Pfad, z. B. „Fahrräder“, „Sport & Freizeit“ (für die Volltextsuche). */
+  async namesByPath(): Promise<Map<string, string[]>> {
+    const { byId } = await this.index();
+    const names = new Map<string, string[]>();
+    for (const category of byId.values()) {
+      const chain: string[] = [];
+      for (let c: Category | undefined = category; c; c = c.parentId ? byId.get(c.parentId) : undefined) chain.push(c.name);
+      names.set(category.path, chain);
+    }
+    return names;
+  }
+
   invalidate() {
     this.cache = undefined;
   }
@@ -71,7 +88,7 @@ export class CategoriesService {
       children: (childrenOf.get(c.id) ?? []).map((childId) => build(byId.get(childId)!)),
     });
     const tree = all.filter((c) => !c.parentId).map(build);
-    this.cache = { tree, byId, childrenOf, loadedAt: Date.now() };
+    this.cache = { tree, byId, byPath: new Map(all.map((c) => [c.path, c])), childrenOf, loadedAt: Date.now() };
     return this.cache;
   }
 }

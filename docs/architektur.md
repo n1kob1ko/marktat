@@ -12,10 +12,11 @@ Browser ──► apps/web (Next.js 16, Server Components, Server Actions)
             apps/api (NestJS 12, REST unter /v1, OpenAPI unter /docs)
               │            │
               ▼            ▼
-        PostgreSQL 16   Supabase Auth (GoTrue)         Cloudflare R2 (privat)
-        + PostGIS       Registrierung, Login, …        Bilder; Browser lädt per signierter URL direkt hoch
+        PostgreSQL 16   Supabase Auth (GoTrue)         Cloudflare R2 (privat)       Meilisearch
+        + PostGIS       Registrierung, Login, …        Bilder; Browser lädt per     Volltext- und Umkreissuche,
+                                                       signierter URL direkt hoch   Fallback: PostgreSQL
 
-geplant: Meilisearch (Suche), Redis/BullMQ (Jobs), Stripe (Zahlungen), OpenAI (optional)
+geplant: Redis/BullMQ (Jobs), Stripe (Zahlungen), OpenAI (optional)
 ```
 
 Der Browser spricht für Auth direkt mit Supabase Auth (über die Server Actions der Web-App), für alle Fachdaten ausschließlich mit der API. Die API vertraut nur dem signierten JWT, nicht den Angaben des Clients.
@@ -42,8 +43,8 @@ Werkzeuge: pnpm-Workspaces, Turborepo (`build`, `dev`, `lint`, `typecheck`, `tes
 - **Inserat-Lebenszyklus:** `DRAFT → ACTIVE ⇄ PAUSED`, `ACTIVE → EXPIRED` (nach 60 Tagen, berechnet über `expiresAt`), `DELETED` als Soft-Delete. `PENDING_REVIEW` und `REJECTED` sind für die Moderation (Phase 3) angelegt. Veröffentlichen verlangt eine Blattkategorie, Titel, Beschreibung, Preisart und Ort.
 - **Fremde Inserate:** Zugriffe auf Inserate anderer Nutzer liefern 404 statt 403, damit keine IDs erraten werden können.
 - **Caching im Frontend:** Öffentliche Daten (Kategorien, neueste Inserate) mit `'use cache'` + `cacheTag`, nach Änderungen `updateTag('listings')`. Nutzerabhängige Teile liegen in `Suspense`-Grenzen.
-- **Suche in Phase 1:** einfache Postgres-Suche (`ILIKE` auf Titel/Beschreibung) mit Filtern nach Kategorie (inkl. Unterkategorien), Bereich und Bundesland. Meilisearch folgt in Phase 2.
-- **Geodaten:** Bundesland → Bezirk → Ort (PLZ) mit PostGIS-Punkt für spätere Umkreissuche. Siehe [geodaten.md](geodaten.md).
+- **Suche (Phase 4):** Meilisearch findet die IDs (Tippfehler, Relevanz, Umkreis), PostgreSQL lädt die Inserate und prüft die Sichtbarkeit erneut. Fällt Meilisearch aus, sucht die API mit denselben Filtern direkt in PostgreSQL/PostGIS. Filter kommen aus den Kategorie-Feldern, die Such-URL ist teilbar. Siehe [suche.md](suche.md).
+- **Geodaten:** Bundesland → Bezirk → Ort (PLZ) mit PostGIS-Punkt, vollständiges PLZ-Verzeichnis aus GeoNames. Siehe [geodaten.md](geodaten.md).
 - **Bilder:** Upload direkt vom Browser nach R2 über kurzlebige Presigned-URLs, danach Prüfung und Optimierung in der API (sharp), Auslieferung über stabile API-URLs mit Weiterleitung auf signierte R2-URLs. Austauschbarer Speicher (`ObjectStorage`): R2 oder lokales Dateisystem für Tests. Siehe [bilder.md](bilder.md).
 
 ## API-Endpunkte (Phase 1)
@@ -71,9 +72,14 @@ Vollständige Schemas: `http://localhost:4000/docs` (Swagger UI).
 
 ## Phasenplan
 
-1. **Fundament** (dieser Stand): Monorepo, Docker, Datenmodell, Auth, Inserate ohne Bilder, Basis-Suche, Tests, CI.
-2. Bild-Upload (R2) – umgesetzt. Offen: kategorieabhängige Felder, Meilisearch, Umkreissuche, Favoriten, gespeicherte Suchen.
-3. Nachrichten zwischen Nutzern, Meldungen, Moderation, Admin-Bereich, Kontolöschung (DSGVO), E-Mail-Benachrichtigungen über BullMQ.
-4. Bezahlte Zusatzleistungen mit Stripe (Hervorheben, Hochschieben), Rechnungen, Händlerkonten.
-5. Vertikalen ausbauen: Auto & Motor (Fahrzeugdaten), Immobilien (Fläche, Zimmer, HWB), Jobs (Firmenprofile, Bewerbungen).
-6. Optionale KI-Funktionen, Performance, Monitoring, Produktionsbetrieb.
+1. **Fundament:** Monorepo, Docker, Datenmodell, Auth, Inserate ohne Bilder, Basis-Suche, Tests, CI – umgesetzt.
+2. Bild-Upload (R2) – umgesetzt.
+3. Kategorieabhängige Felder – umgesetzt ([kategorie-felder.md](kategorie-felder.md)).
+4. Suche mit Meilisearch, Filtern je Bereich, vollständigem PLZ-Verzeichnis und Umkreissuche – umgesetzt ([suche.md](suche.md)). Offen: Favoriten, gespeicherte Suchen.
+
+Weitere Vorhaben (Reihenfolge offen):
+
+- Nachrichten zwischen Nutzern, Meldungen, Moderation, Admin-Bereich, Kontolöschung (DSGVO), E-Mail-Benachrichtigungen über BullMQ.
+- Bezahlte Zusatzleistungen mit Stripe (Hervorheben, Hochschieben), Rechnungen, Händlerkonten.
+- Vertikalen ausbauen: Auto & Motor (Fahrzeugdaten), Immobilien (Fläche, Zimmer, HWB), Jobs (Firmenprofile, Bewerbungen).
+- Optionale KI-Funktionen, Performance, Monitoring, Produktionsbetrieb.

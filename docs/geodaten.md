@@ -6,43 +6,69 @@
 | --- | --- | --- |
 | Bundesländer | alle 9 (AT-1 … AT-9) | `packages/shared/src/austria.ts` |
 | Bezirke | 93 politische Bezirke + 23 Wiener Gemeindebezirke (901–923) | `apps/api/prisma/seed/districts.ts`, Kennziffern nach Statistik Austria |
-| Orte/PLZ | **140 ausgewählte Orte – ENTWICKLUNGSDATEN** | `apps/api/prisma/seed/locations.dev.ts` |
+| Orte/PLZ | **20.877 Orte, 2.461 Postleitzahlen** (vollständig) | `apps/api/prisma/seed/data/at-locations.tsv.gz` |
 
-Die Entwicklungsorte decken alle Bundesländer und die größeren Städte ab. Die Koordinaten sind gerundete
-Ortsmittelpunkte (ca. 1–3 km genau). Für den Echtbetrieb reicht das **nicht**: Nutzer würden ihre PLZ nicht finden.
+`pnpm db:seed` lädt das vollständige Verzeichnis ohne Internetzugang. Bestehende Orte werden über
+PLZ + Ortsname aktualisiert, es wird nichts gelöscht. Inserate verweisen weiter auf ihre `location_id`.
 
-## Vollständiges PLZ-Verzeichnis importieren
+Spalten der Datei: `postal_code`, `place`, `municipality` (Gemeinde, wenn sie anders heißt als der Ort),
+`district_id`, `latitude`, `longitude`.
 
-Empfohlene Quelle: GeoNames-Postleitzahlen für Österreich, Lizenz **CC BY 4.0**
-(Namensnennung „GeoNames, geonames.org“ z. B. im Impressum oder auf einer Quellenseite nötig).
+## Datenquelle und Lizenz
+
+**GeoNames-Postleitzahlen für Österreich** (`https://download.geonames.org/export/zip/AT.zip`),
+Lizenz **[CC BY 4.0](https://creativecommons.org/licenses/by/4.0/)**. Pflicht ist die Namensnennung
+„Postleitzahlen: GeoNames (geonames.org), CC BY 4.0“, z. B. im Impressum oder auf einer Quellenseite
+(steht im Impressum, siehe [rechtliches.md](rechtliches.md)). Die Daten wurden aufbereitet (siehe unten); das ist nach CC BY erlaubt,
+muss aber nicht eigens gekennzeichnet werden.
+
+Verwendet wurde die inhaltsgleiche CSV-Umwandlung aus `zauberware/postal-codes-json-xml-csv`, weil geonames.org
+aus der Entwicklungsumgebung nicht erreichbar war. Der Parser liest beide Formate (Original-`AT.txt` mit Tabulatoren
+und die CSV mit Kopfzeile).
+
+## Aufbereitung (`apps/api/prisma/seed/geonames.ts`)
+
+- **Bezirk:** aus der 5-stelligen Gemeindekennziffer von Statistik Austria (erste drei Ziffern, z. B. 60101 → 601),
+  in Wien aus dem Gemeindebezirk (901 … 923). Fehlt die Kennziffer, wird der Bezirk vom Ort mit derselben PLZ
+  bzw. vom nächstgelegenen Ort im Bundesland übernommen.
+- **Mehrere Orte je PLZ:** jede Ortschaft ist ein eigener Eintrag (z. B. 4020 Linz und 4020 Leonding). Gemeinden ohne
+  gleichnamige Ortschaft (z. B. 9500 Villach) werden ergänzt, damit der Hauptort immer auffindbar ist.
+- **Lesbare Namen:** „Wien, Neubau“ → „Wien“, „Graz,09.Bez.:Waltendorf“ → „Graz“, „Oberwart / Felsöör“ → „Oberwart“.
+- **Duplikate:** gleiche PLZ + gleicher Name nach dem Vereinheitlichen werden zusammengeführt (278 Zeilen).
+- **Postfächer** (40 Zeilen) sind keine Wohnorte und fallen weg.
+- **Koordinaten-Prüfung:** Punkte außerhalb Österreichs oder mehr als 80 km vom Bezirk entfernt werden verworfen
+  (aktuell keine). Ein Test (`geo-dataset.spec.ts`) prüft die Datei: alle Bundesländer und Bezirke abgedeckt, nur gültige
+  PLZ und Koordinaten in Österreich, keine doppelten Einträge, Stichproben im richtigen Bundesland.
+- **Wien:** GeoNames setzt fast alle Wiener PLZ auf den Stephansplatz. Für eine brauchbare Umkreissuche bekommt jede
+  Wiener PLZ den Mittelpunkt ihres Gemeindebezirks (`VIENNA_DISTRICT_CENTRES`, ca. ±1 km).
+
+### Ortssuche
+
+`GET /v1/geo/locations?q=` findet nach PLZ-Anfang, Ortsname (auch „St.“/„Sankt“) und „PLZ Ort“. Hauptorte stehen
+vorne: exakte Treffer, dann Gemeindehauptort, Statutarstadt und Haupt-PLZ (z. B. 1010 vor 1011 bei „Wien“).
+
+## Verzeichnis aktualisieren
 
 ```bash
-curl -LO https://download.geonames.org/export/zip/AT.zip
-unzip AT.zip AT.txt
-pnpm db:seed                                       # Bundesländer und Bezirke zuerst
-pnpm --filter @marktat/api geo:import --file AT.txt
+curl -LO https://download.geonames.org/export/zip/AT.zip && unzip AT.zip AT.txt
+pnpm --filter @marktat/api geo:build --file AT.txt     # schreibt data/at-locations.tsv.gz neu (zum Committen)
+pnpm db:seed                                           # oder direkt: geo:import --file AT.txt
+pnpm --filter @marktat/api search:reindex              # neue Koordinaten in den Suchindex
 ```
 
-Das Skript (`apps/api/prisma/seed/geo-import.ts`) leitet den Bezirk aus der 5-stelligen Gemeindekennziffer ab
-(erste drei Ziffern), aktualisiert bestehende Orte, löscht nichts und gibt am Ende aus, wie viele Zeilen aus welchem
-Grund übersprungen wurden.
+`geo:build` gibt aus, wie viele Zeilen aus welchem Grund übersprungen wurden. Beide Skripte löschen nichts.
 
-> **Ehrlicher Hinweis:** In der Entwicklungsumgebung, in der Phase 1 gebaut wurde, waren geonames.org und
-> data.gv.at nicht erreichbar. Der Parser ist mit Beispielzeilen im dokumentierten GeoNames-Format getestet, aber
-> noch nicht mit der echten Datei. Beim ersten Import bitte die Ausgabe prüfen: Wenn viele Zeilen mit
-> „unbekannter Bezirk“ übersprungen werden, passt die Bezirkszuordnung nicht und muss nachgezogen werden.
+## Bekannte Einschränkungen
 
-Alternative amtliche Quelle: PLZ-Verzeichnis der Österreichischen Post bzw. Gemeinde- und Ortschaftsverzeichnis von
-Statistik Austria (data.gv.at, CC BY 4.0). Diese liefern keine Koordinaten; dafür müsste zusätzlich geokodiert werden.
+- GeoNames liefert pro Ortschaft einen Punkt (ca. 1–3 km genau), keine Gebietsflächen. Die Umkreissuche misst
+  vom Ortspunkt des Inserats zum Ortspunkt der Suche.
+- Außerhalb Wiens teilen sich mehrere Ortschaften einer PLZ teils dieselben Koordinaten.
+- Großkunden- und Sonder-PLZ der Post (Firmen, Behörden) sind in GeoNames nicht enthalten. Für Inserate spielt das
+  keine Rolle.
+- Gemeindenamen und -zuordnungen sind so aktuell wie der GeoNames-Stand.
 
-## Umkreissuche (Phase 2)
+## Umkreissuche
 
-`locations.geom` ist ein `geography(Point, 4326)` mit GiST-Index. Abfrage-Muster:
-
-```sql
-SELECT l.* FROM listings l
-JOIN locations o ON o.id = l.location_id
-WHERE ST_DWithin(o.geom, ST_MakePoint(:lon, :lat)::geography, :meter);
-```
-
-In Meilisearch wird später `_geo` je Inserat aus dem Ort befüllt.
+`locations.geom` ist ein `geography(Point, 4326)` mit GiST-Index, `locations.place` hat einen Trigramm-Index für
+die Ortssuche. Die Umkreissuche läuft in Meilisearch (`_geoRadius` auf `_geo`) und im PostgreSQL-Fallback mit
+`ST_DWithin`. Details in [suche.md](suche.md).

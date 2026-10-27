@@ -17,18 +17,17 @@ import {
   type CreateListingInput,
   type ItemCondition,
   type ListingAttributes,
-  type ListingQuery,
   type ListingStatus,
   type PriceType,
-  type Paginated,
   type ListingSummary,
   type UpdateListingInput,
 } from '@marktat/shared';
-import type { Category, Listing, Prisma } from '../generated/prisma/client.js';
+import type { Category, Listing } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { ImageUrls } from '../images/image-urls.js';
+import { SearchIndexService } from '../search/search-index.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
@@ -50,6 +49,7 @@ export class ListingsService {
     private readonly categories: CategoriesService,
     private readonly audit: AuditService,
     private readonly urls: ImageUrls,
+    private readonly searchIndex: SearchIndexService,
   ) {}
 
   async create(user: AuthUser, input: CreateListingInput, ip?: string) {
@@ -89,6 +89,7 @@ export class ListingsService {
       entityId: listing.id,
       ip,
     });
+    this.searchIndex.sync(listing.id);
     return toListingDetail(listing, this.urls, user.id);
   }
 
@@ -131,6 +132,7 @@ export class ListingsService {
       },
       include: listingInclude,
     });
+    this.searchIndex.sync(id);
     return toListingDetail(updated, this.urls, user.id);
   }
 
@@ -165,6 +167,7 @@ export class ListingsService {
       entityId: id,
       ip,
     });
+    this.searchIndex.sync(id);
     return toListingDetail(updated, this.urls, user.id);
   }
 
@@ -194,41 +197,7 @@ export class ListingsService {
       data: { status: 'DELETED', deletedAt: new Date() },
     });
     this.audit.log({ action: 'listing.deleted', actorId: user.id, entityType: 'listing', entityId: id, ip });
-  }
-
-  async findPublic(query: ListingQuery): Promise<Paginated<ListingSummary>> {
-    const where: Prisma.ListingWhereInput = {
-      status: 'ACTIVE',
-      expiresAt: { gt: new Date() },
-      deletedAt: null,
-      seller: { status: 'ACTIVE' },
-    };
-    if (query.q) {
-      where.OR = [
-        { title: { contains: query.q, mode: 'insensitive' } },
-        { description: { contains: query.q, mode: 'insensitive' } },
-      ];
-    }
-    if (query.categoryId) {
-      where.categoryId = { in: await this.categories.subtreeIds(query.categoryId) };
-    }
-    if (query.vertical) {
-      where.vertical = query.vertical;
-    }
-    if (query.state) {
-      where.location = { district: { state: { slug: query.state } } };
-    }
-    const [total, rows] = await Promise.all([
-      this.prisma.listing.count({ where }),
-      this.prisma.listing.findMany({
-        where,
-        include: listingInclude,
-        orderBy: [{ publishedAt: 'desc' }, { id: 'desc' }],
-        skip: (query.page - 1) * query.pageSize,
-        take: query.pageSize,
-      }),
-    ]);
-    return { items: rows.map((row) => toListingSummary(row, this.urls)), page: query.page, pageSize: query.pageSize, total };
+    this.searchIndex.sync(id);
   }
 
   async findMine(user: AuthUser): Promise<ListingSummary[]> {
@@ -257,6 +226,7 @@ export class ListingsService {
   private async setStatus(user: AuthUser, id: string, status: ListingStatus, action: 'listing.paused' | 'listing.resumed', ip?: string) {
     const updated = await this.prisma.listing.update({ where: { id }, data: { status }, include: listingInclude });
     this.audit.log({ action, actorId: user.id, entityType: 'listing', entityId: id, ip });
+    this.searchIndex.sync(id);
     return toListingDetail(updated, this.urls, user.id);
   }
 

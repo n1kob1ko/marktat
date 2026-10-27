@@ -1,7 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, resetData, tokenFor } from './helpers.js';
+import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
 
 describe('Inserate', () => {
   let app: NestExpressApplication;
@@ -26,7 +26,7 @@ describe('Inserate', () => {
     const leaf = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-freizeit/fahrraeder' } });
     leafCategoryId = leaf.id;
     parentCategoryId = leaf.parentId!;
-    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010' } })).id;
+    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } })).id;
   });
   beforeEach(() => resetData(prisma));
   afterAll(() => app.close());
@@ -51,6 +51,7 @@ describe('Inserate', () => {
     const days = (Date.parse(res.body.expiresAt) - Date.now()) / 86_400_000;
     expect(Math.round(days)).toBe(60);
 
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.total).toBe(1);
     expect(list.body.items[0].id).toBe(res.body.id);
@@ -91,6 +92,7 @@ describe('Inserate', () => {
     await request(server()).get(`/v1/listings/${draft.body.id}`).expect(404);
     await request(server()).get(`/v1/listings/${draft.body.id}`).set(stranger.auth).expect(404);
     await request(server()).get(`/v1/listings/${draft.body.id}`).set(seller.auth).expect(200);
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.total).toBe(0);
     const mine = await request(server()).get('/v1/listings/mine').set(seller.auth).expect(200);
@@ -150,6 +152,7 @@ describe('Inserate', () => {
     const { body: listing } = await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201);
     await prisma.listing.update({ where: { id: listing.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
 
+    await flushSearch();
     expect((await request(server()).get('/v1/listings').expect(200)).body.total).toBe(0);
     const mine = await request(server()).get('/v1/listings/mine').set(seller.auth).expect(200);
     expect(mine.body[0].status).toBe('EXPIRED');
@@ -162,7 +165,7 @@ describe('Inserate', () => {
   it('filtert nach Suchbegriff, Kategorie und Bundesland', async () => {
     const seller = await tokenFor();
     await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201);
-    const vienna = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010' } })).id;
+    const vienna = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010', place: 'Wien' } })).id;
     await request(server())
       .post('/v1/listings')
       .set(seller.auth)
@@ -174,6 +177,7 @@ describe('Inserate', () => {
       })
       .expect(201);
 
+    await flushSearch();
     const byText = await request(server()).get('/v1/listings').query({ q: 'rennrad' }).expect(200);
     expect(byText.body.total).toBe(1);
     const byParent = await request(server()).get('/v1/listings').query({ categoryId: parentCategoryId }).expect(200);
@@ -188,6 +192,29 @@ describe('Inserate', () => {
     const byCode = await request(server()).get('/v1/geo/locations').query({ q: '6020' }).expect(200);
     expect(byCode.body[0]).toMatchObject({ place: 'Innsbruck', state: 'Tirol' });
     const byName = await request(server()).get('/v1/geo/locations').query({ q: 'klagen' }).expect(200);
-    expect(byName.body[0]).toMatchObject({ postalCode: '9020' });
+    expect(byName.body[0]).toMatchObject({ postalCode: '9020', place: 'Klagenfurt am Wörthersee' });
+  });
+
+  it('kennt das vollständige PLZ-Verzeichnis mit Ortsteilen und Hauptorten', async () => {
+    const linz = await request(server()).get('/v1/geo/locations').query({ q: '4020' }).expect(200);
+    expect(linz.body[0]).toMatchObject({ place: 'Linz', district: 'Linz (Stadt)', state: 'Oberösterreich' });
+    expect(linz.body.map((l: { place: string }) => l.place)).toContain('Leonding');
+
+    const combined = await request(server()).get('/v1/geo/locations').query({ q: '1010 Wien' }).expect(200);
+    expect(combined.body).toEqual([expect.objectContaining({ postalCode: '1010', place: 'Wien', municipality: null, state: 'Wien' })]);
+
+    const saint = await request(server()).get('/v1/geo/locations').query({ q: 'sankt veit an der g' }).expect(200);
+    expect(saint.body).toContainEqual(expect.objectContaining({ postalCode: '9300', place: 'St. Veit an der Glan', state: 'Kärnten' }));
+
+    const district = await request(server()).get('/v1/geo/locations').query({ q: 'wilten' }).expect(200);
+    expect(district.body[0]).toMatchObject({ postalCode: '6020', place: 'Wilten', municipality: 'Innsbruck' });
+
+    const wildcard = await request(server()).get('/v1/geo/locations').query({ q: '%_' }).expect(200);
+    expect(wildcard.body).toEqual([]);
+
+    const total = await prisma.location.count();
+    expect(total).toBeGreaterThan(20_000);
+    const vienna = await request(server()).get('/v1/geo/locations').query({ q: 'wien' }).expect(200);
+    expect(vienna.body.slice(0, 3).map((l: { postalCode: string }) => l.postalCode)).toEqual(['1010', '1020', '1030']);
   });
 });

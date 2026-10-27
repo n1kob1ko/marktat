@@ -21,4 +21,4 @@
 | Jobs: Gleichbehandlung | GlBG § 9 (geschlechtsneutrale Ausschreibung), § 9 Abs. 2 (Gehaltsangabe) | Pflichtfeld Gehalt in Phase 5 |
 | Immobilien: Energieausweis | EAVG § 3 (HWB/fGEE in Inseraten) | Pflichtfelder in Phase 5 |
 | Bezahlte Leistungen | Preisangaben, Rechnungslegung, Rücktrittsrecht (FAGG) | Phase 4 |
-| Quellenangabe Geodaten | CC BY 4.0 (GeoNames bzw. Statistik Austria) | Namensnennung bei Import des vollständigen Verzeichnisses ergänzen |
+| Quellenangabe Geodaten | CC BY 4.0 (GeoNames) | Namensnennung im Impressum unter „Datenquellen“ |
