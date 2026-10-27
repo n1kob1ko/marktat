@@ -3,7 +3,31 @@
 > ⚠️ **Muss von einer österreichischen Rechtsanwältin bzw. einem österreichischen Rechtsanwalt geprüft werden.**
 > Die Seiten Impressum, Datenschutz, AGB und Meldestelle im Frontend sind Platzhalter mit Struktur, keine Rechtstexte.
 > Diese Liste ist eine technische Gedächtnisstütze und keine Rechtsberatung.
-> Stand Phase 8 (27.10.2026): kein öffentlicher Start, keine echten Zahlungen, Suchmaschinen gesperrt.
+> Stand Phase 9 (27.10.2026): Online-Betrieb als Beta vorbereitet (noch nicht online), keine echten Zahlungen,
+> Suchmaschinen gesperrt. Betreiberangaben stehen an **einer** Stelle: `apps/web/src/content/operator.ts`
+> (fehlende Angaben zeigen die Seiten sichtbar als „Angabe fehlt noch“, nichts ist erfunden).
+
+## Was Niko liefern muss
+
+Vor dem Teilen des Links (auch in der Beta – Impressum und Kontaktstelle gelten ab dem ersten öffentlichen Aufruf):
+
+| Angabe | Wofür | Hinweis |
+| --- | --- | --- |
+| Name bzw. Firma und Rechtsform der Betreiberin/des Betreibers | Impressum (ECG § 5, MedienG § 25), Datenschutz (Verantwortlicher), Nutzungsbedingungen (Vertragspartner) | Wer betreibt MarktAT – Niko als Privatperson, Einzelunternehmen oder eine Gesellschaft? Davon hängen Gewerbe, UID und Firmenbuch ab |
+| Ladungsfähige Anschrift (Straße, PLZ, Ort, Land) | Impressum, Datenschutz | Postfach reicht nicht |
+| E-Mail-Adresse für Anfragen, optional Telefon | Impressum, Kontakt | muss schnell erreichbar sein; Adresse unter der eigenen Domain empfohlen |
+| E-Mail der DSA-Kontaktstelle und Sprachen | Impressum, Kontakt (DSA Art. 11/12) | kann dieselbe Adresse sein, z. B. Deutsch und Englisch |
+| Unternehmensgegenstand | Impressum (MedienG § 25) | z. B. „Betrieb einer Online-Kleinanzeigenplattform“ – formulieren lassen |
+| Grundlegende Richtung des Mediums | Impressum (MedienG § 25 Abs. 4) | kurz, rechtlich prüfen lassen |
+| Firmenbuchnummer/-gericht, UID-Nummer, Aufsichtsbehörde/Kammer | Impressum | nur falls zutreffend |
+| E-Mail für Datenschutzanfragen, ggf. Datenschutzbeauftragte:r | Datenschutz | nur falls abweichend bzw. bestellt |
+| Gewählte Anbieter mit Region (Hoster, E-Mail-Versand, R2-Standort) und abgeschlossene AV-Verträge | Datenschutz (Auftragsverarbeiter) | Liste `PROCESSORS` in `operator.ts`; Supabase ist kein Auftragsverarbeiter mehr (Supabase Auth läuft selbst auf dem Server) |
+| Bestätigte Löschfristen (Mitteilungen, Protokolle, Meldungen, Entscheidungen, Sicherungen, Server-Logs) | Datenschutz, Betrieb | Vorschläge in [datenschutz.md](datenschutz.md); Sicherungen derzeit 14 Tage (`BACKUP_RETENTION_DAYS`) |
+| Geprüfte Texte für Datenschutzerklärung und Nutzungsbedingungen | Seiten `/datenschutz`, `/agb` | durch eine österreichische Rechtsberatung; danach `TERMS_VERSION` erhöhen |
+| Entscheidung zur Gewerbeanmeldung | – | ob für den (kostenlosen) Betrieb ein Gewerbe nötig ist, klären lassen |
+
+Claude trägt gelieferte Angaben in `operator.ts` ein und entfernt den Entwurfshinweis erst nach Nikos Bestätigung der
+rechtlichen Prüfung. Eine rechtliche Freigabe behauptet der Code nirgends.
 
 ## Vor dem öffentlichen Start zu erledigen
 
@@ -11,7 +35,7 @@
 - [ ] Datenschutzerklärung vollständig (Verarbeitungen, Empfänger, Fristen, Rechte, Kontakt) – Platzhalter ersetzen
 - [ ] AGB / Nutzungsbedingungen inkl. Liste verbotener Artikel – Platzhalter ersetzen, neue Version setzen (`TERMS_VERSION`)
 - [ ] Löschfristen bestätigen bzw. festlegen (offene Fragen in [datenschutz.md](datenschutz.md#prüfung-vor-dem-start-phase-8))
-- [ ] AV-Verträge: Hoster, Supabase, Cloudflare (R2), E-Mail-Versand, Stripe (erst bei echten Zahlungen), ggf. Monitoring
+- [ ] AV-Verträge: Hoster, Cloudflare (R2), E-Mail-Versand, Stripe (erst bei echten Zahlungen), ggf. Monitoring (Supabase entfällt: selbst betrieben)
 - [ ] Drittlandübermittlung je Anbieter prüfen (EU-Regionen gewählt?)
 - [ ] Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO)
 - [ ] DSA: Kontaktstelle (Art. 11/12), Transparenzbericht, ggf. Transparenzdatenbank; Meldungen ohne Konto (Art. 16)?
@@ -25,8 +49,9 @@
 
 | Thema | Rechtsgrundlage (Stichwort) | Stand im Code |
 | --- | --- | --- |
-| Impressum / Offenlegung | ECG § 5, MedienG § 25, UGB § 14 | Seite `/impressum` mit Platzhaltern |
-| Datenschutzerklärung | DSGVO Art. 13/14, DSG | Seite `/datenschutz` mit Platzhaltern |
+| Impressum / Offenlegung | ECG § 5, MedienG § 25, UGB § 14 | Seite `/impressum` liest `content/operator.ts`; fehlende Angaben sichtbar markiert |
+| Kontakt / DSA-Kontaktstelle | ECG § 5, DSA Art. 11/12 | Phase 9: Seite `/kontakt` (Footer), Meldeweg über `/melden` |
+| Datenschutzerklärung | DSGVO Art. 13/14, DSG | Seite `/datenschutz`: tatsächliche Verarbeitungen, Speicherorte, Auftragsverarbeiter aus `operator.ts`, Fristen als offen markiert |
 | AGB / Nutzungsbedingungen | ABGB, KSchG | Seite `/agb` mit Platzhaltern; Zustimmung bei Registrierung mit Version und Zeitpunkt gespeichert |
 | Melde- und Abhilfeverfahren | DSA Art. 16, 17, 20, 21, 23 | Phase 6: Meldeformular mit Begründung und Erklärung nach Treu und Glauben, Begründung jeder Entscheidung an Betroffene, Einspruch binnen 6 Monaten, Hinweis auf Streitbeilegung, Umgang mit missbräuchlichen Meldungen. Offene Prüfpunkte in [moderation.md](moderation.md#offene-punkte-für-die-rechtsprüfung) |
 | Kennzeichnung gewerblicher Anbieter | DSA Art. 30 (Nachverfolgbarkeit), FAGG | Firmenname, Firmenbuchnummer, UID werden beim Händlerkonto erfasst; Prüfung der Angaben folgt |

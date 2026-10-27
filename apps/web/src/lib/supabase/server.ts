@@ -1,7 +1,9 @@
 import 'server-only';
 import { createServerClient } from '@supabase/ssr';
 import { serverEnv } from '@/lib/env';
-import { cookies } from 'next/headers';
+import { authCookieOptions } from './cookie-options';
+import { forwardedFor } from '@/lib/client-ip';
+import { cookies, headers } from 'next/headers';
 
 /**
  * Supabase-Client für Server Components, Server Actions und Route Handler.
@@ -10,6 +12,8 @@ import { cookies } from 'next/headers';
 export async function createSupabaseServerClient() {
   const cookieStore = await cookies();
   return createServerClient(serverEnv.supabaseUrl, serverEnv.supabaseAnonKey, {
+    cookieOptions: authCookieOptions,
+    global: { headers: forwardedFor(await headers()) },
     cookies: {
       getAll() {
         return cookieStore.getAll();

@@ -1,5 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
+import { forwardedFor } from '@/lib/client-ip';
 import { serverEnv } from '@/lib/env';
+import { authCookieOptions } from './cookie-options';
 import { NextResponse, type NextRequest } from 'next/server';
 
 /** Erneuert bei jeder Navigation das Supabase-Access-Token und schreibt die Cookies zurück. */
@@ -10,6 +12,8 @@ export async function updateSession(request: NextRequest) {
     serverEnv.supabaseUrl,
     serverEnv.supabaseAnonKey,
     {
+      cookieOptions: authCookieOptions,
+      global: { headers: forwardedFor(request.headers) },
       cookies: {
         getAll() {
           return request.cookies.getAll();

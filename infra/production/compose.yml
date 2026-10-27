@@ -1,0 +1,203 @@
+# MarktAT – Online-Betrieb auf einem Server mit Docker Compose.
+# Wird von deploy.sh gestartet (nicht direkt): Werte kommen aus /opt/marktat/.env (Vorlage: env.production.example),
+# die Image-Version aus IMAGE_TAG. Anleitung: docs/deployment.md
+#
+# Von außen erreichbar ist nur Caddy (80/443). Datenbank, Redis, Meilisearch, GoTrue, API und Web haben keine
+# veröffentlichten Ports.
+name: marktat
+
+x-defaults: &defaults
+  restart: unless-stopped
+  logging:
+    driver: json-file
+    options: { max-size: '10m', max-file: '5' }
+
+services:
+  caddy:
+    <<: *defaults
+    image: caddy:2.10-alpine
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      WEB_DOMAIN: ${WEB_DOMAIN:?WEB_DOMAIN fehlt}
+      API_DOMAIN: ${API_DOMAIN:?API_DOMAIN fehlt}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL fehlt}
+      CADDY_GLOBAL_EXTRA: ${CADDY_GLOBAL_EXTRA:-}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./access:/etc/caddy/access:ro
+      - ./email-templates:/srv/email-templates:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks:
+      default:
+        # Container erreichen die öffentlichen Adressen direkt über Caddy (ohne Umweg über das Internet)
+        aliases:
+          - ${WEB_DOMAIN}
+          - ${API_DOMAIN}
+
+  web:
+    <<: *defaults
+    image: ${WEB_IMAGE:-ghcr.io/n1kob1ko/marktat-web}:${IMAGE_TAG:?IMAGE_TAG fehlt}
+    networks:
+      default:
+        # Feste Adresse: Caddy übernimmt X-Forwarded-For nur von hier (Anmeldungen zählen je Person, siehe Caddyfile)
+        ipv4_address: 172.30.0.10
+    environment:
+      # Server-zu-Server direkt im internen Netz; der Browser nutzt die öffentliche API-Adresse
+      API_INTERNAL_URL: http://api:4000
+    depends_on:
+      api:
+        condition: service_healthy
+
+  api:
+    <<: *defaults
+    image: ${API_IMAGE:-ghcr.io/n1kob1ko/marktat-api}:${IMAGE_TAG:?IMAGE_TAG fehlt}
+    env_file: .env
+    networks:
+      default:
+        # Feste Adresse: nur von hier ist die Admin-API von GoTrue erreichbar (siehe Caddyfile)
+        ipv4_address: 172.30.0.11
+    environment: &api-environment
+      NODE_ENV: production
+      LOG_FORMAT: json
+      # Genau ein vertrauenswürdiger Proxy davor: Caddy bzw. der Web-Server (setzt X-Forwarded-For)
+      TRUST_PROXY: '1'
+      API_PORT: '4000'
+      WEB_URL: https://${WEB_DOMAIN}
+      API_URL: https://${API_DOMAIN}
+      SUPABASE_URL: https://${API_DOMAIN}
+      DATABASE_URL: postgresql://marktat:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}@db:5432/marktat
+      REDIS_URL: redis://:${REDIS_PASSWORD:?REDIS_PASSWORD fehlt}@redis:6379
+      MEILI_URL: http://meilisearch:7700
+      STORAGE_DRIVER: r2
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      auth:
+        condition: service_started
+
+  # Einmalige Befehle mit dem API-Image (Prüfung, Migrationen, Grunddaten, Sicherungs-Upload) – auch während die API
+  # läuft (die API selbst hat eine feste Adresse und lässt sich nicht zweimal starten). Nur über deploy.sh/backup.sh:
+  #   docker compose run --rm --no-deps tools pnpm db:migrate
+  # Verwaltung am laufenden System (admin:role, admin:mfa-reset, search:reindex) über `exec api`, siehe docs/deployment.md.
+  tools:
+    image: ${API_IMAGE:-ghcr.io/n1kob1ko/marktat-api}:${IMAGE_TAG:?IMAGE_TAG fehlt}
+    profiles: [tools]
+    env_file: .env
+    environment: *api-environment
+    healthcheck:
+      disable: true
+
+  db:
+    <<: *defaults
+    image: postgis/postgis:16-3.5-alpine
+    shm_size: 256mb
+    environment:
+      POSTGRES_USER: marktat
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD fehlt}
+      POSTGRES_DB: marktat
+    volumes:
+      - db-data:/var/lib/postgresql/data
+      - ./postgres-init.sh:/docker-entrypoint-initdb.d/20-marktat-init.sh:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U marktat -d marktat']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Supabase Auth (GoTrue) – selbst betrieben, Konten liegen in der eigenen Datenbank marktat_auth
+  auth:
+    <<: *defaults
+    image: supabase/gotrue:v2.197.0
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      GOTRUE_API_HOST: 0.0.0.0
+      GOTRUE_API_PORT: '9999'
+      API_EXTERNAL_URL: https://${API_DOMAIN}/auth/v1
+      GOTRUE_MAILER_EXTERNAL_HOSTS: ${API_DOMAIN}
+      GOTRUE_DB_DRIVER: postgres
+      GOTRUE_DB_DATABASE_URL: postgres://marktat:${POSTGRES_PASSWORD}@db:5432/marktat_auth?search_path=auth
+      GOTRUE_DB_NAMESPACE: auth
+      GOTRUE_SITE_URL: https://${WEB_DOMAIN}
+      GOTRUE_URI_ALLOW_LIST: https://${WEB_DOMAIN}/**
+      GOTRUE_DISABLE_SIGNUP: 'false'
+      GOTRUE_JWT_SECRET: ${SUPABASE_JWT_SECRET:?SUPABASE_JWT_SECRET fehlt}
+      GOTRUE_JWT_ISSUER: https://${API_DOMAIN}/auth/v1
+      GOTRUE_JWT_EXP: '3600'
+      GOTRUE_JWT_AUD: authenticated
+      GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
+      GOTRUE_JWT_ADMIN_ROLES: service_role
+      GOTRUE_PASSWORD_MIN_LENGTH: '10'
+      GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: 'true'
+      GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      GOTRUE_MAILER_AUTOCONFIRM: 'false'
+      GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: 'true'
+      GOTRUE_MAILER_OTP_EXP: '86400'
+      GOTRUE_SMTP_HOST: ${SMTP_HOST:?SMTP_HOST fehlt}
+      GOTRUE_SMTP_PORT: ${SMTP_PORT:-587}
+      GOTRUE_SMTP_USER: ${SMTP_USER:-}
+      GOTRUE_SMTP_PASS: ${SMTP_PASSWORD:-}
+      GOTRUE_SMTP_ADMIN_EMAIL: ${MAIL_FROM_ADDRESS:?MAIL_FROM_ADDRESS fehlt}
+      GOTRUE_SMTP_SENDER_NAME: MarktAT
+      GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://caddy:8080/confirmation.html
+      GOTRUE_MAILER_TEMPLATES_RECOVERY: http://caddy:8080/recovery.html
+      GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Bitte bestätige deine E-Mail-Adresse
+      GOTRUE_MAILER_SUBJECTS_RECOVERY: Passwort zurücksetzen
+      # Schutz vor Missbrauch (je Stunde bzw. je 5 Minuten und IP); bei Bedarf in der .env anpassen
+      GOTRUE_RATE_LIMIT_EMAIL_SENT: ${AUTH_RATE_LIMIT_EMAIL_SENT:-60}
+      GOTRUE_RATE_LIMIT_TOKEN_REFRESH: '150'
+      GOTRUE_RATE_LIMIT_VERIFY: '30'
+      GOTRUE_RATE_LIMIT_OTP: '30'
+      GOTRUE_RATE_LIMIT_HEADER: X-Forwarded-For
+      GOTRUE_LOG_LEVEL: info
+
+  redis:
+    <<: *defaults
+    image: redis:8.8-alpine
+    command: ['redis-server', '--appendonly', 'yes', '--requirepass', '${REDIS_PASSWORD}']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep -q PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+  meilisearch:
+    <<: *defaults
+    image: getmeili/meilisearch:v1.56
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?MEILI_MASTER_KEY fehlt}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: 'true'
+    volumes:
+      - meili-data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:7700/health']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  db-data:
+  redis-data:
+  meili-data:
+  caddy-data:
+  caddy-config:

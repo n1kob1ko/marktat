@@ -13,6 +13,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/impressum`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/datenschutz`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/agb`, changeFrequency: 'yearly', priority: 0.1 },
+    { url: `${base}/kontakt`, changeFrequency: 'yearly', priority: 0.1 },
   ];
   if (!serverEnv.allowIndexing) return pages;
   const entries = await api<SitemapEntries>('/seo/sitemap').catch(() => null);

@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
 import { expect, test, type Browser, type BrowserContextOptions, type Page, type TestInfo } from '@playwright/test';
-import { PASSWORD, publishBike, registerConfirmed } from './accounts';
+import { PASSWORD, publishBike, registerConfirmed, setRole } from './accounts';
 import { waitForMailLink } from './mailpit';
 
 /**
@@ -11,7 +9,6 @@ import { waitForMailLink } from './mailpit';
  */
 test.describe.configure({ mode: 'serial' });
 
-const REPO_ROOT = path.resolve(__dirname, '../../..');
 const run = Date.now();
 
 function contextOptions(testInfo: TestInfo): BrowserContextOptions {
@@ -180,7 +177,7 @@ test('Admin verwaltet Preise und Einführungsaktion – ohne Umstellung auf kost
   const email = `e2e-monet-admin-${tag}@example.at`;
   const admin = await newPage(browser, testInfo);
   await registerConfirmed(admin.page, 'Ada Preise', email);
-  execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', '--email', email, '--role', 'ADMIN'], { cwd: REPO_ROOT, stdio: 'pipe' });
+  setRole(email, 'ADMIN');
 
   await admin.page.goto('/admin/monetarisierung');
   await expect(admin.page.getByRole('heading', { name: 'Monetarisierung' })).toBeVisible();
@@ -230,7 +227,7 @@ test('Admin verwaltet Preise und Einführungsaktion – ohne Umstellung auf kost
   }
 
   // Moderation ohne Adminrolle sieht den Bereich nicht
-  execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', '--email', email, '--role', 'MODERATOR'], { cwd: REPO_ROOT, stdio: 'pipe' });
+  setRole(email, 'MODERATOR');
   await admin.page.goto('/admin/monetarisierung');
   await expect(admin.page.getByRole('heading', { name: 'Diese Seite gibt es nicht (mehr)' })).toBeVisible();
   await admin.context.close();

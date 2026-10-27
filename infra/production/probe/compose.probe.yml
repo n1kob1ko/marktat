@@ -1,0 +1,48 @@
+# Generalprobe des Online-Betriebs auf einem Entwicklungsrechner – NICHT auf dem Server verwenden.
+# Ergänzt compose.yml um Mailpit (statt Versanddienst) und einen S3-Ersatz (statt R2), lokale HTTPS-Zertifikate.
+# Ablauf: docs/deployment.md, Abschnitt „Generalprobe“.
+services:
+  caddy:
+    volumes:
+      - ./probe/Caddyfile.probe:/etc/caddy/Caddyfile:ro
+      - ./Caddyfile:/etc/caddy/Caddyfile.prod:ro
+    networks:
+      default:
+        aliases:
+          - s3.${WEB_DOMAIN}
+
+  # Web und API sollen den lokalen Zertifikaten von Caddy vertrauen (Datei kopiert probe.sh nach dem ersten Start)
+  web:
+    environment:
+      NODE_EXTRA_CA_CERTS: /probe-ca/root.crt
+    volumes:
+      - ./probe/ca:/probe-ca:ro
+  api:
+    environment:
+      NODE_EXTRA_CA_CERTS: /probe-ca/root.crt
+    volumes:
+      - ./probe/ca:/probe-ca:ro
+
+  mailpit:
+    image: axllent/mailpit:v1.32
+    restart: unless-stopped
+    ports:
+      - '127.0.0.1:${PROBE_MAILPIT_PORT:-8026}:8025'
+
+  # S3-kompatibler Ersatz für R2 (Zugang S3RVER/S3RVER), CORS wie beim echten Bucket
+  s3:
+    image: ${PROBE_NODE_IMAGE:-node:22-bookworm-slim}
+    restart: unless-stopped
+    working_dir: /s3
+    # Ohne Internet im Container: PROBE_S3RVER_DIR auf einen Ordner mit vorinstalliertem s3rver (npm i s3rver@3.7.1)
+    command:
+      - sh
+      - -c
+      - >-
+        mkdir -p /data && if [ -f /s3/app/node_modules/s3rver/bin/s3rver.js ]; then set -- node /s3/app/node_modules/s3rver/bin/s3rver.js;
+        else set -- npx --yes s3rver@3.7.1; fi && exec "$$@" -d /data -a 0.0.0.0 -p 4569 --no-vhost-buckets --configure-bucket "$$R2_BUCKET" /s3/cors.xml
+    environment:
+      R2_BUCKET: ${R2_BUCKET}
+    volumes:
+      - ./probe/s3-cors.xml:/s3/cors.xml:ro
+      - ${PROBE_S3RVER_DIR:-./probe}:/s3/app:ro

@@ -1,7 +1,5 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
 import { expect, test, type Browser, type BrowserContextOptions, type Page, type TestInfo } from '@playwright/test';
-import { registerConfirmed, signInHere } from './accounts';
+import { registerConfirmed, setRole, signInHere } from './accounts';
 import { nextTotp } from './totp';
 
 /**
@@ -10,7 +8,6 @@ import { nextTotp } from './totp';
  */
 test.describe.configure({ mode: 'serial' });
 
-const REPO_ROOT = path.resolve(__dirname, '../../..');
 const run = Date.now();
 
 function contextOptions(testInfo: TestInfo): BrowserContextOptions {
@@ -21,10 +18,6 @@ function contextOptions(testInfo: TestInfo): BrowserContextOptions {
 async function newPage(browser: Browser, testInfo: TestInfo) {
   const context = await browser.newContext(contextOptions(testInfo));
   return { context, page: await context.newPage() };
-}
-
-function setRoleViaCli(email: string, role: 'ADMIN' | 'MODERATOR') {
-  execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', '--email', email, '--role', role], { cwd: REPO_ROOT, stdio: 'pipe' });
 }
 
 /** Richtet auf /konto/sicherheit ein Gerät ein und gibt den Schlüssel zurück */
@@ -64,7 +57,7 @@ test('2FA einrichten, mit Code anmelden, kritische Aktion bestätigen und Zurüc
   await registerConfirmed(admin.page, 'Alma Zweifaktor', emails.admin);
   const moderator = await newPage(browser, testInfo);
   await registerConfirmed(moderator.page, 'Max Zweifaktor', emails.moderator);
-  setRoleViaCli(emails.admin, 'ADMIN');
+  setRole(emails.admin, 'ADMIN');
 
   // Normale Konten sehen den Reiter nicht
   await moderator.page.goto('/konto');

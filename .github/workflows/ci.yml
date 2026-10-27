@@ -47,6 +47,33 @@ jobs:
       - name: Sicherung und Wiederherstellung prüfen
         run: pnpm --filter @marktat/api db:backup-check
 
+  images:
+    name: Docker-Images für den Online-Betrieb
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      # Nur bauen (kein Upload). Platzhalter-Adressen; echte Images baut .github/workflows/deploy.yml
+      - run: docker build -f apps/api/Dockerfile -t marktat-api:ci .
+      - run: |
+          docker build -f apps/web/Dockerfile -t marktat-web:ci \
+            --build-arg WEB_URL=https://marktat.example --build-arg API_URL=https://api.marktat.example \
+            --build-arg SUPABASE_URL=https://api.marktat.example --build-arg SUPABASE_ANON_KEY=ci-placeholder .
+      # Die Produktionskonfiguration ist gültig und die Verwaltungsbefehle laufen ohne Internet (pnpm, Prisma)
+      - name: Compose-Datei und Image prüfen
+        run: |
+          cp infra/production/env.production.example infra/production/.env
+          node infra/production/generate-secrets.mjs infra/production/.env
+          printf '%s\n' WEB_DOMAIN=marktat.example API_DOMAIN=api.marktat.example ACME_EMAIL=ci@marktat.example \
+            SMTP_HOST=smtp.example MAIL_FROM_ADDRESS=noreply@marktat.example >> infra/production/.env
+          IMAGE_TAG=ci docker compose -f infra/production/compose.yml --env-file infra/production/.env \
+            --project-directory infra/production config --quiet
+          docker run --rm --network none marktat-api:ci sh -c 'pnpm --version && ls /app/node_modules/.pnpm/@prisma+engines@*/node_modules/@prisma/engines/ | grep -q openssl-3'
+      - name: Skripte prüfen
+        run: |
+          bash -n infra/production/deploy.sh infra/production/backup.sh infra/production/setup-server.sh infra/production/probe/probe.sh
+          shellcheck -S warning infra/production/*.sh infra/production/probe/probe.sh
+
   audit:
     name: Sicherheitslücken in Abhängigkeiten
     runs-on: ubuntu-latest

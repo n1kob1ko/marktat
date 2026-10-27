@@ -111,6 +111,7 @@ docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Monetari
 - [Datenschutz: Export, Kontolöschung, Löschfristen](docs/datenschutz.md)
 - [Geodaten / PLZ-Verzeichnis](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
+- [Online-Betrieb: Hosting, Kosten, Ersteinrichtung, Updates, Sicherungen](docs/deployment.md)
 - [Rechtliches – Checkliste](docs/rechtliches.md) (⚠️ muss anwaltlich geprüft werden)
 
 ## Stand und Grenzen

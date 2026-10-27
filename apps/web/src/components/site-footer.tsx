@@ -27,6 +27,7 @@ export function SiteFooter() {
         </FooterColumn>
         <FooterColumn title="Rechtliches">
           <FooterLink href="/impressum">Impressum</FooterLink>
+          <FooterLink href="/kontakt">Kontakt</FooterLink>
           <FooterLink href="/datenschutz">Datenschutz</FooterLink>
           <FooterLink href="/agb">Nutzungsbedingungen</FooterLink>
           <FooterLink href="/melden">Inhalte melden (DSA)</FooterLink>
@@ -35,7 +36,7 @@ export function SiteFooter() {
       <div className="border-t border-line">
         <Container className="flex flex-col gap-2 py-5 text-xs text-ink-500 sm:flex-row sm:justify-between">
           <p>© 2026 MarktAT (Arbeitstitel). Alle Preise in Euro inkl. USt., sofern nicht anders angegeben.</p>
-          <p>Gemacht in Österreich</p>
+          <p>Beta-Version · derzeit alles kostenlos · Gemacht in Österreich</p>
         </Container>
       </div>
     </footer>

@@ -7,7 +7,7 @@ const optional = z
   .optional()
   .transform((v) => (v ? v : undefined));
 
-const envSchema = z
+export const envSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
     API_PORT: z.coerce.number().int().positive().default(4000),
@@ -119,6 +119,23 @@ const envSchema = z
   .refine((env) => env.NODE_ENV !== 'production' || env.STORAGE_DRIVER === 'r2', {
     message: 'STORAGE_DRIVER=local ist in Produktion nicht erlaubt.',
     path: ['STORAGE_DRIVER'],
+  })
+  // Online-Betrieb: ohne diese Werte kämen Benachrichtigungen nicht an bzw. Links in E-Mails zeigten ins Leere
+  .refine((env) => env.NODE_ENV !== 'production' || env.SMTP_HOST, {
+    message: 'SMTP_HOST ist in Produktion Pflicht (sonst werden E-Mails nur protokolliert).',
+    path: ['SMTP_HOST'],
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || !/\.local>?\s*$/.test(env.MAIL_FROM), {
+    message: 'MAIL_FROM braucht in Produktion eine echte, verifizierte Absenderadresse.',
+    path: ['MAIL_FROM'],
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || env.WEB_URL.startsWith('https://'), {
+    message: 'WEB_URL muss in Produktion mit https:// beginnen.',
+    path: ['WEB_URL'],
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || !env.MEILI_URL || (env.MEILI_MASTER_KEY?.length ?? 0) >= 16, {
+    message: 'MEILI_MASTER_KEY muss in Produktion mindestens 16 Zeichen lang sein.',
+    path: ['MEILI_MASTER_KEY'],
   });
 
 export type Env = z.infer<typeof envSchema>;

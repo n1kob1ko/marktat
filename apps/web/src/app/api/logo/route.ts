@@ -9,7 +9,8 @@ function sameOrigin(request: Request) {
   const site = request.headers.get('sec-fetch-site');
   if (site) return site === 'same-origin';
   const origin = request.headers.get('origin');
-  return origin !== null && origin === new URL(request.url).origin;
+  // Öffentliche Adresse statt request.url (dahinter steht der Reverse-Proxy mit interner Adresse)
+  return origin !== null && origin === new URL(serverEnv.webUrl).origin;
 }
 
 function json(status: number, body: unknown) {

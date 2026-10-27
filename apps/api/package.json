@@ -27,6 +27,8 @@
     "geo:build": "tsx prisma/seed/geo-build.ts",
     "geo:import": "tsx prisma/seed/geo-import.ts",
     "r2:check": "tsx scripts/r2-check.ts",
+    "env:check": "tsx scripts/env-check.ts",
+    "backup:upload": "tsx scripts/backup-upload.ts",
     "search:reindex": "tsx scripts/search-reindex.ts",
     "admin:role": "tsx scripts/admin-role.ts",
     "admin:mfa-reset": "tsx scripts/admin-mfa-reset.ts",

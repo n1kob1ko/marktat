@@ -1,7 +1,7 @@
 # Betrieb: Sicherung, Überwachung, Notfälle
 
-Technische Betriebsanleitung für die lokale Umgebung und – soweit schon absehbar – für einen späteren Livebetrieb.
-Es ist noch nichts öffentlich bereitgestellt; Staging ist in [staging.md](staging.md) beschrieben.
+Technische Betriebsanleitung für die lokale Umgebung. Der Online-Betrieb (Server, Deployment, verschlüsselte
+Sicherungen, Wiederherstellung, Überwachung) steht in [deployment.md](deployment.md); Staging in [staging.md](staging.md).
 
 ## Sicherung und Wiederherstellung
 

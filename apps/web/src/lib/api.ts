@@ -1,6 +1,8 @@
 import 'server-only';
+import { headers as requestHeaders } from 'next/headers';
 import type { ApiError as ApiErrorBody } from '@marktat/shared';
 
+import { clientIp } from './client-ip';
 import { serverEnv } from './env';
 
 const API_URL = serverEnv.apiUrl;
@@ -35,6 +37,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
 /** Serverseitiger Aufruf der MarktAT-API. Das Access-Token verlässt nie den Server. */
 export async function api<T>(path: string, { token, body, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init }: ApiOptions = {}): Promise<T> {
   const timeout = AbortSignal.timeout(timeoutMs);
+  const guestIp = !token && init.cache === 'no-store' ? clientIp(await requestHeaders()) : undefined;
   let response: Response;
   try {
     response = await fetch(`${API_URL}/v1${path}`, {
@@ -44,6 +47,9 @@ export async function api<T>(path: string, { token, body, headers, timeoutMs = D
         Accept: 'application/json',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        // Gäste zählen im Rate-Limit der API je IP (angemeldete je Konto). Nur bei `cache: 'no-store'`, also in einer
+        // echten Anfrage – zwischengespeicherte Aufrufe haben keinen Anfragekontext.
+        ...(guestIp ? { 'X-Forwarded-For': guestIp } : {}),
         ...headers,
       },
       body: body !== undefined ? JSON.stringify(body) : undefined,

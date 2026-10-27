@@ -1,8 +1,6 @@
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { publishBike, registerConfirmed } from './accounts';
+import { publishBike, registerConfirmed, setRole } from './accounts';
 
 /**
  * Automatische Barrierefreiheitsprüfung (axe-core, Regeln für WCAG 2.0–2.2 A/AA). Findet nur einen Teil der
@@ -13,7 +11,6 @@ test.describe.configure({ mode: 'serial' });
 
 const TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 
-const REPO_ROOT = path.resolve(__dirname, '../../..');
 
 /** Prüft zusätzlich, dass nichts seitlich übersteht (Handy: kein horizontales Scrollen) */
 async function expectNoViolations(page: Page, label: string) {
@@ -72,7 +69,7 @@ test('Angemeldete Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ 
 test('Admin-Bereich ohne automatisch erkennbare WCAG-Verstöße', async ({ page }, testInfo) => {
   const email = `a11y-admin-${testInfo.project.name}-${Date.now()}@example.test`;
   await registerConfirmed(page, 'Admin Barrierefrei', email);
-  execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', '--email', email, '--role', 'ADMIN'], { cwd: REPO_ROOT, stdio: 'pipe' });
+  setRole(email, 'ADMIN');
   for (const adminPath of ['/admin', '/admin/meldungen', '/admin/einsprueche', '/admin/inserate', '/admin/nutzer', '/admin/protokoll', '/admin/system', '/admin/monetarisierung', '/admin/monetarisierung/buchungen']) {
     await page.goto(adminPath);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();

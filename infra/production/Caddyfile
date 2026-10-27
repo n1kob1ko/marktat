@@ -1,0 +1,60 @@
+# MarktAT – Reverse-Proxy mit automatischem HTTPS (Let's Encrypt).
+# Domains und Optionen kommen aus der .env (WEB_DOMAIN, API_DOMAIN, ACME_EMAIL, CADDY_GLOBAL_EXTRA).
+# Nur dieser Container ist von außen erreichbar (Ports 80 und 443); alles andere liegt im internen Docker-Netz.
+{
+	email {$ACME_EMAIL}
+	servers {
+		# X-Forwarded-For nur vom Web-Server übernehmen (er reicht die IP der Person an Supabase Auth weiter);
+		# bei allen anderen Anfragen setzt Caddy den Header selbst, Werte von außen zählen nicht.
+		trusted_proxies static 172.30.0.10/32
+	}
+	{$CADDY_GLOBAL_EXTRA}
+}
+
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
+
+# Web-App
+{$WEB_DOMAIN} {
+	import security_headers
+	# Optionaler Zugangsschutz für eine geschlossene Testphase (deploy.sh erzeugt die Datei aus BETA_BASIC_AUTH)
+	import /etc/caddy/access/*.caddy
+	# Echtzeit-Strom (Server-Sent Events) nicht komprimieren, sonst kämen Ereignisse verzögert an
+	@compress not path /api/ereignisse*
+	encode @compress zstd gzip
+	reverse_proxy web:3000
+	log
+}
+
+# API und Supabase Auth (GoTrue) unter /auth/v1 – wie bei einem Supabase-Projekt
+{$API_DOMAIN} {
+	import security_headers
+	encode zstd gzip
+
+	handle_path /auth/v1/* {
+		# Admin-API von GoTrue nur für den API-Container (Kontolöschung, 2FA zurücksetzen). Bewusst nicht „alle privaten
+		# Adressen“: Über IPv6 eingehende Verbindungen kämen sonst über den Docker-Proxy mit einer internen Adresse an.
+		@adminExternal {
+			path /admin /admin/*
+			not remote_ip 172.30.0.11/32
+		}
+		respond @adminExternal 403
+		reverse_proxy auth:9999
+	}
+	handle {
+		reverse_proxy api:4000
+	}
+	log
+}
+
+# Nur intern (Port nicht veröffentlicht): E-Mail-Vorlagen, die GoTrue beim Versand lädt
+:8080 {
+	root * /srv/email-templates
+	file_server
+}
