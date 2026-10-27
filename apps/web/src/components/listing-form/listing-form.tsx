@@ -33,6 +33,8 @@ interface ListingFormProps {
   categories: CategoryNode[];
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   listing?: ListingDetail;
+  /** Laufzeit und ob das Veröffentlichen gerade kostenlos ist (aus den Preisen im Admin-Bereich) */
+  terms?: { days: number; free: boolean };
 }
 
 const DESCRIPTION_HINTS: Record<Vertical, string> = {
@@ -47,7 +49,7 @@ function centsToInput(cents: number | null | undefined) {
   return (cents / 100).toLocaleString('de-AT', { minimumFractionDigits: cents % 100 ? 2 : 0 });
 }
 
-export function ListingForm({ categories, action, listing }: ListingFormProps) {
+export function ListingForm({ categories, action, listing, terms = { days: 60, free: true } }: ListingFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialFormState);
   const [, startTransition] = useTransition();
   const [intent, setIntent] = useState<'draft' | 'publish'>('publish');
@@ -294,7 +296,8 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
           </div>
         </Card>
         <p className="mt-3 text-xs leading-relaxed text-ink-500">
-          Private Anzeigen sind kostenlos und 60 Tage online. Du kannst sie jederzeit pausieren, verlängern oder löschen.
+          {terms.free ? 'Anzeigen sind derzeit kostenlos und' : 'Anzeigen sind'} {terms.days} Tage online. Du kannst sie jederzeit pausieren, verlängern oder
+          löschen.
         </p>
       </aside>
     </form>

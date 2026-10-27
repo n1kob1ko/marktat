@@ -3,7 +3,8 @@
 Kleinanzeigenplattform für Österreich (Arbeitstitel) mit den Bereichen Marktplatz, Auto & Motor, Immobilien und Jobs.
 Monorepo mit Next.js-Frontend, NestJS-API, PostgreSQL/PostGIS und Supabase Auth.
 
-**Stand: Phase 4 (Suche mit Meilisearch, Filtern und Umkreissuche).** Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
+**Stand: Phase 7 (kostenloser Plattformstart, Monetarisierung vorbereitet, Händlerfunktionen).** Die Plattform ist
+vollständig kostenlos; es gibt keine echten Zahlungen. Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
 
 ## Voraussetzungen
 
@@ -48,7 +49,8 @@ pnpm typecheck
 pnpm test                                   # Unit-Tests (shared, ui, api, web)
 pnpm --filter @marktat/api test:e2e         # API-Integrationstests gegen marktat_test und den Meilisearch-Index listings_test
 pnpm --filter @marktat/web test:e2e         # Playwright, Desktop + Mobil; braucht laufende Umgebung mit Demodaten (pnpm build && pnpm start),
-                                            # für die Nachrichten-Tests die API mit MESSAGE_EMAIL_DELAY_SECONDS=0
+                                            # für die Nachrichten-Tests die API mit MESSAGE_EMAIL_DELAY_SECONDS=0 (direkt starten:
+                                            # turbo reicht die Variable nicht durch: cd apps/api && MESSAGE_EMAIL_DELAY_SECONDS=0 node dist/main.js)
 pnpm --filter @marktat/api r2:check         # echte Cloudflare-R2-Verbindung prüfen (Werte aus der lokalen .env)
 ```
 
@@ -78,7 +80,7 @@ Für spätere Phasen bzw. den Produktionsbetrieb fehlen noch (in `.env.example` 
 | --- | --- | --- |
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_JURISDICTION` | Bild-Uploads (Cloudflare R2), Einrichtung siehe [Bilder](docs/bilder.md); ohne Werte läuft alles außer dem Bild-Upload | Phase 2 |
 | `APP_SIGNING_SECRET` | signierte Bild-URLs; lokal ist ein Entwicklungswert gesetzt | Produktion |
-| `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Zahlungen (Testmodus) | Phase 4 |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Zahlungen, nur Testmodus (`sk_test_…`); ohne Werte läuft alles kostenlos weiter. `STRIPE_LIVE_ENABLED` bleibt `false`, bis der Live-Modus ausdrücklich freigegeben ist. Siehe [Monetarisierung](docs/monetarisierung.md) | erst für den kostenpflichtigen Betrieb |
 | `OPENAI_API_KEY` (+ `AI_ENABLED=true`) | optionale KI-Funktionen | Phase 6 |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` | echtes Supabase-Projekt (EU-Region) | Produktion |
 | `SMTP_*`, `MAIL_FROM` | E-Mail-Versand: in Supabase Auth (Kontomails) und in der API (Nachrichten, Suchaufträge); lokal Mailpit | Produktion |
@@ -92,7 +94,7 @@ apps/api         NestJS 12, Prisma 7, Migrationen, Seeds, Integrationstests
 packages/shared  Zod-Schemas, Enums, Typen, Formatierung
 packages/ui      Design-Tokens und Basis-Komponenten
 infra            Docker Compose, Auth-Gateway, E-Mail-Vorlagen
-docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Datenschutz, Sicherheit, Rechtliches
+docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Monetarisierung, Händler, Datenschutz, Sicherheit, Rechtliches
 ```
 
 ## Dokumentation
@@ -104,6 +106,8 @@ docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Datensch
 - [Suche und Filter](docs/suche.md)
 - [Merkliste, gespeicherte Suchen, Nachrichten](docs/nachrichten.md)
 - [Moderation, Rollen, Meldungen, Einsprüche](docs/moderation.md)
+- [Monetarisierung: Preise, Einführungsaktion, Zusatzleistungen, Stripe](docs/monetarisierung.md)
+- [Händlerprofil, Händler-Dashboard, Statistik](docs/haendler.md)
 - [Datenschutz: Export, Kontolöschung, Löschfristen](docs/datenschutz.md)
 - [Geodaten / PLZ-Verzeichnis](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
@@ -123,8 +127,10 @@ Umgesetzt:
 - Merkliste, gespeicherte Suchen und Nachrichten (Phase 5): Herz auf Karten und Detailseite, Merkliste im Konto; Suchen mit allen Filtern speichern, umbenennen, erneut ausführen, löschen, optional E-Mail bei neuen Treffern; Nachrichten je Anzeige mit Postfach (Filter, Suche, ungelesen), Chat in Echtzeit (Server-Sent Events), Lesebestätigung, Ungelesen-Zähler im Header, E-Mail bei neuen Nachrichten (Mailpit), Blockieren und Melden. Siehe [Nachrichten](docs/nachrichten.md)
 - Moderation und Admin-Bereich (Phase 6): Rollen USER/MODERATOR/ADMIN nur aus der Datenbank, Admin per Kommandozeile; Meldeformular für Inserate (Art. 16 DSA) mit Priorität, Verlauf, Duplikat- und Missbrauchsschutz; Dashboard mit Kennzahlen, Warteschlangen, Registrierungen, Auftragsfehlern und Ereignissen; Inserate prüfen, deaktivieren, ausblenden, freigeben; Konten sperren und entsperren; Einsprüche; Mitteilungen im Konto und per E-Mail; Audit-Log; Nachrichteneinsicht nur zu offenen Meldungen und protokolliert. Siehe [Moderation](docs/moderation.md)
 - Datenschutz (Phase 6): Datenexport als JSON, Kontolöschung mit erneuter Passwortprüfung und wiederholbaren Löschschritten, tägliche Aufbewahrungsbereinigung. Siehe [Datenschutz](docs/datenschutz.md)
+- Monetarisierung (Phase 7): kostenloser Betrieb als Standard; Leistungen Inserat, Hervorhebung, Top-Anzeige und Hochschieben mit Laufzeit, Limits gegen Missbrauch und automatischem Ablauf; Einführungsaktion; Preisverwaltung, Aktionszeiträume, Limits, Buchungsübersicht und Betriebsmodus unter `/admin/monetarisierung`; einheitliche, idempotente Buchungen mit Preis-Schnappschuss; Stripe Checkout und Webhooks im Testmodus vorbereitet (Live gesperrt). Siehe [Monetarisierung](docs/monetarisierung.md)
+- Händlerfunktionen und Statistik (Phase 7): öffentliches Händlerprofil mit Logo, Händler-Dashboard, Aufrufstatistik je Anzeige ohne Eigen-, Team- und Bot-Aufrufe. Siehe [Händler](docs/haendler.md)
 - Vollständiges PLZ-Verzeichnis (20.877 Orte, 2.461 PLZ, GeoNames CC BY 4.0) mit Bezirk und Bundesland
 
 Bewusst noch nicht umgesetzt:
-- Bilder in Nachrichten, Push-Benachrichtigungen, Zahlungen, 2FA für Team-Konten, Monitoring/Alarmierung (siehe [Sicherheit](docs/sicherheit.md))
+- Echte Zahlungen (nur vorbereitet, Testmodus nicht mit echten Stripe-Schlüsseln geprüft), Rechnungen, Händlerpakete; Bilder in Nachrichten, Push-Benachrichtigungen, 2FA für Team-Konten, Monitoring/Alarmierung (siehe [Sicherheit](docs/sicherheit.md))
 - Rechtstexte sind Platzhalter

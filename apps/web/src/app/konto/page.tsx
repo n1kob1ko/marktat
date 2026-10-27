@@ -5,6 +5,7 @@ import { Alert, Badge, Card, Skeleton } from '@marktat/ui';
 import { formatDate } from '@marktat/shared';
 import { isStaff, requireUser } from '@/lib/auth';
 import { ProfileForm } from './profile-form';
+import { LogoUpload } from './logo-upload';
 
 export const metadata: Metadata = { title: 'Mein Konto', robots: { index: false } };
 
@@ -29,6 +30,15 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
             <ProfileForm user={user} />
           </div>
         </Card>
+        {user.accountType === 'BUSINESS' ? (
+          <Card className="p-5 sm:p-7">
+            <h2 className="font-sans text-lg font-semibold tracking-normal">Firmenlogo</h2>
+            <p className="mt-1 text-sm text-ink-500">Erscheint auf deinem Händlerprofil und bei deinen Anzeigen.</p>
+            <div className="mt-4">
+              <LogoUpload logoUrl={user.logoUrl} />
+            </div>
+          </Card>
+        ) : null}
       </div>
       <aside className="space-y-4">
         <Card className="space-y-3 p-5 text-sm">
@@ -40,6 +50,12 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
             {user.role !== 'USER' ? <Badge tone="accent">{user.role === 'ADMIN' ? 'Administration' : 'Moderation'}</Badge> : null}
           </div>
           <p className="text-ink-500">Mitglied seit {formatDate(user.createdAt)}</p>
+          {user.accountType === 'BUSINESS' ? (
+            <div className="flex flex-col gap-1">
+              <Link href="/konto/haendler" className="font-semibold text-brand-700 hover:underline">Händler-Dashboard</Link>
+              <Link href={`/haendler/${user.id}`} className="font-semibold text-brand-700 hover:underline">Mein öffentliches Händlerprofil</Link>
+            </div>
+          ) : null}
           {isStaff(user) ? (
             <Link href="/admin" className="inline-block font-semibold text-brand-700 hover:underline">Zum Moderationsbereich</Link>
           ) : null}

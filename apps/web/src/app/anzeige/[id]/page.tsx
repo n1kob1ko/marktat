@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, ShieldCheck, Store, UserRound } from 'lucide-react';
+import { BadgeCheck, BarChart3, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, ShieldCheck, Sparkles, Store, UserRound } from 'lucide-react';
 import { Alert, Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
 import {
   categoryAttributeSchema,
@@ -22,6 +22,7 @@ import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ContactForm } from '@/components/messages/contact-form';
+import { ViewBeacon } from '@/components/stats/view-beacon';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
   const { id } = await params;
@@ -64,7 +65,7 @@ async function ListingContent({
   return (
     <div className="space-y-6">
       <FlashMessage hinweis={hinweis} fehler={fehler} />
-      {listing.isOwner ? <OwnerBar listing={listing} /> : null}
+      {listing.isOwner ? <OwnerBar listing={listing} /> : <ViewBeacon listingId={listing.id} />}
       {staff ? (
         <Link href={`/admin/inserate/${listing.id}`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
           <ShieldCheck className="size-4" aria-hidden="true" /> Moderieren
@@ -87,6 +88,8 @@ async function ListingContent({
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2 pt-2">
                 {listing.isBusiness ? <Badge tone="brand">Gewerblicher Anbieter</Badge> : <Badge>Privat</Badge>}
+                {listing.top ? <Badge tone="accent">Top-Anzeige</Badge> : listing.highlighted ? <Badge tone="accent">Hervorgehoben</Badge> : null}
+                {listing.sponsored ? <Badge title="Bezahlte Platzierung">Gesponsert</Badge> : null}
                 {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
               </div>
               {listing.isOwner ? null : (
@@ -130,9 +133,14 @@ async function ListingContent({
         <aside className="space-y-4">
           <Card className="p-5">
             <div className="flex items-center gap-3">
-              <span className="flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
-                {seller.accountType === 'BUSINESS' ? <Store className="size-6" aria-hidden="true" /> : <UserRound className="size-6" aria-hidden="true" />}
-              </span>
+              {seller.accountType === 'BUSINESS' && seller.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)
+                <img src={seller.avatarUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-full border border-line bg-surface object-contain" />
+              ) : (
+                <span className="flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
+                  {seller.accountType === 'BUSINESS' ? <Store className="size-6" aria-hidden="true" /> : <UserRound className="size-6" aria-hidden="true" />}
+                </span>
+              )}
               <div className="min-w-0">
                 <p className="truncate font-semibold text-ink-900">{seller.companyName ?? seller.displayName}</p>
                 <p className="text-sm text-ink-500">Mitglied seit {formatDate(seller.memberSince)}</p>
@@ -142,6 +150,11 @@ async function ListingContent({
               <p className="mt-3 flex items-center gap-1.5 text-sm text-brand-800">
                 <BadgeCheck className="size-4" aria-hidden="true" /> Gewerblicher Anbieter – es gelten Verbraucherrechte.
               </p>
+            ) : null}
+            {seller.accountType === 'BUSINESS' ? (
+              <Link href={`/haendler/${seller.id}`} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                <Store className="size-4" aria-hidden="true" /> Händlerprofil und alle Anzeigen
+              </Link>
             ) : (
               <p className="mt-3 text-sm text-ink-500">Privatverkauf – Gewährleistung kann ausgeschlossen sein.</p>
             )}
@@ -279,6 +292,12 @@ function OwnerActions({ listing }: { listing: ListingDetail }) {
         </Link>
         <Link href={`/anzeige/${listing.id}/bilder`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
           <Images className="size-4" aria-hidden="true" /> Bilder ({listing.images.length})
+        </Link>
+        <Link href={`/konto/anzeigen/${listing.id}/statistik`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+          <BarChart3 className="size-4" aria-hidden="true" /> Statistik
+        </Link>
+        <Link href={`/konto/anzeigen/${listing.id}/leistungen`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+          <Sparkles className="size-4" aria-hidden="true" /> Leistungen
         </Link>
         <form action={listingStatusAction}>
           <input type="hidden" name="id" value={listing.id} />

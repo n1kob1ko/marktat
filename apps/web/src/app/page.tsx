@@ -8,6 +8,8 @@ import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
 import { getCategories, getLatestListings } from '@/lib/data';
+import { getPublicBilling } from '@/lib/billing';
+import { IntroBanner } from '@/components/billing/intro-banner';
 
 const VERTICAL_TILES = [
   { slug: VERTICAL_SLUGS.MARKETPLACE, title: 'Marktplatz', text: 'Elektronik, Möbel, Mode und mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
@@ -83,6 +85,10 @@ export default function HomePage() {
         </Suspense>
       </Container>
 
+      <Suspense fallback={null}>
+        <HomeIntro />
+      </Suspense>
+
       <Container className="mt-20">
         <div className="grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="rounded-[var(--radius-card)] border border-line bg-surface p-6 sm:p-10">
@@ -90,7 +96,7 @@ export default function HomePage() {
             <ol className="mt-8 grid gap-6 sm:grid-cols-3">
               {[
                 { icon: Camera, title: 'Fotografieren', text: 'Gute Fotos bei Tageslicht – das wirkt sofort vertrauenswürdig.' },
-                { icon: Tag, title: 'Inserieren', text: 'Titel, Preis und Ort eingeben. Private Anzeigen sind kostenlos.' },
+                { icon: Tag, title: 'Inserieren', text: 'Titel, Preis und Ort eingeben – die Vorschau zeigt sofort, wie es aussieht.' },
                 { icon: MessageCircle, title: 'Verkaufen', text: 'Anfragen beantworten, Treffpunkt ausmachen, fertig.' },
               ].map((step, i) => (
                 <li key={step.title}>
@@ -104,9 +110,15 @@ export default function HomePage() {
                 </li>
               ))}
             </ol>
-            <Link href="/inserieren" className={buttonClasses({ size: 'lg', className: 'mt-8' })}>
-              Jetzt kostenlos inserieren
-            </Link>
+            <Suspense
+              fallback={
+                <Link href="/inserieren" className={buttonClasses({ size: 'lg', className: 'mt-8' })}>
+                  Jetzt inserieren
+                </Link>
+              }
+            >
+              <ListCta />
+            </Suspense>
           </div>
           <div className="flex flex-col gap-6">
             <div className="rounded-[var(--radius-card)] bg-accent-50 p-6 sm:p-8">
@@ -132,6 +144,28 @@ export default function HomePage() {
         </div>
       </Container>
     </>
+  );
+}
+
+/** Einführungsaktion nur, solange sie im Admin-Bereich aktiv und sichtbar ist */
+async function HomeIntro() {
+  const billing = await getPublicBilling();
+  if (!billing?.intro) return null;
+  return (
+    <Container className="mt-16">
+      <IntroBanner intro={billing.intro} />
+    </Container>
+  );
+}
+
+/** „kostenlos“ nur, wenn Inserieren tatsächlich nichts kostet */
+async function ListCta() {
+  const billing = await getPublicBilling();
+  const free = billing ? !billing.products.find((p) => p.code === 'listing')?.requiresPayment : false;
+  return (
+    <Link href="/inserieren" className={buttonClasses({ size: 'lg', className: 'mt-8' })}>
+      {free ? 'Jetzt kostenlos inserieren' : 'Jetzt inserieren'}
+    </Link>
   );
 }
 

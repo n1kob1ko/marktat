@@ -1,8 +1,11 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { Container, Skeleton } from '@marktat/ui';
+import { formatAmountCents } from '@marktat/shared';
 import { requireUser } from '@/lib/auth';
 import { getCategories } from '@/lib/data';
+import { getPublicBilling } from '@/lib/billing';
+import { IntroBanner } from '@/components/billing/intro-banner';
 import { ListingForm } from '@/components/listing-form/listing-form';
 import { createListingAction } from '@/components/listing-form/actions';
 
@@ -24,6 +27,18 @@ export default function NewListingPage() {
 
 async function NewListingForm() {
   await requireUser('/inserieren');
-  const categories = await getCategories();
-  return <ListingForm categories={categories} action={createListingAction} />;
+  const [categories, billing] = await Promise.all([getCategories(), getPublicBilling()]);
+  const listing = billing?.products.find((p) => p.code === 'listing');
+  return (
+    <div className="space-y-6">
+      {billing?.intro ? <IntroBanner intro={billing.intro} /> : null}
+      {listing?.requiresPayment ? (
+        <p className="rounded-xl border border-line bg-surface p-4 text-sm text-ink-700" role="note">
+          Das Veröffentlichen kostet derzeit {formatAmountCents(listing.priceCents)} für {listing.durationDays ?? 60} Tage. Speichere dein Inserat als Entwurf –
+          unter „Meine Anzeigen“ kannst du es danach buchen und bezahlen.
+        </p>
+      ) : null}
+      <ListingForm categories={categories} action={createListingAction} terms={{ days: listing?.durationDays ?? 60, free: !listing?.requiresPayment }} />
+    </div>
+  );
 }

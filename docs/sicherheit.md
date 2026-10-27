@@ -68,6 +68,19 @@
   durch `safeRedirectPath`.
 - Dependabot (`.github/dependabot.yml`) für npm, GitHub Actions und Docker-Images.
 
+**Monetarisierung (Phase 7)** – Details in [Monetarisierung](monetarisierung.md)
+- Preise berechnet nur der Server; Buchungen nehmen keinen Preis an (striktes Schema), Beträge in ganzen Cent mit CHECK.
+- Nur eigene, aktive Inserate; gesperrte Konten können nicht buchen; Limits und Stundenlimit unter Advisory-Locks
+  (keine Umgehung durch parallele Anfragen); Idempotenz-Schlüssel gegen doppelte Buchungen.
+- Nur ADMIN ändert Preise, Aktion und Modus; jede Änderung im Audit-Log mit Vorher/Nachher; Versionsprüfung gegen
+  gleichzeitige Änderungen. Der kostenpflichtige Betrieb braucht die Bestätigung `KOSTENPFLICHTIG` und nutzbares Stripe.
+- Stripe-Schlüssel nur serverseitig; Webhooks nur mit gültiger Signatur (300 s Toleranz) und genau einmal; Aktivierung
+  nur nach Abgleich von Session, Buchung, Betrag, Währung und Modus – eine gefälschte Rückkehr-URL schaltet nichts frei.
+  Live-Schlüssel und Live-Ereignisse sind ohne `STRIPE_LIVE_ENABLED=true` gesperrt.
+- Abgelaufene Leistungen verlieren ihre Wirkung sofort (Abfragen vergleichen mit „jetzt“).
+- Aufrufzählung ohne IP-Speicherung (Pseudonym nur im Arbeitsspeicher, HMAC-Schlüssel tageweise); Logo-Upload über
+  eine Route mit Herkunftsprüfung, Bildprüfung und Neukodierung in der API.
+
 **Protokollierung**
 - `audit_logs` für Profilanlage und -änderung, Anlegen, Veröffentlichen, Verlängern, Pausieren, Fortsetzen und Löschen von Inseraten sowie neue Unterhaltungen, Blockieren und Melden. IPs werden gekürzt gespeichert (IPv4 /24, IPv6 /48), keine Tokens oder Passwörter.
 - Fehlerantworten enthalten keine Stacktraces oder SQL-Details.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { billingModeSchema, createBookingSchema, updateBillingSettingsSchema, updateProductSchema } from './schemas/billing.js';
-import { effectivePrice, formatAmountCents, introOffer, isWithinWindow, type IntroSettings } from './billing.js';
+import { effectivePrice, formatAmountCents, introOffer, isWithinWindow, lastIncludedDay, viennaDay, viennaDayStart, type IntroSettings } from './billing.js';
 
 const now = new Date('2026-11-15T12:00:00Z');
 const paidProduct = { priceCents: 490, paidEnabled: true, promoStartsAt: null, promoEndsAt: null };
@@ -132,5 +132,19 @@ describe('formatAmountCents', () => {
   it('zeigt immer Cent', () => {
     expect(formatAmountCents(0).replace(/\s/g, ' ')).toBe('€ 0,00');
     expect(formatAmountCents(490).replace(/\s/g, ' ')).toBe('€ 4,90');
+  });
+});
+
+describe('Kalendertage in Wien', () => {
+  it('rechnet Datumsfelder in Wiener Mitternacht um – auch über die Zeitumstellung', () => {
+    expect(viennaDayStart('2026-11-30').toISOString()).toBe('2026-11-29T23:00:00.000Z');
+    expect(viennaDayStart('2026-07-01').toISOString()).toBe('2026-06-30T22:00:00.000Z');
+    expect(viennaDayStart('2026-11-30', 1).toISOString()).toBe('2026-11-30T23:00:00.000Z');
+    expect(viennaDayStart('2026-03-29', 1).toISOString()).toBe('2026-03-29T22:00:00.000Z');
+  });
+
+  it('zeigt den Wiener Kalendertag und den letzten enthaltenen Tag', () => {
+    expect(viennaDay('2026-11-29T23:30:00Z')).toBe('2026-11-30');
+    expect(viennaDay(lastIncludedDay('2026-11-30T23:00:00.000Z'))).toBe('2026-11-30');
   });
 });

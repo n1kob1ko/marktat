@@ -8,8 +8,11 @@ import { effectiveStatus } from '../listings/listings.mapper.js';
 import { BookingsService } from '../billing/bookings.service.js';
 import { MemoryViewDedupe, RedisViewDedupe, type ViewDedupe } from './view-dedupe.js';
 
-/** Derselbe Besucher zählt je Inserat höchstens einmal in diesem Zeitraum */
-export const VIEW_DEDUPE_SECONDS = 6 * 3600;
+/**
+ * Derselbe Besucher zählt je Inserat höchstens einmal pro (Wiener) Kalendertag: der Schlüssel enthält den Tag,
+ * die Gültigkeit deckt den längsten Tag (25 h bei der Zeitumstellung) sicher ab.
+ */
+export const VIEW_DEDUPE_SECONDS = 26 * 3600;
 const STATS_DAYS = 30;
 const DAY_MS = 86_400_000;
 

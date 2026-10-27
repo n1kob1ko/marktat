@@ -6,7 +6,7 @@ import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
 
-const FIELDS = ['displayName', 'bio', 'phone', 'companyName', 'companyRegisterNumber', 'vatId', 'companyAddress'] as const;
+const FIELDS = ['displayName', 'bio', 'phone', 'companyName', 'companyRegisterNumber', 'vatId', 'companyAddress', 'website'] as const;
 
 export async function updateProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const { user, token } = await requireUser('/konto');
@@ -16,9 +16,9 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
     if (typeof value === 'string') values[field] = value;
   }
   if (user.accountType !== 'BUSINESS') {
-    for (const field of ['companyName', 'companyRegisterNumber', 'vatId', 'companyAddress']) delete values[field];
+    for (const field of ['companyName', 'companyRegisterNumber', 'vatId', 'companyAddress', 'website']) delete values[field];
   }
-  const parsed = updateProfileSchema.safeParse(values);
+  const parsed = updateProfileSchema.safeParse(user.accountType === 'BUSINESS' ? { ...values, showPhone: formData.get('showPhone') === 'on' } : values);
   if (!parsed.success) {
     return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
   }

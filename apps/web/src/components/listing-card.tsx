@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ImageIcon, MapPin } from 'lucide-react';
-import { Badge } from '@marktat/ui';
+import { Badge, cn } from '@marktat/ui';
 import type { ListingSummary } from '@marktat/shared';
 import { FavoriteButton } from './favorites/favorite-button';
 import { PriceTag } from './price-tag';
@@ -9,7 +9,13 @@ import { RelativeDate } from './relative-date';
 /** `favorite`: bekannter Merkstatus (sonst wird er nachgeladen), `false` bei `showFavorite={false}` blendet das Herz aus. */
 export function ListingCard({ listing, favorite, showFavorite = true }: { listing: ListingSummary; favorite?: boolean; showFavorite?: boolean }) {
   return (
-    <article className="group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]">
+    <article
+      className={cn(
+        'group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]',
+        // Hervorhebung: dezent – farbiger Rahmen und leicht getönter Textbereich, Inhalt bleibt unverändert
+        listing.highlighted ? 'border-accent-300 ring-1 ring-accent-300' : 'border-line',
+      )}
+    >
       <div className="relative aspect-[4/3] bg-canvas">
         {listing.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Vorschaubild ist serverseitig optimiert (WebP 480 × 360)
@@ -19,14 +25,10 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
             <ImageIcon className="size-8 text-ink-300" aria-hidden="true" />
           </div>
         )}
-        {listing.isBusiness ? (
-          <Badge tone="brand" className="absolute top-3 left-3 shadow-sm">
-            Händler
-          </Badge>
-        ) : null}
+        <PromotionBadges listing={listing} className="absolute top-3 left-3" />
         {showFavorite ? <FavoriteButton listingId={listing.id} title={listing.title} initial={favorite} className="absolute top-2.5 right-2.5" /> : null}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-4">
+      <div className={cn('flex flex-1 flex-col gap-2 p-4', listing.highlighted && 'bg-accent-50/50')}>
         <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal text-ink-900">
           <Link href={`/anzeige/${listing.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
             {listing.title}
@@ -64,5 +66,37 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
         </div>
       </div>
     </article>
+  );
+}
+
+/**
+ * Kennzeichnung: „Top“ und „Hervorgehoben“ sind während der Einführungsphase kostenlose Zusatzleistungen –
+ * nur tatsächlich bezahlte Platzierungen tragen „Gesponsert“.
+ */
+export function PromotionBadges({ listing, className }: { listing: Pick<ListingSummary, 'isBusiness' | 'highlighted' | 'top' | 'sponsored'>; className?: string }) {
+  if (!listing.isBusiness && !listing.highlighted && !listing.top) return null;
+  return (
+    <div className={cn('flex flex-wrap gap-1.5', className)}>
+      {listing.top ? (
+        <Badge tone="accent" className="bg-accent-500 text-ink-950 shadow-sm">
+          Top
+        </Badge>
+      ) : null}
+      {listing.highlighted && !listing.top ? (
+        <Badge tone="accent" className="shadow-sm">
+          Hervorgehoben
+        </Badge>
+      ) : null}
+      {listing.isBusiness ? (
+        <Badge tone="brand" className="shadow-sm">
+          Händler
+        </Badge>
+      ) : null}
+      {listing.sponsored ? (
+        <Badge tone="neutral" className="bg-surface/90 shadow-sm" title="Bezahlte Platzierung">
+          Gesponsert
+        </Badge>
+      ) : null}
+    </div>
   );
 }

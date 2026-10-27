@@ -157,3 +157,43 @@ const amountFormatter = new Intl.NumberFormat('de-AT', { style: 'currency', curr
 export function formatAmountCents(cents: number): string {
   return amountFormatter.format(cents / 100);
 }
+
+// --- Kalendertage in Wien (Datumsfelder im Admin, Anzeige von Enddaten) --------------------------------
+
+const viennaParts = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'Europe/Vienna',
+  hourCycle: 'h23',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+});
+
+function viennaOffsetMs(at: number): number {
+  const parts = Object.fromEntries(viennaParts.formatToParts(new Date(at)).map((p) => [p.type, p.value]));
+  const asUtc = Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day), Number(parts.hour), Number(parts.minute), Number(parts.second));
+  return asUtc - Math.floor(at / 1000) * 1000;
+}
+
+/** Kalendertag in Wien als „JJJJ-MM-TT“ (für `<input type="date">`) */
+export function viennaDay(value: DateLike): string {
+  const at = new Date(value as string | Date).getTime();
+  return new Date(at + viennaOffsetMs(at)).toISOString().slice(0, 10);
+}
+
+/** Beginn (00:00 Uhr Wiener Zeit) des Tages „JJJJ-MM-TT“; `offsetDays` verschiebt den Tag (z. B. +1 für ein ausschließliches Ende). */
+export function viennaDayStart(day: string, offsetDays = 0): Date {
+  const [year, month, date] = day.split('-').map(Number);
+  const midnightUtc = Date.UTC(year!, month! - 1, date! + offsetDays);
+  let at = midnightUtc - viennaOffsetMs(midnightUtc);
+  // Sommer-/Winterzeit: Versatz am Ergebnis nochmals prüfen
+  at = midnightUtc - viennaOffsetMs(at);
+  return new Date(at);
+}
+
+/** Letzter enthaltener Tag eines ausschließlichen Endes (Ende 01.12. 00:00 → „bis zum 30.11.“) */
+export function lastIncludedDay(endsAt: DateLike): Date {
+  return new Date(new Date(endsAt as string | Date).getTime() - 1);
+}
