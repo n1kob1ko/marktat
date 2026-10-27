@@ -11,6 +11,8 @@ import { UsersModule } from './users/users.module.js';
 import { GeoModule } from './geo/geo.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { ListingsModule } from './listings/listings.module.js';
+import { ImagesModule } from './images/images.module.js';
+import { StorageModule } from './storage/storage.module.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
@@ -23,7 +25,9 @@ import { HealthController } from './health/health.controller.js';
     UsersModule,
     GeoModule,
     CategoriesModule,
+    StorageModule.forRoot(),
     ListingsModule,
+    ImagesModule,
   ],
   controllers: [HealthController],
   providers: [

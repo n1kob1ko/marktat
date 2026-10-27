@@ -1,7 +1,9 @@
 import type { INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import express from 'express';
 import helmet from 'helmet';
+import { MAX_IMAGE_BYTES } from '@marktat/shared';
 import { loadEnv } from './config/env.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 
@@ -16,10 +18,14 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   // Die API nutzt Bearer-Tokens statt Cookies – daher kein CSRF-Risiko; CORS nur für das eigene Frontend.
   app.enableCors({
     origin: [env.WEB_URL],
-    methods: ['GET', 'POST', 'PATCH', 'DELETE'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
     allowedHeaders: ['Authorization', 'Content-Type'],
     maxAge: 600,
   });
+  // Nur der lokale Speichertreiber nimmt Dateien direkt an (in Produktion lädt der Browser direkt zu R2).
+  if (env.STORAGE_DRIVER === 'local') {
+    app.use(`/${API_PREFIX}/local-storage`, express.raw({ type: () => true, limit: MAX_IMAGE_BYTES }));
+  }
   app.useBodyParser('json', { limit: '100kb' });
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();

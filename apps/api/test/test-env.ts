@@ -12,4 +12,8 @@ export function applyTestEnv() {
   process.env.SUPABASE_JWT_SECRET ||= 'test-secret-for-integration-tests-only-0123456789';
   process.env.SUPABASE_URL ||= 'http://localhost:54321';
   process.env.RATE_LIMIT_PER_MINUTE = '1000';
+  // Tests sprechen nie mit Cloudflare: lokaler Speichertreiber in einem eigenen Verzeichnis.
+  process.env.STORAGE_DRIVER = 'local';
+  process.env.LOCAL_STORAGE_DIR = fileURLToPath(new URL('../.storage-test', import.meta.url));
+  process.env.API_URL = 'http://localhost:4000';
 }

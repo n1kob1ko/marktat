@@ -19,6 +19,7 @@ import type { Listing, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
+import { ImageUrls } from '../images/image-urls.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
@@ -39,6 +40,7 @@ export class ListingsService {
     private readonly prisma: PrismaService,
     private readonly categories: CategoriesService,
     private readonly audit: AuditService,
+    private readonly urls: ImageUrls,
   ) {}
 
   async create(user: AuthUser, input: CreateListingInput, ip?: string) {
@@ -73,7 +75,7 @@ export class ListingsService {
       entityId: listing.id,
       ip,
     });
-    return toListingDetail(listing, user.id);
+    return toListingDetail(listing, this.urls, user.id);
   }
 
   async update(user: AuthUser, id: string, input: UpdateListingInput) {
@@ -107,7 +109,7 @@ export class ListingsService {
       },
       include: listingInclude,
     });
-    return toListingDetail(updated, user.id);
+    return toListingDetail(updated, this.urls, user.id);
   }
 
   /** Entwurf oder abgelaufenes Inserat veröffentlichen bzw. verlängern. */
@@ -137,7 +139,7 @@ export class ListingsService {
       entityId: id,
       ip,
     });
-    return toListingDetail(updated, user.id);
+    return toListingDetail(updated, this.urls, user.id);
   }
 
   async pause(user: AuthUser, id: string, ip?: string) {
@@ -200,7 +202,7 @@ export class ListingsService {
         take: query.pageSize,
       }),
     ]);
-    return { items: rows.map(toListingSummary), page: query.page, pageSize: query.pageSize, total };
+    return { items: rows.map((row) => toListingSummary(row, this.urls)), page: query.page, pageSize: query.pageSize, total };
   }
 
   async findMine(user: AuthUser): Promise<ListingSummary[]> {
@@ -209,7 +211,7 @@ export class ListingsService {
       include: listingInclude,
       orderBy: { updatedAt: 'desc' },
     });
-    return rows.map(toListingSummary);
+    return rows.map((row) => toListingSummary(row, this.urls));
   }
 
   /** Öffentlich nur aktive Inserate; Entwürfe usw. sieht ausschließlich der Eigentümer bzw. Moderation. */
@@ -221,7 +223,7 @@ export class ListingsService {
     if (effectiveStatus(listing) !== 'ACTIVE' && !isOwner && !isStaff) {
       throw new NotFoundException('Dieses Inserat ist nicht mehr verfügbar.');
     }
-    return toListingDetail(listing, viewer?.id);
+    return toListingDetail(listing, this.urls, viewer?.id);
   }
 
   // --- Hilfsfunktionen -------------------------------------------------------
@@ -229,7 +231,7 @@ export class ListingsService {
   private async setStatus(user: AuthUser, id: string, status: ListingStatus, action: 'listing.paused' | 'listing.resumed', ip?: string) {
     const updated = await this.prisma.listing.update({ where: { id }, data: { status }, include: listingInclude });
     this.audit.log({ action, actorId: user.id, entityType: 'listing', entityId: id, ip });
-    return toListingDetail(updated, user.id);
+    return toListingDetail(updated, this.urls, user.id);
   }
 
   /** Eigentümerprüfung serverseitig. Fremde Inserate liefern 404, um ihre Existenz nicht preiszugeben. */

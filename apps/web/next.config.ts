@@ -10,6 +10,18 @@ loadEnvConfig(repoRoot, isDev, console, true);
 const apiUrl = process.env.API_URL ?? 'http://localhost:4000';
 const supabaseUrl = process.env.SUPABASE_URL ?? 'http://localhost:54321';
 
+/** Ziel der Browser-Uploads und Bild-Weiterleitungen: R2-Endpoint bzw. die API beim lokalen Speichertreiber. */
+function storageUploadOrigin(): string | null {
+  if (process.env.STORAGE_DRIVER === 'local') return null; // läuft über die API, ist schon erlaubt
+  if (process.env.R2_ENDPOINT) return new URL(process.env.R2_ENDPOINT).origin;
+  const account = process.env.R2_ACCOUNT_ID;
+  if (!account) return null;
+  const jurisdiction = process.env.R2_JURISDICTION;
+  const prefix = jurisdiction === 'eu' || jurisdiction === 'fedramp' ? `${jurisdiction}.` : '';
+  return `https://${account}.${prefix}r2.cloudflarestorage.com`;
+}
+const uploadOrigin = storageUploadOrigin();
+
 /**
  * Content-Security-Policy. 'unsafe-inline' für Skripte ist nötig, solange keine Nonces verwendet werden
  * (offene Aufgabe: nonce-basierte CSP über proxy.ts, siehe docs/sicherheit.md).
@@ -18,9 +30,10 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
+  // Bilder kommen über die API (Weiterleitung auf R2); blob: für die Vorschau vor dem Upload
+  `img-src 'self' data: blob: https: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
   "font-src 'self' data:",
-  `connect-src 'self' ${apiUrl} ${supabaseUrl}${isDev ? ' ws:' : ''}`,
+  `connect-src 'self' ${apiUrl} ${supabaseUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}${isDev ? ' ws:' : ''}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

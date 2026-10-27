@@ -11,7 +11,11 @@ export type AuditAction =
   | 'listing.paused'
   | 'listing.resumed'
   | 'listing.renewed'
-  | 'listing.deleted';
+  | 'listing.deleted'
+  | 'listing.image_added'
+  | 'listing.image_rejected'
+  | 'listing.image_deleted'
+  | 'listing.images_reordered';
 
 export interface AuditEvent {
   action: AuditAction;

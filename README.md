@@ -3,7 +3,7 @@
 Kleinanzeigenplattform für Österreich (Arbeitstitel) mit den Bereichen Marktplatz, Auto & Motor, Immobilien und Jobs.
 Monorepo mit Next.js-Frontend, NestJS-API, PostgreSQL/PostGIS und Supabase Auth.
 
-**Stand: Phase 1 (Fundament).** Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
+**Stand: Phase 2 (Bild-Upload über Cloudflare R2).** Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
 
 ## Voraussetzungen
 
@@ -44,6 +44,7 @@ pnpm typecheck
 pnpm test                                   # Unit-Tests (shared, ui, api, web)
 pnpm --filter @marktat/api test:e2e         # API-Integrationstests gegen die Testdatenbank marktat_test
 pnpm --filter @marktat/web test:e2e         # Playwright, Desktop + Mobil; braucht laufende Umgebung (pnpm build && pnpm start)
+pnpm --filter @marktat/api r2:check         # echte Cloudflare-R2-Verbindung prüfen (Werte aus der lokalen .env)
 ```
 
 Die API-Integrationstests leeren die Datenbank `marktat_test` (nicht die Entwicklungsdatenbank).
@@ -56,7 +57,8 @@ Für spätere Phasen bzw. den Produktionsbetrieb fehlen noch (in `.env.example` 
 
 | Variable | Wofür | Ab |
 | --- | --- | --- |
-| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_PUBLIC_BASE_URL` | Bild-Uploads (Cloudflare R2) | Phase 2 |
+| `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_JURISDICTION` | Bild-Uploads (Cloudflare R2), Einrichtung siehe [Bilder](docs/bilder.md); ohne Werte läuft alles außer dem Bild-Upload | Phase 2 |
+| `APP_SIGNING_SECRET` | signierte Bild-URLs; lokal ist ein Entwicklungswert gesetzt | Produktion |
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Zahlungen (Testmodus) | Phase 4 |
 | `OPENAI_API_KEY` (+ `AI_ENABLED=true`) | optionale KI-Funktionen | Phase 6 |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` | echtes Supabase-Projekt (EU-Region) | Produktion |
@@ -76,12 +78,13 @@ docs             Architektur, Datenmodell, Geodaten, Sicherheit, Rechtliches
 ## Dokumentation
 
 - [Architektur](docs/architektur.md)
+- [Bilder / Cloudflare R2](docs/bilder.md)
 - [Datenmodell](docs/datenmodell.md)
 - [Geodaten / PLZ-Import](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
 - [Rechtliches – Checkliste](docs/rechtliches.md) (⚠️ muss anwaltlich geprüft werden)
 
-## Stand und Grenzen (Phase 1)
+## Stand und Grenzen
 
 Umgesetzt:
 - Registrierung (privat/gewerblich), E-Mail-Bestätigung, Login, Logout, Passwort vergessen/neu setzen
@@ -89,9 +92,9 @@ Umgesetzt:
 - Inserat anlegen, als Entwurf speichern, veröffentlichen, bearbeiten, pausieren, fortsetzen, löschen, verlängern
 - Startseite, Suche mit Filtern (Text, Bereich, Kategorie, Bundesland), Detailseite, „Meine Anzeigen“
 - Kategoriebaum (84 Kategorien) für alle vier Bereiche, Bundesländer und Bezirke vollständig
+- Bilder (Phase 2): bis zu 10 pro Inserat über Cloudflare R2, serverseitige Prüfung, EXIF-Entfernung, WebP-Varianten, Hauptbild, Reihenfolge, Löschen
 
 Bewusst noch nicht umgesetzt:
-- **Bilder** (Tabelle vorhanden, Upload nach R2 in Phase 2)
 - **Vollständiges PLZ-Verzeichnis**: lokal nur 140 Entwicklungsorte, Import-Skript siehe [Geodaten](docs/geodaten.md)
 - Meilisearch-Suche, Umkreissuche, Favoriten, Nachrichten, Meldungen, Moderation, Zahlungen
 - Bereichsspezifische Felder (Kilometerstand, Wohnfläche, Gehalt …)

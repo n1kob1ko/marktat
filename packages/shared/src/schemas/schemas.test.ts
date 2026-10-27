@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { registerSchema } from './auth.js';
+import { createImageUploadSchema, MAX_IMAGE_BYTES, reorderImagesSchema } from './image.js';
 import { createListingSchema, listingPublishSchema } from './listing.js';
 import { updateProfileSchema } from './profile.js';
 
@@ -71,5 +72,23 @@ describe('updateProfileSchema', () => {
   });
   it('wandelt leere Felder in null um', () => {
     expect(updateProfileSchema.parse({ bio: '' }).bio).toBeNull();
+  });
+});
+
+describe('Bild-Schemas', () => {
+  it('erlaubt JPEG, PNG und WebP bis 15 MB', () => {
+    for (const contentType of ['image/jpeg', 'image/png', 'image/webp']) {
+      expect(createImageUploadSchema.safeParse({ contentType, size: MAX_IMAGE_BYTES }).success).toBe(true);
+    }
+    expect(createImageUploadSchema.safeParse({ contentType: 'image/gif', size: 100 }).success).toBe(false);
+    expect(createImageUploadSchema.safeParse({ contentType: 'image/svg+xml', size: 100 }).success).toBe(false);
+    expect(createImageUploadSchema.safeParse({ contentType: 'image/jpeg', size: MAX_IMAGE_BYTES + 1 }).success).toBe(false);
+    expect(createImageUploadSchema.safeParse({ contentType: 'image/jpeg', size: 0 }).success).toBe(false);
+  });
+
+  it('verlangt eine Reihenfolge ohne doppelte Bilder und höchstens 10 Einträge', () => {
+    expect(reorderImagesSchema.safeParse({ imageIds: ['a', 'b'] }).success).toBe(true);
+    expect(reorderImagesSchema.safeParse({ imageIds: ['a', 'a'] }).success).toBe(false);
+    expect(reorderImagesSchema.safeParse({ imageIds: Array.from({ length: 11 }, (_, i) => `id${i}`) }).success).toBe(false);
   });
 });
