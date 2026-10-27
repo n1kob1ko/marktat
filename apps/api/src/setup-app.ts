@@ -15,6 +15,8 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   app.setGlobalPrefix(API_PREFIX);
   app.use(helmet());
   app.disable('x-powered-by');
+  // Hinter einem Load-Balancer: echte Client-IP für Rate-Limits und das (gekürzte) Audit-Log
+  if (env.TRUST_PROXY > 0) app.set('trust proxy', env.TRUST_PROXY);
   // Die API nutzt Bearer-Tokens statt Cookies – daher kein CSRF-Risiko; CORS nur für das eigene Frontend.
   app.enableCors({
     origin: [env.WEB_URL],

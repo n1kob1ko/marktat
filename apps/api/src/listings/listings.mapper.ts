@@ -6,6 +6,7 @@ import {
   priceSuffix,
   type ListingAttributes,
   type ListingDetail,
+  type ListingModerationInfo,
   type ListingStatus,
   type ListingSummary,
 } from '@marktat/shared';
@@ -31,6 +32,8 @@ export const listingInclude = {
       companyName: true,
       avatarUrl: true,
       createdAt: true,
+      status: true,
+      deletedAt: true,
     },
   },
 } satisfies Prisma.ListingInclude;
@@ -45,7 +48,7 @@ export function effectiveStatus(listing: { status: ListingStatus; expiresAt: Dat
 
 /** Öffentlich sichtbare Inserate bekommen unsignierte Bild-URLs, alle anderen signierte (nur für Eigentümer). */
 function needsSignedUrls(listing: ListingWithRelations) {
-  return effectiveStatus(listing) !== 'ACTIVE';
+  return effectiveStatus(listing) !== 'ACTIVE' || listing.seller.status !== 'ACTIVE' || listing.seller.deletedAt !== null;
 }
 
 export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls): ListingSummary {
@@ -74,6 +77,8 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
 export interface ViewerState {
   isFavorite: boolean;
   conversationId: string | null;
+  /** Nur für Eigentümer und Moderation */
+  moderation?: ListingModerationInfo | null;
 }
 
 export function toListingDetail(
@@ -93,6 +98,8 @@ export function toListingDetail(
     updatedAt: listing.updatedAt.toISOString(),
     seller: toPublicSeller(listing.seller),
     isOwner: viewerId === listing.sellerId,
-    ...viewer,
+    isFavorite: viewer.isFavorite,
+    conversationId: viewer.conversationId,
+    moderation: viewer.moderation ?? null,
   };
 }

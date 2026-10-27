@@ -66,11 +66,30 @@ describe('Authentifizierung und Profil', () => {
     expect(audit).not.toBeNull();
   });
 
-  it('sperrt Zugriffe gesperrter Konten', async () => {
+  it('sperrt Zugriffe gesperrter Konten – außer Status, Entscheidungen, Export und Löschung', async () => {
     const user = await tokenFor();
     await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(200);
-    await prisma.user.update({ where: { id: user.id }, data: { status: 'SUSPENDED' } });
-    await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(403);
+    await prisma.user.update({ where: { id: user.id }, data: { status: 'SUSPENDED', suspendedAt: new Date() } });
+    const me = await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(200);
+    expect(me.body).toMatchObject({ status: 'SUSPENDED', suspension: { decisionId: null } });
+    await request(app.getHttpServer()).patch('/v1/me').set(user.auth).send({ bio: 'x' }).expect(403);
+    await request(app.getHttpServer()).get('/v1/listings/mine').set(user.auth).expect(403);
+    await request(app.getHttpServer()).get('/v1/me/decisions').set(user.auth).expect(200);
+    await request(app.getHttpServer()).get('/v1/me/notifications').set(user.auth).expect(200);
+    await request(app.getHttpServer()).get('/v1/me/export').set(user.auth).expect(200);
+    // Öffentliche Seiten funktionieren weiter (wie ohne Anmeldung)
+    await request(app.getHttpServer()).get('/v1/categories').set(user.auth).expect(200);
+  });
+
+  it('gelöschte Konten haben keinen Zugriff mehr und werden nicht neu angelegt', async () => {
+    const user = await tokenFor();
+    await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(200);
+    await prisma.user.update({ where: { id: user.id }, data: { status: 'DELETED', email: `geloescht-${user.id}@deleted.invalid` } });
+    const res = await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(403);
+    expect(res.body.message).toBe('Dieses Konto wurde gelöscht.');
+    // Die E-Mail aus dem (noch gültigen) Token wird nicht zurückgeschrieben
+    const stored = await prisma.user.findUniqueOrThrow({ where: { id: user.id } });
+    expect(stored.email).toBe(`geloescht-${user.id}@deleted.invalid`);
   });
 
   it('PATCH /v1/me validiert und speichert Profilfelder', async () => {

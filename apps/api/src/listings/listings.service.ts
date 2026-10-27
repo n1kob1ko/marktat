@@ -28,6 +28,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { ImageUrls } from '../images/image-urls.js';
 import { SearchIndexService } from '../search/search-index.service.js';
+import { ModerationService } from '../moderation/moderation.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
@@ -50,6 +51,7 @@ export class ListingsService {
     private readonly audit: AuditService,
     private readonly urls: ImageUrls,
     private readonly searchIndex: SearchIndexService,
+    private readonly moderation: ModerationService,
   ) {}
 
   async create(user: AuthUser, input: CreateListingInput, ip?: string) {
@@ -215,10 +217,14 @@ export class ListingsService {
     if (!listing || listing.status === 'DELETED') throw new NotFoundException('Dieses Inserat gibt es nicht.');
     const isOwner = viewer?.id === listing.sellerId;
     const isStaff = viewer?.role === 'ADMIN' || viewer?.role === 'MODERATOR';
-    if (effectiveStatus(listing) !== 'ACTIVE' && !isOwner && !isStaff) {
+    // Inserate gesperrter oder gelöschter Konten sind wie in der Suche nicht öffentlich
+    const sellerActive = listing.seller.status === 'ACTIVE' && !listing.seller.deletedAt;
+    if ((effectiveStatus(listing) !== 'ACTIVE' || !sellerActive) && !isOwner && !isStaff) {
       throw new NotFoundException('Dieses Inserat ist nicht mehr verfügbar.');
     }
-    return toListingDetail(listing, this.urls, viewer?.id, await this.viewerState(listing.id, viewer));
+    const state = await this.viewerState(listing.id, viewer);
+    const moderation = isOwner || isStaff ? await this.moderation.listingModerationInfo(listing) : null;
+    return toListingDetail(listing, this.urls, viewer?.id, state && { ...state, moderation });
   }
 
   // --- Hilfsfunktionen -------------------------------------------------------

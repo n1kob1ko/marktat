@@ -69,7 +69,7 @@ export async function resetData(prisma: PrismaService) {
   await searchIndex?.flush();
   await jobs?.drain().catch(() => jobs?.clear());
   await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, user_reports, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listings, users CASCADE',
+    'TRUNCATE audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listings, users CASCADE',
   );
   await searchIndex?.clear();
 }
@@ -139,4 +139,22 @@ export async function signIn(app: NestExpressApplication, user?: Parameters<type
   const account = await tokenFor(user);
   await request(app.getHttpServer()).get('/v1/me').set(account.auth).expect(200);
   return account;
+}
+
+/** Konto mit Rolle (Rollen gibt es nur in der Datenbank – genau wie in Produktion über admin:role) */
+export async function signInAs(
+  app: NestExpressApplication,
+  role: 'USER' | 'MODERATOR' | 'ADMIN',
+  user?: Parameters<typeof tokenFor>[0],
+) {
+  const account = await signIn(app, user);
+  await app.get(PrismaService).user.update({ where: { id: account.id }, data: { role } });
+  return account;
+}
+
+/** IDs im Test-Suchindex */
+export async function indexedIds(index: SearchIndexService): Promise<string[]> {
+  await index.flush();
+  const page = await index.client!.getDocumentIds(index.indexUid, 0, 1000);
+  return page.results.map((doc) => doc.id);
 }

@@ -7,6 +7,13 @@ export const IS_PUBLIC_KEY = 'isPublic';
 /** Route ohne Anmeldung erreichbar. Ein mitgeschicktes Token wird trotzdem ausgewertet. */
 export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 
+export const ALLOW_SUSPENDED_KEY = 'allowSuspended';
+/**
+ * Auch für gesperrte Konten erreichbar: eigenes Profil, Entscheidungen und Einspruch, Mitteilungen,
+ * Datenexport und Kontolöschung (DSGVO und Art. 20 DSA gelten auch während einer Sperre).
+ */
+export const AllowSuspended = () => SetMetadata(ALLOW_SUSPENDED_KEY, true);
+
 export const ROLES_KEY = 'roles';
 export const Roles = (...roles: UserRole[]) => SetMetadata(ROLES_KEY, roles);
 

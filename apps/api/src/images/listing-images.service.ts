@@ -259,11 +259,13 @@ export class ListingImagesService {
       select: {
         status: true,
         storageKey: true,
-        listing: { select: { status: true, expiresAt: true } },
+        listing: { select: { status: true, expiresAt: true, seller: { select: { status: true, deletedAt: true } } } },
       },
     });
     if (!image || image.status !== 'READY' || image.listing.status === 'DELETED') return null;
-    const isPublic = effectiveStatus(image.listing) === 'ACTIVE';
+    // Wie in Suche und Detailseite: nur aktive Inserate aktiver Konten sind öffentlich
+    const seller = image.listing.seller;
+    const isPublic = effectiveStatus(image.listing) === 'ACTIVE' && seller.status === 'ACTIVE' && !seller.deletedAt;
     if (!isPublic && !signatureValid(variant)) return null;
     const url = await this.storage.presignDownload(
       variantKey(image.storageKey, variant as ImageVariant),

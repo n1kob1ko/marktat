@@ -8,7 +8,7 @@ import {
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { UsersService } from '../users/users.service.js';
-import { IS_PUBLIC_KEY } from './decorators.js';
+import { ALLOW_SUSPENDED_KEY, IS_PUBLIC_KEY } from './decorators.js';
 import { SupabaseJwtService } from './supabase-jwt.service.js';
 
 /**
@@ -24,10 +24,8 @@ export class AuthGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
-      context.getHandler(),
-      context.getClass(),
-    ]);
+    const targets = [context.getHandler(), context.getClass()];
+    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, targets);
     const request = context.switchToHttp().getRequest<Request>();
     const token = this.extractToken(request);
 
@@ -38,8 +36,13 @@ export class AuthGuard implements CanActivate {
 
     const claims = await this.jwt.verify(token);
     const user = await this.users.syncFromClaims(claims, request.ip);
-    if (user.status !== 'ACTIVE') {
-      throw new ForbiddenException('Dein Konto ist gesperrt. Bitte kontaktiere den Support.');
+    // Öffentliche Seiten sehen gesperrte oder gelöschte Konten wie Gäste
+    if (user.status !== 'ACTIVE' && isPublic) return true;
+    if (user.status === 'DELETED') {
+      throw new ForbiddenException('Dieses Konto wurde gelöscht.');
+    }
+    if (user.status === 'SUSPENDED' && !this.reflector.getAllAndOverride<boolean>(ALLOW_SUSPENDED_KEY, targets)) {
+      throw new ForbiddenException('Dein Konto ist gesperrt. Begründung und Einspruch findest du in deinem Konto.');
     }
     request.user = user;
     return true;

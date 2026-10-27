@@ -7,7 +7,7 @@ import {
   type NotificationSettingsInput,
   type UpdateProfileInput,
 } from '@marktat/shared';
-import { CurrentUser, Public } from '../auth/decorators.js';
+import { AllowSuspended, CurrentUser, Public } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { openApiSchema } from '../common/openapi.js';
@@ -19,6 +19,7 @@ export class UsersController {
   constructor(private readonly users: UsersService) {}
 
   @Get('me')
+  @AllowSuspended()
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eigenes Profil (wird beim ersten Aufruf angelegt)' })
   me(@CurrentUser() user: AuthUser) {

@@ -233,7 +233,7 @@ describe('Nachrichten', () => {
       .set(seller.auth)
       .send({ reason: 'FRAUD', details: 'Will per Vorkasse zahlen.' })
       .expect(201);
-    const report = await prisma.userReport.findUniqueOrThrow({ where: { id: res.body.id } });
+    const report = await prisma.report.findUniqueOrThrow({ where: { id: res.body.id } });
     expect(report).toMatchObject({ reporterId: seller.id, reportedId: buyer.id, reason: 'FRAUD', status: 'OPEN', conversationId });
   });
 

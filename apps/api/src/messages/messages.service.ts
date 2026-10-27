@@ -27,6 +27,7 @@ import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
+import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
 
 /** Grenzwerte gegen Spam und massenhaftes Anschreiben (je Konto, gilt über alle API-Instanzen). */
@@ -35,7 +36,6 @@ export const MESSAGE_LIMITS = {
   perHour: 100,
   newConversationsPerHour: 10,
   newConversationsPerDay: 30,
-  reportsPerDay: 10,
 } as const;
 
 const CONVERSATIONS_PAGE_SIZE = 20;
@@ -90,6 +90,7 @@ export class MessagesService implements OnModuleInit {
     private readonly jobs: JobsService,
     private readonly mail: MailService,
     private readonly audit: AuditService,
+    private readonly reports: ReportsService,
   ) {}
 
   onModuleInit() {
@@ -285,20 +286,14 @@ export class MessagesService implements OnModuleInit {
     return rows.map((row) => ({ id: row.blocked.id, displayName: row.blocked.displayName, blockedAt: row.createdAt.toISOString() }));
   }
 
-  /** Meldung an die Moderation. Speichert keine Nachrichtenkopie – die Moderation sieht die Unterhaltung über die ID. */
+  /**
+   * Meldung an die Moderation. Speichert keine Nachrichtenkopie – die Moderation sieht die Unterhaltung nur,
+   * solange die Meldung bearbeitet wird (siehe ReportsService.reportedMessages).
+   */
   async report(user: AuthUser, conversationId: string, input: ReportUserInput, ip?: string): Promise<{ id: string }> {
     const conversation = await this.requireParticipant(user.id, conversationId);
     const reportedId = conversation.buyerId === user.id ? conversation.sellerId : conversation.buyerId;
-    const since = new Date(Date.now() - 24 * 3600_000);
-    if ((await this.prisma.userReport.count({ where: { reporterId: user.id, createdAt: { gt: since } } })) >= MESSAGE_LIMITS.reportsPerDay) {
-      throw tooMany('Du hast heute schon sehr viele Meldungen geschickt. Bitte versuche es morgen wieder.');
-    }
-    const report = await this.prisma.userReport.create({
-      data: { reporterId: user.id, reportedId, conversationId: conversation.id, reason: input.reason, details: input.details },
-      select: { id: true },
-    });
-    this.audit.log({ action: 'user.reported', actorId: user.id, entityType: 'user', entityId: reportedId, ip, metadata: { reportId: report.id, reason: input.reason } });
-    return report;
+    return this.reports.reportConversation(user, { id: conversation.id, reportedId }, input, ip);
   }
 
   // --- E-Mail-Benachrichtigung -----------------------------------------------------
