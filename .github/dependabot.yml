@@ -1,0 +1,25 @@
+# Wöchentliche Updates für Abhängigkeiten. Sicherheitsupdates öffnet GitHub zusätzlich sofort,
+# sobald „Dependabot security updates“ in den Repository-Einstellungen aktiv ist.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Vienna
+    open-pull-requests-limit: 5
+    groups:
+      # Kleine Updates gesammelt, damit nicht jede Patch-Version einen eigenen PR erzeugt
+      minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      timezone: Europe/Vienna
+  - package-ecosystem: docker
+    directory: /infra
+    schedule:
+      interval: monthly

@@ -2,18 +2,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
-import { Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
+import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, ShieldCheck, Store, UserRound } from 'lucide-react';
+import { Alert, Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
 import {
   categoryAttributeSchema,
   describeListingAttributes,
   formatDate,
   ITEM_CONDITION_LABELS,
+  MODERATION_ACTION_LABELS,
   type AttributeDisplayItem,
   type ListingDetail,
 } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
-import { getAccessToken } from '@/lib/auth';
+import { getAccessToken, getCurrentUser, isStaff } from '@/lib/auth';
 import { PriceTag } from '@/components/price-tag';
 import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { FlashMessage } from '@/components/flash-message';
@@ -56,6 +57,7 @@ async function ListingContent({
     throw error;
   }
   const { seller } = listing;
+  const staff = token ? isStaff(await getCurrentUser()) : false;
   const hinweis = typeof query.hinweis === 'string' ? query.hinweis : undefined;
   const fehler = typeof query.fehler === 'string' ? query.fehler : undefined;
 
@@ -63,6 +65,11 @@ async function ListingContent({
     <div className="space-y-6">
       <FlashMessage hinweis={hinweis} fehler={fehler} />
       {listing.isOwner ? <OwnerBar listing={listing} /> : null}
+      {staff ? (
+        <Link href={`/admin/inserate/${listing.id}`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+          <ShieldCheck className="size-4" aria-hidden="true" /> Moderieren
+        </Link>
+      ) : null}
 
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
         <Link href="/" className="hover:text-brand-700 hover:underline">Startseite</Link>
@@ -140,9 +147,11 @@ async function ListingContent({
             )}
             <ContactArea listing={listing} signedIn={Boolean(token)} />
           </Card>
-          <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
-            <Flag className="size-4" aria-hidden="true" /> Anzeige melden
-          </Link>
+          {listing.isOwner ? null : (
+            <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
+              <Flag className="size-4" aria-hidden="true" /> Anzeige melden
+            </Link>
+          )}
         </aside>
       </div>
     </div>
@@ -222,6 +231,41 @@ function ListingDetails({ items }: { items: AttributeDisplayItem[] }) {
 }
 
 function OwnerBar({ listing }: { listing: ListingDetail }) {
+  return (
+    <>
+      {listing.moderation ? <ModerationNotice listing={listing} /> : null}
+      <OwnerActions listing={listing} />
+    </>
+  );
+}
+
+/** Warum die eigene Anzeige nicht online ist – mit Begründung, Einspruch und erneuter Prüfung */
+function ModerationNotice({ listing }: { listing: ListingDetail }) {
+  const info = listing.moderation!;
+  const pending = listing.status === 'PENDING_REVIEW' && info.action !== 'LISTING_HIDDEN';
+  return (
+    <Alert tone={pending ? 'info' : 'warning'} title={pending ? 'Deine Anzeige wird erneut geprüft' : MODERATION_ACTION_LABELS[info.action]}>
+      <p className="whitespace-pre-line">{info.statement}</p>
+      <p className="mt-2">Entschieden am {formatDate(info.createdAt)}. Die Anzeige ist für andere nicht sichtbar.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <Link href={`/konto/entscheidungen/${info.decisionId}`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+          {info.appealStatus ? 'Entscheidung und Einspruch ansehen' : 'Begründung und Einspruch'}
+        </Link>
+        {info.canResubmit ? (
+          <form action={listingStatusAction}>
+            <input type="hidden" name="id" value={listing.id} />
+            <input type="hidden" name="returnTo" value="detail" />
+            <button name="action" value="resubmit" className={buttonClasses({ size: 'sm' })}>Erneut zur Prüfung einreichen</button>
+          </form>
+        ) : listing.status === 'REJECTED' && info.action === 'LISTING_REJECTED' ? (
+          <span className="self-center text-sm">Überarbeite die Anzeige, dann kannst du sie erneut zur Prüfung einreichen.</span>
+        ) : null}
+      </div>
+    </Alert>
+  );
+}
+
+function OwnerActions({ listing }: { listing: ListingDetail }) {
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-brand-200 bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="flex items-center gap-2 text-sm text-brand-900">

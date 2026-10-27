@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
-import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule } from '@nestjs/throttler';
+import { AccountThrottlerGuard } from './common/throttler.guard.js';
 import { loadEnv } from './config/env.js';
+import { RATE_LIMIT_STORAGE, type RedisThrottlerStorage } from './common/redis-throttler.storage.js';
+import { RateLimitModule } from './common/rate-limit.module.js';
 import { PrismaModule } from './prisma/prisma.module.js';
 import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
@@ -20,12 +23,21 @@ import { RealtimeModule } from './realtime/realtime.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module.js';
 import { MessagesModule } from './messages/messages.module.js';
+import { ModerationModule } from './moderation/moderation.module.js';
+import { PrivacyModule } from './privacy/privacy.module.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
   imports: [
-    // Rate-Limit pro IP (In-Memory; bei mehreren API-Instanzen auf Redis-Storage umstellen)
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: loadEnv().RATE_LIMIT_PER_MINUTE }]),
+    // Rate-Limit pro IP – mit REDIS_URL gemeinsam für alle API-Instanzen, sonst im Prozessspeicher (und immer in Tests)
+    ThrottlerModule.forRootAsync({
+      imports: [RateLimitModule],
+      inject: [RATE_LIMIT_STORAGE],
+      useFactory: (storage: RedisThrottlerStorage | null) => ({
+        throttlers: [{ ttl: 60_000, limit: loadEnv().RATE_LIMIT_PER_MINUTE }],
+        storage: storage ?? undefined,
+      }),
+    }),
     PrismaModule,
     AuditModule,
     AuthModule,
@@ -42,12 +54,14 @@ import { HealthController } from './health/health.controller.js';
     FavoritesModule,
     SavedSearchesModule,
     MessagesModule,
+    ModerationModule,
+    PrivacyModule,
   ],
   controllers: [HealthController],
   providers: [
-    // Reihenfolge: zuerst Rate-Limit, dann Anmeldung, dann Rollen
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    // Reihenfolge: zuerst Anmeldung (Token prüfen), dann Rate-Limit je Konto bzw. IP, dann Rollen
     { provide: APP_GUARD, useClass: AuthGuard },
+    { provide: APP_GUARD, useClass: AccountThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
   ],
 })

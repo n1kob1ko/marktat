@@ -50,3 +50,17 @@ const dateFormatter = new Intl.DateTimeFormat(LOCALE, {
 export function formatDate(value: string | Date): string {
   return dateFormatter.format(typeof value === 'string' ? new Date(value) : value);
 }
+
+const dateTimeFormatter = new Intl.DateTimeFormat(LOCALE, {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  timeZone: 'Europe/Vienna',
+});
+
+/** Datum mit Uhrzeit (Wiener Zeit), z. B. für Protokolle und Moderationsverläufe */
+export function formatDateTime(value: string | Date): string {
+  return dateTimeFormatter.format(typeof value === 'string' ? new Date(value) : value);
+}

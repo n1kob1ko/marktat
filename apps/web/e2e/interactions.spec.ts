@@ -56,6 +56,8 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
   // --- Merken: Status bleibt nach Neuladen und über eine neue Sitzung erhalten ---
   await buyer.page.getByRole('button', { name: 'Merken' }).click();
   await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).toHaveAttribute('aria-pressed', 'true');
+  // Optimistische Anzeige: erst neu laden, wenn der Server gespeichert hat
+  await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).not.toHaveAttribute('aria-busy', 'true');
   await buyer.page.reload();
   await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).toBeVisible();
   const second = await newPage(browser, testInfo);
@@ -168,7 +170,7 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
   await buyer.page.getByRole('button', { name: 'Weitere Aktionen' }).click();
   await buyer.page.getByRole('button', { name: 'Vera Verkauf melden' }).click();
   const dialog = buyer.page.getByRole('dialog', { name: 'Vera Verkauf melden' });
-  await dialog.getByLabel('Spam oder Werbung').check();
+  await dialog.getByLabel('Spam').check();
   await dialog.getByRole('button', { name: 'Meldung senden' }).click();
   await expect(dialog.getByText('Danke für deine Meldung.')).toBeVisible();
   await dialog.getByRole('button', { name: 'Fertig' }).click();

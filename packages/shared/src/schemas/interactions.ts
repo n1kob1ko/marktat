@@ -9,7 +9,7 @@ export const MAX_FAVORITES = 500;
 
 // Steuerzeichen außer Zeilenumbruch und Tabulator, dazu unsichtbare Richtungszeichen (Spoofing)
 // eslint-disable-next-line no-control-regex
-const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F‎‏‪-‮⁦-⁩]/g;
+export const CONTROL_CHARS = /[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F‎‏‪-‮⁦-⁩]/g;
 
 /**
  * Nachrichtentext: Klartext, Zeilenumbrüche vereinheitlicht, Steuerzeichen entfernt,
@@ -67,17 +67,31 @@ export const notificationSettingsSchema = z
   .strict();
 export type NotificationSettingsInput = z.infer<typeof notificationSettingsSchema>;
 
-export const REPORT_REASONS = ['SPAM', 'FRAUD', 'HARASSMENT', 'OTHER'] as const;
+/** Gründe für Meldungen (Inserate und Unterhaltungen). Werte entsprechen dem Prisma-Enum `ReportReason`. */
+export const REPORT_REASONS = ['FRAUD', 'PROHIBITED_ITEM', 'MISLEADING', 'SPAM', 'HARASSMENT', 'OTHER'] as const;
 export type ReportReason = (typeof REPORT_REASONS)[number];
 export const REPORT_REASON_LABELS: Record<ReportReason, string> = {
-  SPAM: 'Spam oder Werbung',
   FRAUD: 'Betrugsverdacht',
-  HARASSMENT: 'Belästigung oder Beleidigung',
-  OTHER: 'Etwas anderes',
+  PROHIBITED_ITEM: 'Verbotener Artikel',
+  MISLEADING: 'Irreführende Angaben',
+  SPAM: 'Spam',
+  HARASSMENT: 'Belästigung',
+  OTHER: 'Sonstiger Regelverstoß',
 };
+/** Kurze Erklärung im Meldeformular */
+export const REPORT_REASON_HINTS: Record<ReportReason, string> = {
+  FRAUD: 'z. B. Vorauskasse ohne Ware, gefälschte Zahlungsseiten, Identitätsdiebstahl',
+  PROHIBITED_ITEM: 'z. B. Waffen, Drogen, Arzneimittel, gefälschte Markenware, geschützte Tiere',
+  MISLEADING: 'z. B. falscher Preis, falsche Kategorie, Bilder passen nicht zum Angebot',
+  SPAM: 'z. B. Werbung, Mehrfachanzeigen, Kettenbriefe',
+  HARASSMENT: 'z. B. Beleidigungen, Drohungen, Diskriminierung',
+  OTHER: 'Ein anderer Verstoß gegen unsere Regeln oder ein rechtswidriger Inhalt',
+};
+/** Gründe, die in einer Unterhaltung sinnvoll sind */
+export const CONVERSATION_REPORT_REASONS = ['FRAUD', 'HARASSMENT', 'SPAM', 'OTHER'] as const satisfies readonly ReportReason[];
 
 export const reportUserSchema = z.object({
-  reason: z.enum(REPORT_REASONS, { error: 'Bitte wähle einen Grund.' }),
+  reason: z.enum(CONVERSATION_REPORT_REASONS, { error: 'Bitte wähle einen Grund.' }),
   details: z
     .string()
     .transform((v) => v.replace(CONTROL_CHARS, '').trim())

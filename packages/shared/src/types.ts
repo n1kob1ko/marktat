@@ -7,6 +7,18 @@ import type {
   Vertical,
 } from './enums.js';
 import type { ListingAttributes } from './attributes/types.js';
+import type { ReportReason } from './schemas/interactions.js';
+import type {
+  AppealStatus,
+  DecisionGround,
+  ModerationAction,
+  NotificationType,
+  ReportEventType,
+  ReportPriority,
+  ReportStatus,
+  ReportTarget,
+  UserStatus,
+} from './schemas/moderation.js';
 
 /** Antwort-Typen der REST-API. Datumsfelder werden als ISO-8601-Strings übertragen. */
 
@@ -50,6 +62,10 @@ export interface MeResponse {
   notifyMessagesByEmail: boolean;
   /** E-Mail bei neuen Treffern gespeicherter Suchen (je Suche einzeln aktivierbar) */
   notifySearchesByEmail: boolean;
+  /** SUSPENDED: nur Konto-Status, Entscheidungen, Einspruch, Datenexport und Löschung sind erreichbar */
+  status: UserStatus;
+  /** Aktuelle Sperre mit Begründung (nur bei status = SUSPENDED) */
+  suspension: { decisionId: string | null; statement: string | null; since: string } | null;
   createdAt: string;
 }
 
@@ -146,6 +162,19 @@ export interface ListingDetail extends ListingSummary {
   isFavorite: boolean;
   /** Nur für angemeldete Interessenten: bestehende Unterhaltung zu diesem Inserat */
   conversationId: string | null;
+  /** Nur für Eigentümer und Moderation: letzte Moderationsentscheidung (bei REJECTED/PENDING_REVIEW) */
+  moderation: ListingModerationInfo | null;
+}
+
+export interface ListingModerationInfo {
+  decisionId: string;
+  action: ModerationAction;
+  reason: ReportReason | null;
+  statement: string;
+  createdAt: string;
+  appealStatus: AppealStatus | null;
+  /** Abgelehntes Inserat kann nach einer Überarbeitung zur erneuten Prüfung eingereicht werden */
+  canResubmit: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -240,3 +269,213 @@ export type RealtimeEvent =
   /** byMe: in einem anderen Fenster selbst gelesen; sonst hat die andere Person meine Nachrichten gelesen */
   | { type: 'read'; conversationId: string; readAt: string; byMe: boolean; unread: UnreadSummary }
   | { type: 'ping' };
+
+// ---------------------------------------------------------------------------
+// Moderation, Einsprüche, Mitteilungen (Phase 6)
+// ---------------------------------------------------------------------------
+
+export interface PersonRef {
+  id: string;
+  displayName: string;
+}
+
+/** Entscheidung aus Sicht der betroffenen Person (Begründung nach Art. 17 DSA) */
+export interface ModerationDecisionView {
+  id: string;
+  action: ModerationAction;
+  reason: ReportReason | null;
+  ground: DecisionGround | null;
+  statement: string;
+  createdAt: string;
+  listing: { id: string; title: string } | null;
+  appeal: AppealView | null;
+  /** Einspruch ist noch möglich (einschränkende Maßnahme, Frist offen, noch kein Einspruch) */
+  canAppeal: boolean;
+  appealDeadline: string | null;
+  /** Wurde durch eine spätere Entscheidung aufgehoben */
+  reversed: boolean;
+}
+
+export interface AppealView {
+  id: string;
+  status: AppealStatus;
+  body: string;
+  response: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+}
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationType;
+  title: string;
+  body: string;
+  link: string | null;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface NotificationList {
+  items: NotificationItem[];
+  unread: number;
+}
+
+/** Entscheidung im Admin-Bereich (mit internen Angaben) */
+export interface AdminDecision extends ModerationDecisionView {
+  internalNote: string | null;
+  moderator: PersonRef | null;
+  user: PersonRef;
+  snapshot: Record<string, unknown> | null;
+}
+
+export interface AdminReportSummary {
+  id: string;
+  targetType: ReportTarget;
+  reason: ReportReason;
+  status: ReportStatus;
+  priority: ReportPriority;
+  details: string | null;
+  createdAt: string;
+  listing: { id: string; title: string; status: string } | null;
+  conversationId: string | null;
+  reported: (PersonRef & { status: UserStatus }) | null;
+  reporter: PersonRef | null;
+  assignee: PersonRef | null;
+  /** Weitere offene Meldungen zum selben Inhalt */
+  relatedOpen: number;
+}
+
+export interface ReportEventItem {
+  id: string;
+  type: ReportEventType;
+  actor: PersonRef | null;
+  fromStatus: ReportStatus | null;
+  toStatus: ReportStatus | null;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface AdminReportDetail extends AdminReportSummary {
+  abusive: boolean;
+  resolutionNote: string | null;
+  handledAt: string | null;
+  handledBy: PersonRef | null;
+  events: ReportEventItem[];
+  decision: AdminDecision | null;
+  /** Andere Meldungen zum selben Inhalt (neueste zuerst) */
+  related: AdminReportSummary[];
+  /** Meldeverhalten der meldenden Person (Art. 23 DSA) */
+  reporterStats: { total: number; abusive: number; blockedUntil: string | null } | null;
+  /** Nachrichten der gemeldeten Unterhaltung dürfen geöffnet werden (nur solange die Meldung bearbeitet wird) */
+  canViewMessages: boolean;
+}
+
+export interface ReportedMessage {
+  id: string;
+  /** Wer hat geschrieben – aus Sicht der Meldung */
+  author: 'reporter' | 'reported';
+  body: string;
+  createdAt: string;
+}
+
+export interface ReportedConversation {
+  listing: { id: string; title: string } | null;
+  messages: ReportedMessage[];
+  /** Nur Nachrichten bis zum Zeitpunkt der Meldung; ältere als die letzten 100 fehlen */
+  truncated: boolean;
+}
+
+export interface AdminListingSummary {
+  id: string;
+  title: string;
+  /** Wirksamer Status (abgelaufene aktive Inserate = EXPIRED) */
+  status: ListingStatus;
+  thumbUrl: string | null;
+  seller: PersonRef & { status: UserStatus };
+  createdAt: string;
+  publishedAt: string | null;
+  updatedAt: string;
+  openReports: number;
+}
+
+export interface AdminListingDetail {
+  listing: ListingDetail;
+  seller: PersonRef & { status: UserStatus; createdAt: string; email: string | null };
+  decisions: AdminDecision[];
+  reports: AdminReportSummary[];
+  /** Für Entscheidungen mitzuschicken (Schutz vor gleichzeitiger Bearbeitung) */
+  version: string;
+}
+
+export interface AdminUserSummary {
+  id: string;
+  displayName: string;
+  /** Nur für Administratoren */
+  email: string | null;
+  role: UserRole;
+  status: UserStatus;
+  accountType: AccountType;
+  createdAt: string;
+  lastSeenAt: string | null;
+  activeListings: number;
+  openReports: number;
+}
+
+export interface AdminUserDetail extends AdminUserSummary {
+  companyName: string | null;
+  listings: AdminListingSummary[];
+  reportsReceived: AdminReportSummary[];
+  reportsMade: { total: number; abusive: number };
+  reportingBlockedUntil: string | null;
+  decisions: AdminDecision[];
+  deletion: { status: 'PENDING' | 'COMPLETED' | 'FAILED'; requestedAt: string } | null;
+}
+
+export interface AdminAppealItem {
+  id: string;
+  status: AppealStatus;
+  body: string;
+  response: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  user: PersonRef & { status: UserStatus };
+  reviewer: PersonRef | null;
+  decision: AdminDecision;
+}
+
+export interface AuditEntry {
+  id: string;
+  action: string;
+  actor: PersonRef | null;
+  entityType: string | null;
+  entityId: string | null;
+  ipPrefix: string | null;
+  metadata: unknown;
+  createdAt: string;
+}
+
+export interface JobFailure {
+  name: string;
+  reason: string;
+  attempts: number;
+  failedAt: string | null;
+}
+
+export interface AdminDashboard {
+  /** Für Moderation und Administration */
+  moderation: {
+    listings: { active: number; paused: number; expired: number; pendingReview: number; rejected: number; draft: number };
+    reports: { open: number; inReview: number; urgent: number; reportedListings: number };
+    appeals: { open: number };
+  };
+  /** Nur für Administratoren (Systemstatistiken) */
+  system: {
+    users: { total: number; active: number; suspended: number; deleted: number; staff: number; new7d: number; new30d: number };
+    /** Registrierungen der letzten 14 Tage (ältester Tag zuerst) */
+    registrations: { date: string; count: number }[];
+    deletions: { pending: number; failed: number };
+    jobs: { backend: 'redis' | 'memory'; waiting: number; delayed: number; failed: number; recentFailures: JobFailure[] };
+    /** Wichtige Ereignisse aus dem Audit-Log */
+    events: AuditEntry[];
+  } | null;
+}

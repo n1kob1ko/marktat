@@ -1,20 +1,22 @@
 import 'server-only';
-import { redirect } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
+import { cache } from 'react';
 import type { MeResponse } from '@marktat/shared';
 import { api, ApiError } from './api';
 import { createSupabaseServerClient } from './supabase/server';
 
-export async function getAccessToken(): Promise<string | null> {
+/** Je Anfrage nur einmal gelesen (Layout und Seite fragen beide) */
+export const getAccessToken = cache(async (): Promise<string | null> => {
   await connection();
 
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase.auth.getSession();
 
   return data.session?.access_token ?? null;
-}
+});
 
-export async function getCurrentUser(): Promise<MeResponse | null> {
+export const getCurrentUser = cache(async (): Promise<MeResponse | null> => {
   const token = await getAccessToken();
   if (!token) return null;
 
@@ -32,10 +34,15 @@ export async function getCurrentUser(): Promise<MeResponse | null> {
     }
     throw error;
   }
-}
+});
 
+/**
+ * Angemeldete Person oder Weiterleitung zur Anmeldung. Gesperrte Konten landen bei ihren Entscheidungen
+ * (Begründung und Einspruch), außer die Seite ist auch für sie gedacht (`allowSuspended`).
+ */
 export async function requireUser(
-  returnTo: string
+  returnTo: string,
+  options: { allowSuspended?: boolean } = {}
 ): Promise<{ user: MeResponse; token: string }> {
   const token = await getAccessToken();
   const user = token ? await getCurrentUser() : null;
@@ -43,7 +50,24 @@ export async function requireUser(
   if (!token || !user) {
     redirect(`/anmelden?weiter=${encodeURIComponent(returnTo)}`);
   }
+  if (user.status === 'SUSPENDED' && !options.allowSuspended) {
+    redirect('/konto/entscheidungen');
+  }
 
+  return { user, token };
+}
+
+export function isStaff(user: Pick<MeResponse, 'role' | 'status'> | null): boolean {
+  return Boolean(user && user.status === 'ACTIVE' && (user.role === 'ADMIN' || user.role === 'MODERATOR'));
+}
+
+/**
+ * Admin-Bereich: nur Moderation und Administration. Für alle anderen gibt es die Seite nicht (404),
+ * damit der Bereich nicht auffällt. Die API prüft jede Anfrage zusätzlich selbst.
+ */
+export async function requireStaff(returnTo: string): Promise<{ user: MeResponse; token: string }> {
+  const { user, token } = await requireUser(returnTo);
+  if (!isStaff(user)) notFound();
   return { user, token };
 }
 

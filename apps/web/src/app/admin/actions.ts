@@ -1,0 +1,202 @@
+'use server';
+
+import { revalidatePath, updateTag } from 'next/cache';
+import { redirect } from 'next/navigation';
+import {
+  appealDecisionSchema,
+  changeRoleSchema,
+  dismissReportSchema,
+  listingDecisionSchema,
+  reportingRestrictionSchema,
+  updateReportSchema,
+  userDecisionSchema,
+} from '@marktat/shared';
+import { api, ApiError } from '@/lib/api';
+import { requireStaff } from '@/lib/auth';
+import { ENTITY_ID, UUID } from '@/lib/admin';
+import { zodFieldErrors, type FormState } from '@/lib/form-state';
+
+/**
+ * Aktionen im Admin-Bereich. Die Web-App prüft nur Form und IDs; ob jemand die Aktion ausführen darf,
+ * entscheidet ausschließlich die API anhand der Rolle in der Datenbank.
+ */
+
+function text(formData: FormData, key: string): string | undefined {
+  const value = formData.get(key);
+  return typeof value === 'string' && value.trim() ? value : undefined;
+}
+
+function values(formData: FormData, keys: string[]): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const key of keys) {
+    const value = formData.get(key);
+    if (typeof value === 'string') result[key] = value;
+  }
+  return result;
+}
+
+function failure(error: unknown, kept?: Record<string, string>): FormState {
+  if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values: kept };
+  throw error;
+}
+
+const invalid: FormState = { status: 'error', message: 'Die Anfrage ist ungültig. Bitte lade die Seite neu.' };
+
+// --- Meldungen ------------------------------------------------------------------
+
+export async function updateReportAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const parsed = updateReportSchema.safeParse({
+    priority: text(formData, 'priority'),
+    assign: text(formData, 'assign'),
+    note: text(formData, 'note'),
+  });
+  if (!parsed.success) return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Bitte prüfe die Eingabe.' };
+  const { token } = await requireStaff(`/admin/meldungen/${id}`);
+  try {
+    await api(`/admin/reports/${id}`, { method: 'PATCH', token, body: parsed.data });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath(`/admin/meldungen/${id}`);
+  return {
+    status: 'success',
+    message: parsed.data.assign === 'me' ? 'Du bearbeitest diese Meldung.' : parsed.data.assign === 'none' ? 'Die Meldung ist wieder frei.' : 'Gespeichert.',
+  };
+}
+
+export async function dismissReportAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['note']);
+  const parsed = dismissReportSchema.safeParse({ note: text(formData, 'note'), abusive: formData.get('abusive') === 'on' });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die Eingabe.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff(`/admin/meldungen/${id}`);
+  try {
+    await api(`/admin/reports/${id}/dismiss`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  // Weiterleitung statt Rückmeldung im Formular: das Formular verschwindet mit dem neuen Status
+  redirect(`/admin/meldungen/${id}?hinweis=mod-geschlossen`);
+}
+
+// --- Entscheidungen -------------------------------------------------------------
+
+const DECISION_FIELDS = ['decision', 'reason', 'ground', 'statement', 'internalNote'];
+
+export async function decideListingAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/inserate/${id}`);
+  try {
+    await api(`/admin/listings/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('listings');
+  redirect(`/admin/inserate/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-freigegeben' : 'mod-entschieden'}`);
+}
+
+export async function decideUserAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = userDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    reportId: text(formData, 'reportId'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  try {
+    await api(`/admin/users/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('listings');
+  redirect(`/admin/nutzer/${id}?hinweis=${parsed.data.decision === 'SUSPEND' ? 'mod-gesperrt' : 'mod-entsperrt'}`);
+}
+
+export async function decideAppealAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['outcome', 'response']);
+  const parsed = appealDecisionSchema.safeParse({ outcome: text(formData, 'outcome'), response: String(formData.get('response') ?? '') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff(`/admin/einsprueche/${id}`);
+  try {
+    await api(`/admin/appeals/${id}/decision`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('listings');
+  redirect(`/admin/einsprueche/${id}?hinweis=mod-einspruch`);
+}
+
+// --- Konten (nur Administratoren, prüft die API) --------------------------------
+
+export async function changeRoleAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const parsed = changeRoleSchema.safeParse({ role: text(formData, 'role') });
+  if (!parsed.success) return { status: 'error', message: parsed.error.issues[0]?.message ?? 'Ungültige Rolle.' };
+  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  try {
+    await api(`/admin/users/${id}/role`, { method: 'PUT', token, body: parsed.data });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath(`/admin/nutzer/${id}`);
+  return { status: 'success', message: parsed.data.role === 'MODERATOR' ? 'Das Konto hat jetzt Moderationsrechte.' : 'Die Moderationsrechte sind entzogen.' };
+}
+
+export async function restrictReportingAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const parsed = reportingRestrictionSchema.safeParse({ days: Number(formData.get('days') ?? -1), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte wähle einen Zeitraum zwischen 0 und 365 Tagen.' };
+  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  try {
+    await api(`/admin/users/${id}/reporting`, { method: 'PUT', token, body: parsed.data });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath(`/admin/nutzer/${id}`);
+  return { status: 'success', message: parsed.data.days ? `Die Meldefunktion ist für ${parsed.data.days} Tage eingeschränkt.` : 'Die Einschränkung ist aufgehoben.' };
+}
+
+export async function retryDeletionAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const { token } = await requireStaff(`/admin/nutzer/${id}`);
+  try {
+    await api(`/admin/deletions/${id}/retry`, { method: 'POST', token });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath(`/admin/nutzer/${id}`);
+  return { status: 'success', message: 'Die Löschung wurde erneut gestartet.' };
+}

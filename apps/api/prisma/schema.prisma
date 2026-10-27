@@ -92,6 +92,10 @@ model User {
   notifyMessagesByEmail Boolean     @default(true) @map("notify_messages_by_email")
   /// E-Mail bei neuen Treffern gespeicherter Suchen (nur Suchen mit aktivierter Benachrichtigung)
   notifySearchesByEmail Boolean     @default(true) @map("notify_searches_by_email")
+  /// Zeitpunkt der aktuellen Sperre (Begründung in moderation_decisions)
+  suspendedAt           DateTime?   @map("suspended_at")
+  /// Meldungen dieser Person werden bis dahin nicht angenommen (Art. 23 DSA, nach Verwarnung)
+  reportingBlockedUntil DateTime?   @map("reporting_blocked_until")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
   deletedAt             DateTime?   @map("deleted_at")
@@ -100,14 +104,23 @@ model User {
   auditLogs           AuditLog[]
   favorites           Favorite[]
   savedSearches       SavedSearch[]
-  buyerConversations  Conversation[] @relation("ConversationBuyer")
-  sellerConversations Conversation[] @relation("ConversationSeller")
-  sentMessages        Message[]      @relation("MessageSender")
-  receivedMessages    Message[]      @relation("MessageRecipient")
-  blocks              UserBlock[]    @relation("BlockBy")
-  blockedBy           UserBlock[]    @relation("BlockOf")
-  reportsMade         UserReport[]   @relation("ReportBy")
-  reportsReceived     UserReport[]   @relation("ReportOf")
+  buyerConversations  Conversation[]       @relation("ConversationBuyer")
+  sellerConversations Conversation[]       @relation("ConversationSeller")
+  sentMessages        Message[]            @relation("MessageSender")
+  receivedMessages    Message[]            @relation("MessageRecipient")
+  blocks              UserBlock[]          @relation("BlockBy")
+  blockedBy           UserBlock[]          @relation("BlockOf")
+  reportsMade         Report[]             @relation("ReportBy")
+  reportsReceived     Report[]             @relation("ReportOf")
+  reportsAssigned     Report[]             @relation("ReportAssignee")
+  reportsHandled      Report[]             @relation("ReportHandler")
+  reportEvents        ReportEvent[]
+  decisionsReceived   ModerationDecision[] @relation("DecisionSubject")
+  decisionsMade       ModerationDecision[] @relation("DecisionModerator")
+  appeals             Appeal[]             @relation("AppealBy")
+  appealsReviewed     Appeal[]             @relation("AppealReviewer")
+  notifications       Notification[]
+  deletion            AccountDeletion?
 
   @@index([status])
   @@map("users")
@@ -216,12 +229,14 @@ model Listing {
   updatedAt   DateTime       @updatedAt @map("updated_at")
   deletedAt   DateTime?      @map("deleted_at")
 
-  seller        User           @relation(fields: [sellerId], references: [id])
-  category      Category?      @relation(fields: [categoryId], references: [id])
-  location      Location?      @relation(fields: [locationId], references: [id])
+  seller        User                 @relation(fields: [sellerId], references: [id])
+  category      Category?            @relation(fields: [categoryId], references: [id])
+  location      Location?            @relation(fields: [locationId], references: [id])
   images        ListingImage[]
   favorites     Favorite[]
   conversations Conversation[]
+  reports       Report[]
+  decisions     ModerationDecision[]
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([sellerId, status])
@@ -315,17 +330,17 @@ model SavedSearch {
 
 /// Unterhaltung zwischen Interessent und Verkäufer zu genau einem Inserat.
 model Conversation {
-  id            String       @id @default(cuid())
-  listingId     String       @map("listing_id")
-  buyerId       String       @map("buyer_id") @db.Uuid
-  sellerId      String       @map("seller_id") @db.Uuid
-  lastMessageAt DateTime     @default(now()) @map("last_message_at")
-  createdAt     DateTime     @default(now()) @map("created_at")
-  listing       Listing      @relation(fields: [listingId], references: [id])
-  buyer         User         @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller        User         @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  id            String    @id @default(cuid())
+  listingId     String    @map("listing_id")
+  buyerId       String    @map("buyer_id") @db.Uuid
+  sellerId      String    @map("seller_id") @db.Uuid
+  lastMessageAt DateTime  @default(now()) @map("last_message_at")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  listing       Listing   @relation(fields: [listingId], references: [id])
+  buyer         User      @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller        User      @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   messages      Message[]
-  reports       UserReport[]
+  reports       Report[]
 
   /// Je Inserat und Interessent genau eine Unterhaltung
   @@unique([listingId, buyerId])
@@ -374,31 +389,243 @@ enum ReportReason {
   FRAUD
   HARASSMENT
   OTHER
+  PROHIBITED_ITEM
+  MISLEADING
 }
 
 enum ReportStatus {
   OPEN
+  /// Wird von einer Moderatorin bzw. einem Moderator bearbeitet
+  IN_REVIEW
+  /// Bearbeitet, Maßnahme getroffen
   RESOLVED
+  /// Bearbeitet, kein Verstoß (bzw. offensichtlich unbegründet)
   DISMISSED
 }
 
-/// Meldung einer Person (z. B. aus einer Unterhaltung). Bearbeitung durch die Moderation folgt später.
-model UserReport {
-  id             String        @id @default(cuid())
-  reporterId     String        @map("reporter_id") @db.Uuid
-  reportedId     String        @map("reported_id") @db.Uuid
-  conversationId String?       @map("conversation_id")
+/// Gemeldeter Inhalt: ein Inserat oder eine Unterhaltung (die andere Person)
+enum ReportTarget {
+  LISTING
+  CONVERSATION
+}
+
+enum ReportPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+// ---------------------------------------------------------------------------
+// Moderation (Phase 6) – Meldungen, Entscheidungen, Einsprüche, Mitteilungen
+// ---------------------------------------------------------------------------
+
+/// Meldung (Art. 16 DSA) zu einem Inserat oder aus einer Unterhaltung. Bis Phase 5 hieß die Tabelle user_reports.
+/// Meldungen führen nie automatisch zu einer Sperre; jede Maßnahme trifft ein Mensch (moderation_decisions).
+model Report {
+  id             String              @id @default(cuid())
+  targetType     ReportTarget        @default(CONVERSATION) @map("target_type")
+  /// Meldende Person; null, wenn ihr Konto gelöscht wurde
+  reporterId     String?             @map("reporter_id") @db.Uuid
+  /// Betroffene Person (Anbieterin des Inserats bzw. Gesprächspartner)
+  reportedId     String?             @map("reported_id") @db.Uuid
+  listingId      String?             @map("listing_id")
+  conversationId String?             @map("conversation_id")
   reason         ReportReason
-  details        String?       @db.VarChar(1000)
-  status         ReportStatus  @default(OPEN)
-  createdAt      DateTime      @default(now()) @map("created_at")
-  reporter       User          @relation("ReportBy", fields: [reporterId], references: [id], onDelete: Cascade)
-  reported       User          @relation("ReportOf", fields: [reportedId], references: [id], onDelete: Cascade)
-  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  details        String?             @db.VarChar(1000)
+  status         ReportStatus        @default(OPEN)
+  priority       ReportPriority      @default(NORMAL)
+  assigneeId     String?             @map("assignee_id") @db.Uuid
+  /// Offensichtlich unbegründete Meldung (Art. 23 DSA) – zählt für die Einschränkung der Meldefunktion
+  abusive        Boolean             @default(false)
+  /// Entscheidung, mit der die Meldung erledigt wurde
+  decisionId     String?             @map("decision_id")
+  /// Interne Notiz der Moderation zum Abschluss (wird der meldenden Person nicht gezeigt)
+  resolutionNote String?             @map("resolution_note") @db.VarChar(1000)
+  handledById    String?             @map("handled_by_id") @db.Uuid
+  handledAt      DateTime?           @map("handled_at")
+  createdAt      DateTime            @default(now()) @map("created_at")
+  updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at")
+  reporter       User?               @relation("ReportBy", fields: [reporterId], references: [id], onDelete: SetNull)
+  reported       User?               @relation("ReportOf", fields: [reportedId], references: [id], onDelete: SetNull)
+  assignee       User?               @relation("ReportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  handledBy      User?               @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  listing        Listing?            @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  conversation   Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  decision       ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  events         ReportEvent[]
 
   @@index([status, createdAt])
+  @@index([status, priority, createdAt])
   @@index([reportedId])
-  @@map("user_reports")
+  @@index([listingId, status])
+  @@index([reporterId, createdAt])
+  @@index([conversationId])
+  @@map("reports")
+}
+
+enum ReportEventType {
+  CREATED
+  ASSIGNED
+  UNASSIGNED
+  PRIORITY_CHANGED
+  STATUS_CHANGED
+  NOTE
+}
+
+/// Bearbeitungsverlauf einer Meldung (wer hat wann was geändert)
+model ReportEvent {
+  id         String          @id @default(cuid())
+  reportId   String          @map("report_id")
+  actorId    String?         @map("actor_id") @db.Uuid
+  type       ReportEventType
+  fromStatus ReportStatus?   @map("from_status")
+  toStatus   ReportStatus?   @map("to_status")
+  note       String?         @db.VarChar(1000)
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @map("created_at")
+  report     Report          @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  actor      User?           @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([reportId, createdAt])
+  @@map("report_events")
+}
+
+enum ModerationAction {
+  /// Inserat wegen eines Verstoßes deaktiviert (Status REJECTED)
+  LISTING_REJECTED
+  /// Inserat bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  LISTING_HIDDEN
+  /// Inserat nach Prüfung wieder freigegeben
+  LISTING_RESTORED
+  ACCOUNT_SUSPENDED
+  ACCOUNT_RESTORED
+}
+
+/// Rechtsgrundlage einer Maßnahme (Art. 17 Abs. 3 lit. d/e DSA)
+enum DecisionGround {
+  /// Verstoß gegen die Nutzungsbedingungen
+  TERMS
+  /// Mutmaßlich rechtswidriger Inhalt
+  ILLEGAL
+}
+
+/// Moderationsentscheidung mit Begründung an die betroffene Person (Art. 17 DSA). Wird nie automatisch getroffen.
+model ModerationDecision {
+  id            String               @id @default(cuid())
+  action        ModerationAction
+  /// Betroffene Person
+  userId        String               @map("user_id") @db.Uuid
+  listingId     String?              @map("listing_id")
+  moderatorId   String?              @map("moderator_id") @db.Uuid
+  /// Art des Verstoßes (bei Freigaben leer)
+  reason        ReportReason?
+  ground        DecisionGround?
+  /// Begründung, die die betroffene Person sieht
+  statement     String               @db.VarChar(2000)
+  internalNote  String?              @map("internal_note") @db.VarChar(1000)
+  /// Stand des Inserats bei der Entscheidung (Titel, Beschreibung, Preis …) – zur Nachvollziehbarkeit
+  snapshot      Json?
+  /// Durch diese Entscheidung aufgehobene frühere Entscheidung (z. B. Freigabe nach Einspruch)
+  reversesId    String?              @map("reverses_id")
+  createdAt     DateTime             @default(now()) @map("created_at")
+  user          User                 @relation("DecisionSubject", fields: [userId], references: [id], onDelete: Cascade)
+  moderator     User?                @relation("DecisionModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  listing       Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  reverses      ModerationDecision?  @relation("DecisionReversal", fields: [reversesId], references: [id], onDelete: SetNull)
+  reversedBy    ModerationDecision[] @relation("DecisionReversal")
+  appeal        Appeal?
+  reports       Report[]
+  notifications Notification[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([listingId, createdAt(sort: Desc)])
+  @@index([createdAt])
+  @@map("moderation_decisions")
+}
+
+enum AppealStatus {
+  OPEN
+  /// Entscheidung bleibt bestehen
+  UPHELD
+  /// Entscheidung wurde aufgehoben
+  REVERSED
+}
+
+/// Einspruch gegen eine Moderationsentscheidung (internes Beschwerdemanagement, Art. 20 DSA). Je Entscheidung einer.
+model Appeal {
+  id         String             @id @default(cuid())
+  decisionId String             @unique @map("decision_id")
+  userId     String             @map("user_id") @db.Uuid
+  body       String             @db.VarChar(2000)
+  status     AppealStatus       @default(OPEN)
+  reviewerId String?            @map("reviewer_id") @db.Uuid
+  /// Antwort an die Person, die Einspruch erhoben hat
+  response   String?            @db.VarChar(2000)
+  createdAt  DateTime           @default(now()) @map("created_at")
+  decidedAt  DateTime?          @map("decided_at")
+  decision   ModerationDecision @relation(fields: [decisionId], references: [id], onDelete: Cascade)
+  user       User               @relation("AppealBy", fields: [userId], references: [id], onDelete: Cascade)
+  reviewer   User?              @relation("AppealReviewer", fields: [reviewerId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([userId])
+  @@map("appeals")
+}
+
+enum NotificationType {
+  LISTING_REJECTED
+  LISTING_HIDDEN
+  LISTING_RESTORED
+  ACCOUNT_SUSPENDED
+  ACCOUNT_RESTORED
+  APPEAL_DECIDED
+  REPORT_HANDLED
+}
+
+/// Mitteilung im Konto (zusätzlich per E-Mail). Für Entscheidungen der Moderation, Einsprüche und Meldungen.
+model Notification {
+  id         String              @id @default(cuid())
+  userId     String              @map("user_id") @db.Uuid
+  type       NotificationType
+  title      String              @db.VarChar(200)
+  body       String              @db.VarChar(2000)
+  /// Interner Pfad, z. B. /konto/entscheidungen/<id>
+  link       String?             @db.VarChar(300)
+  decisionId String?             @map("decision_id")
+  readAt     DateTime?           @map("read_at")
+  createdAt  DateTime            @default(now()) @map("created_at")
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  decision   ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, readAt])
+  @@map("notifications")
+}
+
+enum DeletionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+/// Auftrag zur Kontolöschung (DSGVO Art. 17). Die Schritte sind einzeln wiederholbar; der Stand bleibt nachvollziehbar.
+model AccountDeletion {
+  id             String         @id @default(cuid())
+  userId         String         @unique @map("user_id") @db.Uuid
+  status         DeletionStatus @default(PENDING)
+  /// Erledigte Schritte (siehe account-deletion.service.ts)
+  completedSteps String[]       @default([]) @map("completed_steps")
+  attempts       Int            @default(0)
+  /// Letzter Fehler (ohne personenbezogene Daten)
+  lastError      String?        @map("last_error") @db.VarChar(500)
+  requestedAt    DateTime       @default(now()) @map("requested_at")
+  completedAt    DateTime?      @map("completed_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([status, updatedAt])
+  @@map("account_deletions")
 }
 
 // ---------------------------------------------------------------------------

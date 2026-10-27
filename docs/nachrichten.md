@@ -60,7 +60,7 @@ Ereignisse: `ready` (Zähler beim Verbinden), `message`, `read` (mit `byMe`), `p
 - Absender und Empfänger setzt immer der Server; zusätzliche Felder im Request werden abgelehnt (`strict`-Schema).
 - **Rate-Limits je Konto** (in der Datenbank gezählt, gelten über alle Instanzen): 10 Nachrichten pro Minute, 100 pro Stunde, 10 neue Unterhaltungen pro Stunde, 30 pro Tag, 10 Meldungen pro Tag. Zusätzlich Limits je IP.
 - **Blockieren** sperrt Nachrichten in beide Richtungen, auch neue Unterhaltungen. Inaktive oder gelöschte Konten können nicht mehr angeschrieben werden.
-- **Melden** legt einen Eintrag in `user_reports` an (Grund, optionaler Text, Status `OPEN`) und schreibt ins Audit-Log. Eine Moderationsoberfläche folgt in einer späteren Phase.
+- **Melden** legt eine Meldung in `reports` an (Grund, optionaler Text, Status `OPEN`) und schreibt ins Audit-Log. Bearbeitet wird sie seit Phase 6 im Admin-Bereich; das Team sieht Nachrichten nur zu einer offenen Meldung, nach Bestätigung und protokolliert (siehe [Moderation](moderation.md)).
 - Private Nachrichten landen nie im Suchindex: Meilisearch bekommt nur Inserate (`search-document.ts`), ein Test prüft das.
 - Datenschutz: Nachrichten werden nur so lange gespeichert, wie beide Konten bestehen (Cascade beim Löschen eines Kontos); Inserate mit Unterhaltungen werden nur „weich“ gelöscht (`Restrict`), damit Gespräche nicht verschwinden.
 

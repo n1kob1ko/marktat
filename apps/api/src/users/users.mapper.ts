@@ -1,7 +1,7 @@
 import type { MeResponse, PublicSeller } from '@marktat/shared';
 import type { User } from '../generated/prisma/client.js';
 
-export function toMe(user: User): MeResponse {
+export function toMe(user: User, suspension: MeResponse['suspension'] = null): MeResponse {
   return {
     id: user.id,
     email: user.email,
@@ -17,6 +17,8 @@ export function toMe(user: User): MeResponse {
     companyAddress: user.companyAddress,
     notifyMessagesByEmail: user.notifyMessagesByEmail,
     notifySearchesByEmail: user.notifySearchesByEmail,
+    status: user.status,
+    suspension: user.status === 'SUSPENDED' ? suspension : null,
     createdAt: user.createdAt.toISOString(),
   };
 }

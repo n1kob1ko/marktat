@@ -19,7 +19,14 @@ const envSchema = z
       .string()
       .optional()
       .transform((v) => (v ? v : undefined)),
+    /** GEHEIM – Supabase-Admin-API (Kontolöschung). Ohne Schlüssel ist die Kontolöschung nicht verfügbar. */
+    SUPABASE_SERVICE_ROLE_KEY: optional,
     RATE_LIMIT_PER_MINUTE: z.coerce.number().int().positive().default(120),
+    /**
+     * Express `trust proxy`: Anzahl vertrauenswürdiger Proxys vor der API (z. B. 1 hinter einem Load-Balancer).
+     * 0 = keine (Standard). Nur setzen, wenn der Proxy X-Forwarded-For selbst überschreibt.
+     */
+    TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
     /** Optionale KI-Funktionen; ohne Schlüssel bleiben sie abgeschaltet. */
     AI_ENABLED: z
       .enum(['true', 'false'])
@@ -79,6 +86,10 @@ const envSchema = z
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',
     path: ['APP_SIGNING_SECRET'],
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || env.SUPABASE_SERVICE_ROLE_KEY, {
+    message: 'SUPABASE_SERVICE_ROLE_KEY ist in Produktion Pflicht (Kontolöschung nach DSGVO).',
+    path: ['SUPABASE_SERVICE_ROLE_KEY'],
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.STORAGE_DRIVER === 'r2', {
     message: 'STORAGE_DRIVER=local ist in Produktion nicht erlaubt.',

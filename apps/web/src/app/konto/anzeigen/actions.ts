@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation';
 import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 
-type ListingAction = 'publish' | 'pause' | 'resume' | 'delete';
+type ListingAction = 'publish' | 'pause' | 'resume' | 'resubmit' | 'delete';
 
 const ID_PATTERN = /^[a-z0-9]{20,40}$/;
 
@@ -14,7 +14,7 @@ export async function listingStatusAction(formData: FormData) {
   const id = String(formData.get('id') ?? '');
   const action = String(formData.get('action') ?? '') as ListingAction;
   const returnTo = formData.get('returnTo') === 'detail' ? `/anzeige/${id}` : '/konto/anzeigen';
-  if (!ID_PATTERN.test(id) || !['publish', 'pause', 'resume', 'delete'].includes(action)) {
+  if (!ID_PATTERN.test(id) || !['publish', 'pause', 'resume', 'resubmit', 'delete'].includes(action)) {
     redirect('/konto/anzeigen?fehler=aktion');
   }
   const { token } = await requireUser('/konto/anzeigen');
@@ -26,10 +26,15 @@ export async function listingStatusAction(formData: FormData) {
       message = 'geloescht';
     } else {
       await api(`/listings/${id}/${action}`, { method: 'POST', token });
-      message = action === 'publish' ? 'veroeffentlicht' : action === 'pause' ? 'pausiert' : 'fortgesetzt';
+      message = { publish: 'veroeffentlicht', pause: 'pausiert', resume: 'fortgesetzt', resubmit: 'eingereicht' }[action];
     }
   } catch (error) {
-    const reason = error instanceof ApiError && error.status === 400 ? 'unvollstaendig' : 'aktion';
+    const reason =
+      error instanceof ApiError && error.status === 400
+        ? 'unvollstaendig'
+        : error instanceof ApiError && error.status === 409 && action === 'resubmit'
+          ? 'nicht-ueberarbeitet'
+          : 'aktion';
     redirect(`${returnTo}?fehler=${reason}`);
   }
   updateTag('listings');

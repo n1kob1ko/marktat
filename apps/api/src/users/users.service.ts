@@ -27,6 +27,8 @@ export class UsersService {
     const select = { id: true, email: true, role: true, accountType: true, status: true, lastSeenAt: true } as const;
     const existing = await this.prisma.user.findUnique({ where: { id: claims.sub }, select });
     if (existing) {
+      // Gelöschte Konten bleiben anonymisiert (die E-Mail wird nicht zurückgeschrieben)
+      if (existing.status === 'DELETED') return existing;
       const now = new Date();
       const needsEmailSync = existing.email !== email;
       const needsLastSeen =
@@ -72,7 +74,18 @@ export class UsersService {
 
   async getMe(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
-    return toMe(user);
+    if (user.status !== 'SUSPENDED') return toMe(user);
+    // Gesperrte Konten sehen die Begründung der aktuellen Sperre (Art. 17 DSA)
+    const decision = await this.prisma.moderationDecision.findFirst({
+      where: { userId, action: 'ACCOUNT_SUSPENDED' },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true, statement: true },
+    });
+    return toMe(user, {
+      decisionId: decision?.id ?? null,
+      statement: decision?.statement ?? null,
+      since: (user.suspendedAt ?? user.updatedAt).toISOString(),
+    });
   }
 
   async updateNotifications(user: AuthUser, input: NotificationSettingsInput) {

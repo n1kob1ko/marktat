@@ -19,7 +19,32 @@ export type AuditAction =
   | 'conversation.started'
   | 'user.blocked'
   | 'user.unblocked'
-  | 'user.reported';
+  | 'user.reported'
+  // Phase 6: Meldungen, Moderation, Rollen, Datenschutz
+  | 'listing.reported'
+  | 'listing.resubmitted'
+  | 'report.updated'
+  | 'report.dismissed'
+  | 'report.messages_viewed'
+  | 'moderation.listing_rejected'
+  | 'moderation.listing_hidden'
+  | 'moderation.listing_restored'
+  | 'moderation.account_suspended'
+  | 'moderation.account_restored'
+  | 'appeal.created'
+  | 'appeal.decided'
+  | 'admin.role_changed'
+  | 'admin.reporting_restricted'
+  | 'admin.deletion_retried'
+  | 'privacy.export'
+  | 'privacy.reauth_failed'
+  | 'privacy.deletion_requested'
+  | 'privacy.deletion_completed'
+  | 'privacy.deletion_failed'
+  | 'retention.cleanup';
+
+/** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
+export const IMPORTANT_AUDIT_PREFIXES = ['moderation.', 'appeal.', 'admin.', 'privacy.deletion', 'report.messages_viewed'];
 
 export interface AuditEvent {
   action: AuditAction;

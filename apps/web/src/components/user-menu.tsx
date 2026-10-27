@@ -1,9 +1,9 @@
 import Link from 'next/link';
-import { CircleUserRound } from 'lucide-react';
+import { CircleUserRound, ShieldCheck } from 'lucide-react';
 import { buttonClasses } from '@marktat/ui';
 import type { UnreadSummary } from '@marktat/shared';
 import { api } from '@/lib/api';
-import { getAccessToken, getCurrentUser } from '@/lib/auth';
+import { getAccessToken, getCurrentUser, isStaff } from '@/lib/auth';
 import { HeaderInbox, SessionSync } from './header-inbox';
 import { logoutAction } from '@/app/(auth)/actions';
 
@@ -28,6 +28,13 @@ export async function UserMenu() {
     <div className="flex items-center gap-1">
       <SessionSync userId={user.id} />
       <HeaderInbox initialUnread={unread} />
+      {isStaff(user) ? (
+        // Auf schmalen Bildschirmen über „Mein Konto“ erreichbar – im Header ist dort kein Platz
+        <Link href="/admin" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'hidden sm:inline-flex' })} aria-label="Moderation">
+          <ShieldCheck className="size-5 shrink-0" aria-hidden="true" />
+          <span className="hidden xl:inline">Moderation</span>
+        </Link>
+      ) : null}
       <Link href="/konto" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'max-w-44' })}>
         <CircleUserRound className="size-5 shrink-0" aria-hidden="true" />
         <span className="hidden truncate lg:inline">{user.displayName}</span>

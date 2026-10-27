@@ -14,6 +14,16 @@ export interface EnqueueOptions {
 }
 
 const QUEUE_NAME = 'jobs';
+const MAX_REMEMBERED_FAILURES = 50;
+
+export interface JobStats {
+  backend: 'redis' | 'memory';
+  waiting: number;
+  delayed: number;
+  failed: number;
+  /** Neueste endgültig fehlgeschlagene Aufträge – nur Name, Fehlermeldung und Zeitpunkt, keine Auftragsdaten */
+  recentFailures: { name: string; reason: string; attempts: number; failedAt: string | null }[];
+}
 
 /**
  * Hintergrundaufgaben (E-Mails, Prüfung gespeicherter Suchen).
@@ -32,6 +42,7 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
   private readonly pending = new Map<string, Promise<void>>();
   private readonly timers = new Set<NodeJS.Timeout>();
   private counter = 0;
+  private readonly memoryFailures: JobStats['recentFailures'] = [];
 
   get usesRedis() {
     return Boolean(this.env.REDIS_URL);
@@ -97,7 +108,11 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
       const timer = setTimeout(() => {
         this.timers.delete(timer);
         this.run(name, data)
-          .catch((error: Error) => this.logger.warn(`Auftrag ${name} fehlgeschlagen: ${error.message}`))
+          .catch((error: Error) => {
+            this.logger.warn(`Auftrag ${name} fehlgeschlagen: ${error.message}`);
+            this.memoryFailures.unshift({ name, reason: redact(error.message), attempts: 1, failedAt: new Date().toISOString() });
+            this.memoryFailures.length = Math.min(this.memoryFailures.length, MAX_REMEMBERED_FAILURES);
+          })
           .finally(() => {
             this.pending.delete(key);
             resolve();
@@ -106,6 +121,43 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
       this.timers.add(timer);
     });
     this.pending.set(key, promise);
+  }
+
+  /** Wartende Aufträge entfernen (z. B. E-Mails an ein Konto, das gerade gelöscht wird). Unbekannte IDs sind kein Fehler. */
+  async cancel(jobIds: string[]): Promise<void> {
+    for (const jobId of jobIds) {
+      if (this.queue) {
+        // Laufende oder gesperrte Aufträge lassen sich nicht entfernen; ihre Handler prüfen den Zustand selbst.
+        await this.queue.remove(jobId).catch(() => 0);
+      }
+    }
+  }
+
+  /** Zustand der Warteschlange für das Admin-Dashboard */
+  async stats(): Promise<JobStats> {
+    if (!this.queue) {
+      return {
+        backend: 'memory',
+        waiting: this.pending.size,
+        delayed: 0,
+        failed: this.memoryFailures.length,
+        recentFailures: this.memoryFailures.slice(0, 10),
+      };
+    }
+    const counts = await this.queue.getJobCounts('waiting', 'delayed', 'failed');
+    const failed = await this.queue.getJobs(['failed'], 0, 9, false);
+    return {
+      backend: 'redis',
+      waiting: counts.waiting ?? 0,
+      delayed: counts.delayed ?? 0,
+      failed: counts.failed ?? 0,
+      recentFailures: failed.map((job) => ({
+        name: job.name,
+        reason: redact(job.failedReason ?? 'Unbekannter Fehler'),
+        attempts: job.attemptsMade,
+        failedAt: job.finishedOn ? new Date(job.finishedOn).toISOString() : null,
+      })),
+    };
   }
 
   /** Für Tests: wartet, bis alle anstehenden Aufträge erledigt sind. */
@@ -142,4 +194,9 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     await this.worker?.close();
     await this.queue?.close();
   }
+}
+
+/** Fehlermeldungen können E-Mail-Adressen enthalten (z. B. vom SMTP-Server) – vor der Anzeige entfernen. */
+export function redact(message: string): string {
+  return message.replace(/[^\s<>@"']+@[^\s<>@"']+/g, '[E-Mail]').slice(0, 300);
 }
