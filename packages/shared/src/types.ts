@@ -63,6 +63,8 @@ export interface LocationSummary {
   id: number;
   postalCode: string;
   place: string;
+  /** Gemeinde, falls sie anders heißt als der Ort (z. B. „Innsbruck“ beim Ortsteil „Wilten“) */
+  municipality: string | null;
   district: string;
   state: string;
   stateCode: string;

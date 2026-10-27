@@ -46,7 +46,7 @@ describe('Inserate mit Zusatzangaben', () => {
     for (const [kind, path] of Object.entries(PATHS)) {
       categories[kind] = (await prisma.category.findUniqueOrThrow({ where: { path } })).id;
     }
-    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010' } })).id;
+    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010', place: 'Wien' } })).id;
   });
   beforeEach(() => resetData(prisma));
   afterAll(() => app.close());

@@ -1,5 +1,6 @@
 /**
- * Importiert das vollständige österreichische PLZ-Verzeichnis aus GeoNames (siehe docs/geodaten.md).
+ * Übernimmt einen neueren GeoNames-Download direkt in die Datenbank (siehe docs/geodaten.md).
+ * Für den Normalfall reicht `pnpm db:seed`, das die versionierte Datei `data/at-locations.tsv.gz` lädt.
  *
  *   pnpm --filter @marktat/api geo:import --file /pfad/zu/AT.txt
  *
@@ -8,9 +9,9 @@
  */
 import { existsSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { slugify } from '@marktat/shared';
 import { createPrismaClient } from '../../src/prisma/create-client.js';
-import { parseGeoNamesLine, type GeoNamesRow } from './geonames.js';
+import { upsertLocations } from './geo-dataset.js';
+import { buildLocations, parseGeoNamesFile } from './geonames.js';
 
 const rootEnv = fileURLToPath(new URL('../../../../.env', import.meta.url));
 if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
@@ -28,42 +29,17 @@ async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL ist nicht gesetzt.');
 
-  const rows = new Map<string, GeoNamesRow>();
-  const skipped = new Map<string, number>();
-  for (const line of readFileSync(file, 'utf8').split(/\r?\n/)) {
-    if (!line.trim()) continue;
-    const result = parseGeoNamesLine(line);
-    if (result.ok) rows.set(`${result.row.postalCode}|${result.row.place}`, result.row);
-    else skipped.set(result.reason, (skipped.get(result.reason) ?? 0) + 1);
-  }
-
   const prisma = createPrismaClient(url);
   try {
     const districtIds = new Set((await prisma.district.findMany({ select: { id: true } })).map((d) => d.id));
     if (districtIds.size === 0) throw new Error('Keine Bezirke gefunden – zuerst `pnpm db:seed` ausführen.');
 
-    let imported = 0;
-    for (const row of rows.values()) {
-      if (!districtIds.has(row.districtId)) {
-        const reason = `unbekannter Bezirk ${row.districtId}`;
-        skipped.set(reason, (skipped.get(reason) ?? 0) + 1);
-        continue;
-      }
-      const data = { districtId: row.districtId, latitude: row.latitude, longitude: row.longitude, slug: slugify(row.place) };
-      await prisma.location.upsert({
-        where: { postalCode_place: { postalCode: row.postalCode, place: row.place } },
-        update: data,
-        create: { postalCode: row.postalCode, place: row.place, ...data },
-      });
-      imported += 1;
-    }
-    await prisma.$executeRaw`
-      UPDATE locations
-      SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
-      WHERE geom IS NULL OR NOT ST_Equals(geom::geometry, ST_SetSRID(ST_MakePoint(longitude, latitude), 4326))`;
+    const parsed = parseGeoNamesFile(readFileSync(file, 'utf8'));
+    const built = buildLocations(parsed.rows, districtIds);
+    await upsertLocations(prisma, built.locations);
 
-    console.log(`Importiert/aktualisiert: ${imported} Orte`);
-    for (const [reason, count] of skipped) console.log(`Übersprungen (${reason}): ${count}`);
+    console.log(`Importiert/aktualisiert: ${built.locations.length} Orte`);
+    for (const [reason, count] of [...parsed.skipped, ...built.skipped]) console.log(`Übersprungen (${reason}): ${count}`);
   } finally {
     await prisma.$disconnect();
   }

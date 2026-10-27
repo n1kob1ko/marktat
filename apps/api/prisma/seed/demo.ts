@@ -31,6 +31,19 @@ export const DEMO_LISTINGS = [
   },
 ] as const;
 
+/** Hauptort einer PLZ (z. B. 8010 → Graz statt eines Ortsteils der Umlandgemeinden). */
+async function mainLocation(prisma: PrismaClient, postalCode: string) {
+  const rows = await prisma.location.findMany({
+    where: { postalCode },
+    include: { district: true },
+    orderBy: { place: 'asc' },
+  });
+  const isCity = (r: (typeof rows)[number]) => r.district.name.endsWith('(Stadt)') || r.district.stateId === 9;
+  const main = rows.find((r) => r.place === r.municipality && isCity(r)) ?? rows.find((r) => r.place === r.municipality) ?? rows[0];
+  if (!main) throw new Error(`Kein Ort mit PLZ ${postalCode}`);
+  return main;
+}
+
 export async function seedDemoData(prisma: PrismaClient) {
   await prisma.user.upsert({
     where: { id: DEMO_SELLER_ID },
@@ -45,7 +58,7 @@ export async function seedDemoData(prisma: PrismaClient) {
   const now = Date.now();
   for (const [i, item] of DEMO_LISTINGS.entries()) {
     const category = await prisma.category.findUniqueOrThrow({ where: { path: item.path } });
-    const location = await prisma.location.findFirstOrThrow({ where: { postalCode: item.postalCode } });
+    const location = await mainLocation(prisma, item.postalCode);
     const publishedAt = new Date(now - i * 3_600_000);
     await prisma.listing.create({
       data: {

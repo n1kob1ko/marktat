@@ -1,5 +1,5 @@
 /**
- * Stammdaten-Seed: Bundesländer, Bezirke, Orte (Entwicklungsauswahl) und Kategorien.
+ * Stammdaten-Seed: Bundesländer, Bezirke, vollständiges Ortsverzeichnis (GeoNames) und Kategorien.
  * Idempotent – kann beliebig oft ausgeführt werden.
  *
  *   pnpm db:seed           Stammdaten
@@ -12,7 +12,7 @@ import { createPrismaClient } from '../../src/prisma/create-client.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { CATEGORY_TREE, type CategorySeed } from './categories.js';
 import { DISTRICTS } from './districts.js';
-import { DEV_LOCATIONS } from './locations.dev.js';
+import { readDataset, upsertLocations } from './geo-dataset.js';
 import { seedDemoData } from './demo.js';
 
 const rootEnv = fileURLToPath(new URL('../../../../.env', import.meta.url));
@@ -31,19 +31,9 @@ async function seedGeo(prisma: PrismaClient) {
     const data = { stateId: d.stateId, name: d.name, slug: slugify(d.name) };
     await prisma.district.upsert({ where: { id: d.id }, update: data, create: { id: d.id, ...data } });
   }
-  for (const [postalCode, place, districtId, latitude, longitude] of DEV_LOCATIONS) {
-    const data = { districtId, latitude, longitude, slug: slugify(place) };
-    await prisma.location.upsert({
-      where: { postalCode_place: { postalCode, place } },
-      update: data,
-      create: { postalCode, place, ...data },
-    });
-  }
-  await prisma.$executeRaw`
-    UPDATE locations
-    SET geom = ST_SetSRID(ST_MakePoint(longitude, latitude), 4326)::geography
-    WHERE geom IS NULL OR NOT ST_Equals(geom::geometry, ST_SetSRID(ST_MakePoint(longitude, latitude), 4326))`;
-  console.log(`Geo: ${STATES.length} Bundesländer, ${DISTRICTS.length} Bezirke, ${DEV_LOCATIONS.length} Orte`);
+  const locations = readDataset();
+  await upsertLocations(prisma, locations);
+  console.log(`Geo: ${STATES.length} Bundesländer, ${DISTRICTS.length} Bezirke, ${locations.length} Orte`);
 }
 
 async function seedCategoryLevel(

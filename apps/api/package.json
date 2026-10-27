@@ -23,6 +23,7 @@
     "db:migrate": "prisma migrate deploy",
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed/seed.ts",
+    "geo:build": "tsx prisma/seed/geo-build.ts",
     "geo:import": "tsx prisma/seed/geo-import.ts",
     "r2:check": "tsx scripts/r2-check.ts"
   },

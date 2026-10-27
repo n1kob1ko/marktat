@@ -26,7 +26,7 @@ describe('Inserate', () => {
     const leaf = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-freizeit/fahrraeder' } });
     leafCategoryId = leaf.id;
     parentCategoryId = leaf.parentId!;
-    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010' } })).id;
+    locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } })).id;
   });
   beforeEach(() => resetData(prisma));
   afterAll(() => app.close());
@@ -162,7 +162,7 @@ describe('Inserate', () => {
   it('filtert nach Suchbegriff, Kategorie und Bundesland', async () => {
     const seller = await tokenFor();
     await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201);
-    const vienna = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010' } })).id;
+    const vienna = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010', place: 'Wien' } })).id;
     await request(server())
       .post('/v1/listings')
       .set(seller.auth)
@@ -188,6 +188,29 @@ describe('Inserate', () => {
     const byCode = await request(server()).get('/v1/geo/locations').query({ q: '6020' }).expect(200);
     expect(byCode.body[0]).toMatchObject({ place: 'Innsbruck', state: 'Tirol' });
     const byName = await request(server()).get('/v1/geo/locations').query({ q: 'klagen' }).expect(200);
-    expect(byName.body[0]).toMatchObject({ postalCode: '9020' });
+    expect(byName.body[0]).toMatchObject({ postalCode: '9020', place: 'Klagenfurt am Wörthersee' });
+  });
+
+  it('kennt das vollständige PLZ-Verzeichnis mit Ortsteilen und Hauptorten', async () => {
+    const linz = await request(server()).get('/v1/geo/locations').query({ q: '4020' }).expect(200);
+    expect(linz.body[0]).toMatchObject({ place: 'Linz', district: 'Linz (Stadt)', state: 'Oberösterreich' });
+    expect(linz.body.map((l: { place: string }) => l.place)).toContain('Leonding');
+
+    const combined = await request(server()).get('/v1/geo/locations').query({ q: '1010 Wien' }).expect(200);
+    expect(combined.body).toEqual([expect.objectContaining({ postalCode: '1010', place: 'Wien', municipality: null, state: 'Wien' })]);
+
+    const saint = await request(server()).get('/v1/geo/locations').query({ q: 'sankt veit an der g' }).expect(200);
+    expect(saint.body).toContainEqual(expect.objectContaining({ postalCode: '9300', place: 'St. Veit an der Glan', state: 'Kärnten' }));
+
+    const district = await request(server()).get('/v1/geo/locations').query({ q: 'wilten' }).expect(200);
+    expect(district.body[0]).toMatchObject({ postalCode: '6020', place: 'Wilten', municipality: 'Innsbruck' });
+
+    const wildcard = await request(server()).get('/v1/geo/locations').query({ q: '%_' }).expect(200);
+    expect(wildcard.body).toEqual([]);
+
+    const total = await prisma.location.count();
+    expect(total).toBeGreaterThan(20_000);
+    const vienna = await request(server()).get('/v1/geo/locations').query({ q: 'wien' }).expect(200);
+    expect(vienna.body.slice(0, 3).map((l: { postalCode: string }) => l.postalCode)).toEqual(['1010', '1020', '1030']);
   });
 });
