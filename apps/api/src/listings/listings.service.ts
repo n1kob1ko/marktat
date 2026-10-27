@@ -5,17 +5,26 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import {
+  carryOverAttributes,
+  categoryAttributeSchema,
   DEFAULT_LISTING_DURATION_DAYS,
   listingPublishSchema,
+  missingRequiredAttributes,
+  parseListingAttributes,
   slugify,
+  type AttributeIssue,
+  type CategoryAttributeSchema,
   type CreateListingInput,
+  type ItemCondition,
+  type ListingAttributes,
   type ListingQuery,
   type ListingStatus,
+  type PriceType,
   type Paginated,
   type ListingSummary,
   type UpdateListingInput,
 } from '@marktat/shared';
-import type { Listing, Prisma } from '../generated/prisma/client.js';
+import type { Category, Listing, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
@@ -47,6 +56,11 @@ export class ListingsService {
     const { publish, ...fields } = input;
     const category = fields.categoryId ? await this.requireCategory(fields.categoryId, publish) : null;
     if (fields.locationId) await this.requireLocation(fields.locationId);
+    const schema = categoryAttributeSchema(category?.path);
+    const attributes = this.parseAttributes(schema, fields.attributes ?? {});
+    const condition = this.conditionFor(schema, fields.condition);
+    const price = this.pricingFor(schema, fields.priceType, fields.priceCents);
+    if (publish) this.assertComplete({ ...fields, ...price, attributes: undefined }, schema, attributes);
 
     const now = new Date();
     const listing = await this.prisma.listing.create({
@@ -57,11 +71,11 @@ export class ListingsService {
         description: fields.description ?? '',
         categoryId: category?.id ?? null,
         vertical: category?.vertical ?? 'MARKETPLACE',
-        priceType: fields.priceType ?? null,
-        priceCents: this.priceFor(fields.priceType, fields.priceCents),
-        condition: fields.condition ?? null,
+        priceType: price.priceType,
+        priceCents: this.toBigInt(price.priceCents),
+        condition,
         locationId: fields.locationId ?? null,
-        attributes: fields.attributes ?? {},
+        attributes,
         status: publish ? 'ACTIVE' : 'DRAFT',
         publishedAt: publish ? now : null,
         expiresAt: publish ? expiryFrom(now) : null,
@@ -80,32 +94,40 @@ export class ListingsService {
 
   async update(user: AuthUser, id: string, input: UpdateListingInput) {
     const current = await this.requireOwned(user, id);
-    if (input.categoryId) await this.requireCategory(input.categoryId, current.status === 'ACTIVE');
+    const isLive = current.status === 'ACTIVE' || current.status === 'PAUSED';
+    const categoryChanged = input.categoryId !== undefined && input.categoryId !== current.categoryId;
+    const category = categoryChanged ? await this.requireCategory(input.categoryId!, isLive) : await this.currentCategory(current);
     if (input.locationId) await this.requireLocation(input.locationId);
+    const schema = categoryAttributeSchema(category?.path);
 
-    const merged = { ...this.editableFields(current), ...input };
+    // Zusatzangaben: übermittelte Werte ersetzen die gespeicherten vollständig. Beim Kategoriewechsel
+    // ohne neue Werte bleiben nur Angaben, die auch in der neuen Kategorie existieren.
+    let attributes: ListingAttributes | undefined;
+    if (input.attributes !== undefined) attributes = this.parseAttributes(schema, input.attributes);
+    else if (categoryChanged) attributes = carryOverAttributes(schema, current.attributes);
+
+    let condition: ItemCondition | null | undefined;
+    if (input.condition !== undefined) condition = this.conditionFor(schema, input.condition);
+    else if (categoryChanged && !schema.itemCondition) condition = null;
+
+    const stored = this.editableFields(current);
+    const priceChanged = input.priceType !== undefined || input.priceCents !== undefined || categoryChanged;
+    const price = this.pricingFor(schema, input.priceType ?? stored.priceType, input.priceCents !== undefined ? input.priceCents : stored.priceCents);
+    const { attributes: _attributes, ...changes } = input;
+    const merged = { ...stored, ...changes, ...price };
     // Aktive Inserate müssen nach jeder Änderung vollständig bleiben.
-    if (current.status === 'ACTIVE' || current.status === 'PAUSED') {
-      this.assertPublishable(merged);
-    }
-    const priceType = merged.priceType ?? null;
+    if (isLive) this.assertComplete(merged, schema, attributes ?? carryOverAttributes(schema, current.attributes));
+
     const updated = await this.prisma.listing.update({
       where: { id },
       data: {
         ...(input.title !== undefined ? { title: input.title, slug: slugify(input.title) } : {}),
         ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.categoryId !== undefined
-          ? {
-              categoryId: input.categoryId,
-              vertical: (await this.categories.findActive(input.categoryId))!.vertical,
-            }
-          : {}),
-        ...(input.priceType !== undefined || input.priceCents !== undefined
-          ? { priceType, priceCents: this.priceFor(priceType, merged.priceCents) }
-          : {}),
-        ...(input.condition !== undefined ? { condition: input.condition } : {}),
+        ...(categoryChanged ? { categoryId: category!.id, vertical: category!.vertical } : {}),
+        ...(priceChanged ? { priceType: price.priceType, priceCents: this.toBigInt(price.priceCents) } : {}),
+        ...(condition !== undefined ? { condition } : {}),
         ...(input.locationId !== undefined ? { locationId: input.locationId } : {}),
-        ...(input.attributes !== undefined ? { attributes: input.attributes } : {}),
+        ...(attributes !== undefined ? { attributes } : {}),
       },
       include: listingInclude,
     });
@@ -120,12 +142,16 @@ export class ListingsService {
       throw new ConflictException('Dieses Inserat kann nicht veröffentlicht werden.');
     }
     const fields = this.editableFields(current);
-    this.assertPublishable(fields);
-    await this.requireCategory(fields.categoryId!, true);
+    const category = fields.categoryId ? await this.requireCategory(fields.categoryId, true) : null;
+    const schema = categoryAttributeSchema(category?.path);
+    // Altbestand: nicht (mehr) passende Angaben fallen weg, fehlende Pflichtangaben werden gemeldet.
+    const attributes = carryOverAttributes(schema, current.attributes);
+    this.assertComplete(fields, schema, attributes);
     const now = new Date();
     const updated = await this.prisma.listing.update({
       where: { id },
       data: {
+        attributes,
         status: 'ACTIVE',
         publishedAt: status === 'DRAFT' || !current.publishedAt ? now : current.publishedAt,
         expiresAt: expiryFrom(now),
@@ -257,11 +283,40 @@ export class ListingsService {
     if (!exists) throw new BadRequestException('Der gewählte Ort ist unbekannt.');
   }
 
-  private priceFor(priceType: string | null | undefined, priceCents: number | null | undefined) {
-    if (priceType === 'FIXED' || priceType === 'NEGOTIABLE') {
-      return priceCents === null || priceCents === undefined ? null : BigInt(priceCents);
+  /** Kategorie eines bestehenden Inserats – auch wenn sie inzwischen deaktiviert wurde. */
+  private async currentCategory(listing: Listing): Promise<Category | null> {
+    if (!listing.categoryId) return null;
+    return (await this.categories.findActive(listing.categoryId)) ?? this.prisma.category.findUnique({ where: { id: listing.categoryId } });
+  }
+
+  private parseAttributes(schema: CategoryAttributeSchema, input: Record<string, unknown>) {
+    const { attributes, issues } = parseListingAttributes(schema, input);
+    if (issues.length) this.fail('Bitte prüfe die Zusatzangaben.', issues);
+    return attributes;
+  }
+
+  /** Der Artikelzustand (Neu, Gut …) gehört nur zu Waren, nicht zu Autos, Wohnungen oder Jobs. */
+  private conditionFor(schema: CategoryAttributeSchema, condition: ItemCondition | null | undefined): ItemCondition | null {
+    if (!condition) return null;
+    if (!schema.itemCondition) {
+      this.fail('Bitte prüfe die Zusatzangaben.', [{ path: 'condition', message: 'Für diese Kategorie gibt es keine Zustandsangabe.' }]);
     }
-    return null;
+    return condition;
+  }
+
+  /** Jobs haben keinen Preis (das Gehalt steht in den Zusatzangaben), sonst gilt der Preis nur bei Fix/VB. */
+  private pricingFor(schema: CategoryAttributeSchema, priceType: PriceType | null | undefined, priceCents: number | null | undefined) {
+    if (schema.price === 'none') return { priceType: 'ON_REQUEST' as const, priceCents: null };
+    const needsPrice = priceType === 'FIXED' || priceType === 'NEGOTIABLE';
+    return { priceType: priceType ?? null, priceCents: needsPrice ? (priceCents ?? null) : null };
+  }
+
+  private toBigInt(cents: number | null) {
+    return cents === null ? null : BigInt(cents);
+  }
+
+  private fail(message: string, errors: AttributeIssue[]): never {
+    throw new BadRequestException({ statusCode: 400, message, errors });
   }
 
   private editableFields(listing: Listing) {
@@ -273,18 +328,16 @@ export class ListingsService {
       priceCents: listing.priceCents === null ? null : Number(listing.priceCents),
       condition: listing.condition,
       locationId: listing.locationId ?? undefined,
-      attributes: (listing.attributes ?? {}) as Record<string, string | number | boolean>,
     };
   }
 
-  private assertPublishable(fields: Record<string, unknown>) {
+  /** Vollständigkeit fürs Veröffentlichen: allgemeine Felder und Pflichtangaben der Kategorie, alle Fehler auf einmal. */
+  private assertComplete(fields: Record<string, unknown>, schema: CategoryAttributeSchema, attributes: ListingAttributes) {
     const result = listingPublishSchema.safeParse(fields);
-    if (!result.success) {
-      throw new BadRequestException({
-        statusCode: 400,
-        message: 'Das Inserat ist noch nicht vollständig.',
-        errors: result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
-      });
-    }
+    const errors: AttributeIssue[] = result.success
+      ? []
+      : result.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message }));
+    errors.push(...missingRequiredAttributes(schema, attributes));
+    if (errors.length) this.fail('Das Inserat ist noch nicht vollständig.', errors);
   }
 }

@@ -1,11 +1,21 @@
-import type { ListingDetail, ListingStatus, ListingSummary } from '@marktat/shared';
+import {
+  carryOverAttributes,
+  categoryAttributeSchema,
+  formatSalary,
+  listingFacts,
+  priceSuffix,
+  type ListingAttributes,
+  type ListingDetail,
+  type ListingStatus,
+  type ListingSummary,
+} from '@marktat/shared';
 import type { Prisma } from '../generated/prisma/client.js';
 import { toLocationSummary, locationInclude } from '../geo/geo.service.js';
 import { toPublicSeller } from '../users/users.mapper.js';
 import type { ImageUrls } from '../images/image-urls.js';
 
 export const listingInclude = {
-  category: { select: { id: true, name: true, slug: true } },
+  category: { select: { id: true, name: true, slug: true, path: true } },
   location: { include: locationInclude },
   // Nur fertig verarbeitete Bilder; unverarbeitete Uploads tauchen in keiner Antwort auf.
   images: {
@@ -40,6 +50,7 @@ function needsSignedUrls(listing: ListingWithRelations) {
 
 export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls): ListingSummary {
   const main = listing.images[0];
+  const schema = categoryAttributeSchema(listing.category?.path);
   return {
     id: listing.id,
     slug: listing.slug,
@@ -47,10 +58,14 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
     priceType: listing.priceType,
     priceCents: listing.priceCents === null ? null : Number(listing.priceCents),
     status: effectiveStatus(listing),
-    category: listing.category ?? { id: '', name: 'Ohne Kategorie', slug: '' },
+    vertical: listing.vertical,
+    category: listing.category ?? { id: '', name: 'Ohne Kategorie', slug: '', path: '' },
     location: listing.location ? toLocationSummary(listing.location) : null,
     imageUrl: main ? urls.url(main.id, 'thumb', needsSignedUrls(listing)) : null,
     isBusiness: listing.seller.accountType === 'BUSINESS',
+    facts: listingFacts(schema, listing.attributes),
+    priceSuffix: priceSuffix(schema, listing.attributes),
+    salary: schema.price === 'none' ? formatSalary(carryOverAttributes(schema, listing.attributes), true) : null,
     publishedAt: listing.publishedAt?.toISOString() ?? null,
     createdAt: listing.createdAt.toISOString(),
   };
@@ -63,7 +78,7 @@ export function toListingDetail(listing: ListingWithRelations, urls: ImageUrls, 
     description: listing.description,
     images: listing.images.map((image, index) => urls.toDto(image, index, signed)),
     condition: listing.condition,
-    attributes: (listing.attributes ?? {}) as ListingDetail['attributes'],
+    attributes: (listing.attributes ?? {}) as ListingAttributes,
     expiresAt: listing.expiresAt?.toISOString() ?? null,
     updatedAt: listing.updatedAt.toISOString(),
     seller: toPublicSeller(listing.seller),

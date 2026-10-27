@@ -23,9 +23,17 @@ const priceCentsSchema = z
   .max(MAX_PRICE_CENTS, 'Der Preis ist zu hoch.');
 
 /**
- * Felder eines Inserats. Kategorieabhängige Zusatzfelder landen in `attributes`
- * und werden serverseitig gegen das Attribut-Schema der Kategorie geprüft (ab Phase 2/5).
+ * Grobe Formprüfung der Zusatzangaben. Welche Felder mit welchen Werten erlaubt sind, hängt von der
+ * Kategorie ab und wird in der API mit `parseListingAttributes` geprüft (siehe `attributes/`).
  */
+const attributesSchema = z
+  .record(
+    z.string().max(40),
+    z.union([z.string().max(500), z.number(), z.boolean(), z.array(z.string().max(60)).max(30)]),
+  )
+  .refine((value) => Object.keys(value).length <= 40, 'Zu viele Zusatzangaben.');
+
+/** Felder eines Inserats. Kategorieabhängige Zusatzfelder landen in `attributes`. */
 const listingFields = {
   title: listingTitleSchema,
   description: listingDescriptionSchema,
@@ -34,7 +42,7 @@ const listingFields = {
   priceCents: priceCentsSchema.nullable().optional(),
   condition: z.enum(ITEM_CONDITIONS).nullable().optional(),
   locationId: z.number({ error: 'Bitte gib eine PLZ ein und wähle einen Ort.' }).int().positive('Bitte wähle einen Ort.'),
-  attributes: z.record(z.string(), z.union([z.string(), z.number(), z.boolean()])).optional(),
+  attributes: attributesSchema.optional(),
 };
 
 function refinePrice(

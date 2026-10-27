@@ -12,8 +12,8 @@ Kategorien sind CUIDs (nicht erratbar), Nutzer-IDs die UUID aus Supabase Auth.
 | `states` | 9 Bundesländer | `id` 1–9, `code` (AT-1 … AT-9), `slug`, `name` |
 | `districts` | 93 politische Bezirke + 23 Wiener Gemeindebezirke | `id` = Bezirkskennziffer (Statistik Austria), `state_id` |
 | `locations` | Orte mit PLZ | `postal_code`, `place`, `district_id`, `latitude`, `longitude`, `geom geography(Point,4326)` mit GiST-Index |
-| `categories` | Kategoriebaum je Bereich | `parent_id`, `vertical`, `path` (eindeutig, für SEO-URLs), `attribute_schema` (JSON, ab Phase 2) |
-| `listings` | Inserate | `seller_id`, `category_id`, `vertical`, `title`, `description`, `price_type`, `price_cents` (BIGINT), `condition`, `attributes` (JSON), `status`, `location_id`, `published_at`, `expires_at`, `deleted_at` |
+| `categories` | Kategoriebaum je Bereich | `parent_id`, `vertical`, `path` (eindeutig, für SEO-URLs; bestimmt auch die Zusatzfelder), `attribute_schema` (JSON, derzeit ungenutzt) |
+| `listings` | Inserate | `seller_id`, `category_id`, `vertical`, `title`, `description`, `price_type`, `price_cents` (BIGINT), `condition`, `attributes` (JSON, kategorieabhängige Zusatzangaben, siehe [Kategorie-Felder](kategorie-felder.md)), `status`, `location_id`, `published_at`, `expires_at`, `deleted_at` |
 | `listing_images` | Bilder je Inserat (Phase 2) | `status` (PENDING/READY), `upload_key` (Rohdatei, nach Verarbeitung leer), `storage_key` (Präfix der Varianten), `declared_type`/`declared_size`, `detected_type`, `width`, `height`, `stored_bytes`, `sort_order` (0 = Hauptbild) |
 | `audit_logs` | Sicherheitsrelevante Ereignisse | `actor_id`, `action`, `entity_type`, `entity_id`, `ip_prefix` (gekürzt), `metadata` |
 
@@ -39,7 +39,6 @@ Status, Inserate je Kategorie, Ablaufdatum (für einen späteren Ablauf-Job).
 | Phase | Tabellen | Notiz |
 | --- | --- | --- |
 | 2 | `favorites`, `saved_searches` | gespeicherte Suche mit Filter-JSON und Benachrichtigungsintervall |
-| 2 | Kategorie-Attribute | `categories.attribute_schema` + `listings.attributes`, Validierung über Zod je Kategorie |
 | 3 | `conversations`, `messages` | Nachrichten je Inserat zwischen Käufer und Verkäufer |
 | 3 | `reports`, `moderation_actions`, `user_blocks` | Meldeverfahren nach DSA (Art. 16/17: Begründung an Betroffene) |
 | 3 | `notifications`, `email_events` | über BullMQ versendet |
