@@ -57,7 +57,8 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
-          cache: pnpm
+          # Ohne Installation gibt es keinen pnpm-Store; der Cache-Schritt würde sonst den Job rot färben
+          package-manager-cache: false
       # Nur Laufzeit-Abhängigkeiten; ab „high“ schlägt der Job fehl (moderate stehen im Log)
       - run: pnpm audit --prod --audit-level high
 
