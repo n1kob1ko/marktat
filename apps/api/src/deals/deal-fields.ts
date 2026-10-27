@@ -126,6 +126,21 @@ export function needsDiscountReview(discountPercent: number | null) {
   return discountPercent !== null && discountPercent >= DEAL_DISCOUNT_REVIEW_PERCENT;
 }
 
+/**
+ * Status nach einer Änderung (Formular, Import, Feed): erneute Prüfung nur, wenn sich Preis oder Vergleichspreis
+ * ändern und der Rabatt sehr hoch ist; eine automatische Prüfung entfällt, sobald der Rabatt wieder darunter liegt.
+ * Ein vom Team freigegebener Rabatt bleibt damit freigegeben, solange der Preis gleich bleibt.
+ */
+export function statusAfterChange(
+  current: Pick<Deal, 'status' | 'reviewReason'>,
+  discountPercent: number | null,
+  priceChanged: boolean,
+): Pick<Deal, 'status' | 'reviewReason'> {
+  if (current.status === 'ACTIVE' && priceChanged && needsDiscountReview(discountPercent)) return { status: 'PENDING_REVIEW', reviewReason: DISCOUNT_REVIEW_REASON };
+  if (current.status === 'PENDING_REVIEW' && current.reviewReason === DISCOUNT_REVIEW_REASON && !needsDiscountReview(discountPercent)) return { status: 'ACTIVE', reviewReason: null };
+  return { status: current.status, reviewReason: current.reviewReason };
+}
+
 /** Filialzuordnung ersetzen */
 export async function replaceDealStores(tx: Prisma.TransactionClient, dealId: string, storeIds: string[]) {
   await tx.dealStore.deleteMany({ where: { dealId, storeId: { notIn: storeIds } } });

@@ -42,6 +42,15 @@ export class HttpExceptionFilter implements ExceptionFilter {
       return response.status(status).json({ statusCode: status, message: String(body) });
     }
 
+    // Fehler des Body-Parsers (zu groß, ungültiges JSON) sind Eingabefehler, keine Serverfehler
+    const parserStatus = bodyParserStatus(exception);
+    if (parserStatus) {
+      return response.status(parserStatus).json({
+        statusCode: parserStatus,
+        message: parserStatus === 413 ? 'Die Anfrage bzw. Datei ist zu groß.' : 'Die Anfrage konnte nicht gelesen werden.',
+      });
+    }
+
     if (exception instanceof Prisma.PrismaClientKnownRequestError) {
       if (exception.code === 'P2025') {
         return response
@@ -93,4 +102,12 @@ export function routePattern(request: Request): string {
   const route = (request.route as { path?: string } | undefined)?.path;
   if (route) return `${request.baseUrl ?? ''}${route}`;
   return request.path.replace(/\/[^/]*\d[^/]*/g, '/:param').slice(0, 120);
+}
+
+/** http-errors aus body-parser: { status, expose: true, type: 'entity.too.large' | 'entity.parse.failed' | … } */
+function bodyParserStatus(exception: unknown): number | null {
+  if (typeof exception !== 'object' || exception === null) return null;
+  const { status, expose, type } = exception as { status?: unknown; expose?: unknown; type?: unknown };
+  if (expose !== true || typeof type !== 'string' || !/^(entity|encoding|charset)\./.test(type)) return null;
+  return typeof status === 'number' && status >= 400 && status < 500 ? status : null;
 }

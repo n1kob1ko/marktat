@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { ImageOff } from 'lucide-react';
-import { Badge, Skeleton } from '@marktat/ui';
+import { Badge, buttonClasses, Skeleton } from '@marktat/ui';
 import { ADMIN_DEAL_FILTER_LABELS, ADMIN_DEAL_FILTERS, formatDateTime, formatPriceCents, type AdminDealSummary, type Paginated } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { requireStaff } from '@/lib/auth';
@@ -35,6 +35,12 @@ async function Deals({ searchParams }: Pick<PageProps<'/admin/deals'>, 'searchPa
       <PageTitle
         title="Deals"
         description={`${result.total.toLocaleString('de-AT')} Angebot(e). Hohe Rabatte, defekte Links, fehlende Bestätigungen und mögliche Doppelte lassen sich gezielt filtern.`}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/deals/feeds?status=PENDING" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Produktfeeds</Link>
+            <Link href="/admin/deals/importe" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Importfehler</Link>
+          </div>
+        }
       />
       <FilterBar action="/admin/deals">
         <FilterSearch label="Titel, Händler, Artikelnummer oder ID" value={filters.q} placeholder="z. B. Notebook" />

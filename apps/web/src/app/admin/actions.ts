@@ -6,6 +6,7 @@ import {
   appealDecisionSchema,
   assignDealMerchantSchema,
   changeRoleSchema,
+  dealFeedReviewSchema,
   dealsBlockSchema,
   dismissReportSchema,
   listingDecisionSchema,
@@ -317,4 +318,22 @@ export async function resolveErrorAction(_prev: FormState, formData: FormData): 
   }
   revalidatePath('/admin/system');
   return { status: 'success' };
+}
+
+// --- Produktfeeds -----------------------------------------------------------------
+
+export async function reviewDealFeedAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['note']);
+  const parsed = dealFeedReviewSchema.safeParse({ decision: text(formData, 'decision'), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die Angaben.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff('/admin/deals/feeds');
+  try {
+    await api(`/admin/deal-feeds/${id}/review`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/admin/deals/feeds');
+  return { status: 'success', message: 'Gespeichert.' };
 }

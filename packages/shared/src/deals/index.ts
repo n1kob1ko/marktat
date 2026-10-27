@@ -6,3 +6,5 @@ export * from './pricing.js';
 export * from './schemas.js';
 export * from './types.js';
 export * from './admin.js';
+export * from './import.js';
+export * from './feeds.js';

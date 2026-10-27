@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { connection } from 'next/server';
 import { Suspense } from 'react';
 import { ArrowRight, Briefcase, Car, Camera, House, MessageCircle, ShieldCheck, ShoppingBag, Store, Tag } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
@@ -251,6 +252,8 @@ async function LatestListings() {
 
 /** Nur tatsächlich aktive, bestätigte Deals (die API liefert keine anderen); ohne Deals ein Hinweis für Händler */
 async function LatestDeals() {
+  // Gültigkeit („endet bald“) hängt vom aktuellen Zeitpunkt ab: zur Anfragezeit rendern, die Daten bleiben zwischengespeichert
+  await connection();
   const deals = await getLatestDeals(4);
   if (!deals.length) {
     return (

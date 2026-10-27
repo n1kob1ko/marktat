@@ -17,6 +17,8 @@ import { variantKey } from '../images/listing-images.service.js';
 import { JobsService, redact } from '../jobs/jobs.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { SearchIndexService } from '../search/search-index.service.js';
+import { DealSearchService } from '../deals/deal-search.service.js';
+import { mediaVariantKey } from '../images/media.js';
 import { OBJECT_STORAGE, type ObjectStorage } from '../storage/storage.types.js';
 import { SupabaseAdminClient } from './supabase-admin.client.js';
 
@@ -55,6 +57,7 @@ export class AccountDeletionService implements OnModuleInit {
     private readonly audit: AuditService,
     private readonly jobs: JobsService,
     private readonly searchIndex: SearchIndexService,
+    private readonly dealSearch: DealSearchService,
     private readonly authAdmin: SupabaseAdminClient,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {}
@@ -202,6 +205,10 @@ export class AccountDeletionService implements OnModuleInit {
     if (listings.length && !(await this.searchIndex.syncNow(listings.map((l) => l.id), true))) {
       throw new Error('Suchindex nicht erreichbar');
     }
+    const deals = await this.prisma.deal.findMany({ where: { merchantId: userId }, select: { id: true } });
+    if (deals.length && !(await this.dealSearch.index.syncNow(deals.map((d) => d.id), true))) {
+      throw new Error('Suchindex der Deals nicht erreichbar');
+    }
   }
 
   private async deleteImages(userId: string) {
@@ -213,6 +220,9 @@ export class AccountDeletionService implements OnModuleInit {
       ...IMAGE_VARIANT_NAMES.map((variant) => variantKey(image.storageKey, variant)),
       ...(image.uploadKey ? [image.uploadKey] : []),
     ]);
+    // Produktbilder der Deals
+    const deals = await this.prisma.deal.findMany({ where: { merchantId: userId, imageKey: { not: null } }, select: { imageKey: true } });
+    for (const deal of deals) keys.push(...IMAGE_VARIANT_NAMES.map((variant) => mediaVariantKey(deal.imageKey!, variant)));
     // Händlerlogo
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { logoKey: true } });
     if (user?.logoKey) keys.push(user.logoKey);
@@ -236,6 +246,11 @@ export class AccountDeletionService implements OnModuleInit {
       // Inserate endgültig löschen: Bilder-Einträge und Merklisten anderer fallen per Cascade weg,
       // Verweise aus Meldungen und Entscheidungen werden null (der Schnappschuss in der Entscheidung bleibt).
       await tx.listing.deleteMany({ where: { sellerId: userId } });
+      // Deals mit Filialzuordnung und erfassten Preisen, Filialen, Importe und Feeds des Händlers
+      await tx.dealImport.deleteMany({ where: { merchantId: userId } });
+      await tx.deal.deleteMany({ where: { merchantId: userId } });
+      await tx.dealFeed.deleteMany({ where: { merchantId: userId } });
+      await tx.dealerStore.deleteMany({ where: { merchantId: userId } });
       // Eigene Meldungen bleiben für die Moderation, aber ohne Verweis auf die meldende Person
       await tx.report.updateMany({ where: { reporterId: userId }, data: { reporterId: null } });
       await tx.report.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });

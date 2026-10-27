@@ -37,6 +37,7 @@ import {
   prepareDeal,
   replaceDealStores,
   RESUBMIT_REVIEW_REASON,
+  statusAfterChange,
 } from './deal-fields.js';
 import { DealSearchService } from './deal-search.service.js';
 import { dealInclude, isDealPublic, toDealDetail, toMerchantDeal } from './deals.mapper.js';
@@ -176,17 +177,7 @@ export class DealsService {
     if (live) this.assertNotOver(prepared.data.endsAt as Date, now);
     const referenceChanged = prepared.data.referencePriceCents !== current.referencePriceCents || prepared.data.referencePriceType !== current.referencePriceType;
     const priceChanged = referenceChanged || prepared.data.priceCents !== current.priceCents;
-    let status: DealStatus = current.status;
-    let reviewReason = current.reviewReason;
-    // Erneute Prüfung nur, wenn sich Preis oder Vergleichspreis ändern (ein vom Team freigegebener Rabatt bleibt freigegeben)
-    if (current.status === 'ACTIVE' && priceChanged && needsDiscountReview(prepared.discountPercent)) {
-      status = 'PENDING_REVIEW';
-      reviewReason = DISCOUNT_REVIEW_REASON;
-    } else if (current.status === 'PENDING_REVIEW' && current.reviewReason === DISCOUNT_REVIEW_REASON && !needsDiscountReview(prepared.discountPercent)) {
-      // Automatische Prüfung entfällt, sobald der Rabatt wieder im üblichen Rahmen liegt
-      status = 'ACTIVE';
-      reviewReason = null;
-    }
+    const { status, reviewReason } = statusAfterChange(current, prepared.discountPercent, priceChanged);
     const updated = await this.prisma.$transaction(async (tx) => {
       const changed = await tx.deal.updateMany({
         where: { id, status: current.status, updatedAt: current.updatedAt },
@@ -295,9 +286,10 @@ export class DealsService {
 
   async remove(user: AuthUser, id: string, ip?: string) {
     const current = await this.requireOwned(user, id);
-    await this.prisma.deal.update({ where: { id }, data: { status: 'DELETED', deletedAt: new Date(), imageKey: null } });
+    // Artikelnummer freigeben: ein späterer Import derselben Nummer legt ein neues Angebot an (die alte steht im Protokoll)
+    await this.prisma.deal.update({ where: { id }, data: { status: 'DELETED', deletedAt: new Date(), imageKey: null, externalId: null } });
     if (current.imageKey) await deleteMediaImage(this.storage, current.imageKey).catch(() => undefined);
-    this.audit.log({ action: 'deal.deleted', actorId: user.id, entityType: 'deal', entityId: id, ip });
+    this.audit.log({ action: 'deal.deleted', actorId: user.id, entityType: 'deal', entityId: id, ip, metadata: { externalId: current.externalId } });
     this.search.index.sync(id);
   }
 

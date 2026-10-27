@@ -1,6 +1,5 @@
-import { expect, test, type Browser, type BrowserContextOptions, type Page, type TestInfo } from '@playwright/test';
-import { PASSWORD } from './accounts';
-import { waitForMailLink } from './mailpit';
+import { expect, test } from '@playwright/test';
+import { expectNoHorizontalScroll, newPage, registerBusiness, viennaDay } from './merchant';
 
 /**
  * Phase 10, Deals: Händler bestätigt seine Angaben, legt eine Filiale an und veröffentlicht ein Angebot mit
@@ -10,40 +9,6 @@ import { waitForMailLink } from './mailpit';
 test.describe.configure({ mode: 'serial' });
 
 const run = Date.now();
-
-function contextOptions(testInfo: TestInfo): BrowserContextOptions {
-  const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, locale, timezoneId, baseURL } = testInfo.project.use;
-  return { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch, locale, timezoneId, baseURL };
-}
-
-async function newPage(browser: Browser, testInfo: TestInfo) {
-  const context = await browser.newContext(contextOptions(testInfo));
-  return { context, page: await context.newPage() };
-}
-
-async function expectNoHorizontalScroll(page: Page) {
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
-}
-
-/** Datum in Wien als yyyy-mm-dd (für <input type="date">) */
-function viennaDay(offsetDays: number) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Vienna' }).format(new Date(Date.now() + offsetDays * 86_400_000));
-}
-
-async function registerBusiness(page: Page, companyName: string, email: string) {
-  await page.goto('/registrieren');
-  await page.getByText('Gewerblich', { exact: true }).click();
-  await page.getByLabel('Anzeigename').fill(companyName);
-  await page.getByLabel('Firmenname').fill(companyName);
-  await page.getByLabel('E-Mail-Adresse').fill(email);
-  await page.getByLabel('Passwort').fill(PASSWORD);
-  await page.getByRole('checkbox', { name: /Ich akzeptiere/ }).check();
-  await page.getByRole('button', { name: 'Konto erstellen' }).click();
-  await expect(page.getByText('Bitte bestätige deine E-Mail-Adresse')).toBeVisible();
-  await page.goto(await waitForMailLink(email, /bestätige/));
-  await expect(page).toHaveURL(/\/konto\?bestaetigt=1/);
-}
 
 test('Startseite zeigt den Deals-Abschnitt, ohne die Kleinanzeigen zu verdrängen', async ({ page }) => {
   await page.goto('/');

@@ -56,6 +56,16 @@ export class DataExportService {
         orderBy: { createdAt: 'asc' },
       }),
     ]);
+    // Händlerbereich (Phase 10): Deals, Filialen, Produktfeeds
+    const [deals, stores, feeds] = await Promise.all([
+      this.prisma.deal.findMany({
+        where: { merchantId: id, status: { not: 'DELETED' } },
+        include: { category: { select: { name: true } }, priceRecords: { select: { priceCents: true, recordedAt: true }, orderBy: { recordedAt: 'asc' } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      this.prisma.dealerStore.findMany({ where: { merchantId: id, deletedAt: null }, include: { location: { select: { postalCode: true, place: true } } } }),
+      this.prisma.dealFeed.findMany({ where: { merchantId: id, deletedAt: null }, orderBy: { createdAt: 'asc' } }),
+    ]);
     const name = (u: { displayName: string; status: string }) => (u.status === 'DELETED' ? 'Gelöschtes Konto' : u.displayName);
 
     this.audit.log({ action: 'privacy.export', actorId: id, entityType: 'user', entityId: id, ip });
@@ -136,6 +146,27 @@ export class DataExportService {
       })),
       notifications: notifications.map((n) => ({ title: n.title, body: n.body, createdAt: n.createdAt, readAt: n.readAt })),
       activity: activity.map((a) => ({ action: a.action, at: a.createdAt, ipPrefix: a.ipPrefix })),
+      deals: deals.map((d) => ({
+        id: d.id,
+        title: d.title,
+        description: d.description,
+        category: d.category.name,
+        status: d.status,
+        channel: d.channel,
+        url: d.url,
+        priceCents: d.priceCents,
+        referencePriceCents: d.referencePriceCents,
+        referencePriceType: d.referencePriceType,
+        referencePriceSource: d.referencePriceSource,
+        startsAt: d.startsAt,
+        endsAt: d.endsAt,
+        source: d.source,
+        externalId: d.externalId,
+        createdAt: d.createdAt,
+        recordedPrices: d.priceRecords,
+      })),
+      stores: stores.map((s) => ({ name: s.name, street: s.street, postalCode: s.location.postalCode, place: s.location.place, openingHours: s.openingHours })),
+      dealFeeds: feeds.map((f) => ({ name: f.name, url: f.url, format: f.format, status: f.status, licenseNote: f.licenseNote, createdAt: f.createdAt })),
       bookings: bookings.map((b) => ({
         product: b.product.name,
         listing: b.listing?.title ?? null,

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { ExternalLink, ImageIcon, MapPin, Plus, Store } from 'lucide-react';
+import { ExternalLink, FileUp, ImageIcon, MapPin, Plus, Store } from 'lucide-react';
 import { Alert, buttonClasses, Card, Skeleton } from '@marktat/ui';
 import { DEAL_CHANNEL_LABELS, formatDate, formatPriceCents, type MerchantDealOverview } from '@marktat/shared';
 import { api } from '@/lib/api';
@@ -77,6 +77,9 @@ async function MyDeals({ searchParams }: Pick<PageProps<'/konto/deals'>, 'search
         <div className="flex flex-wrap gap-2">
           <Link href="/konto/deals/filialen" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
             <Store className="size-4" aria-hidden="true" /> Filialen
+          </Link>
+          <Link href="/konto/deals/import" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+            <FileUp className="size-4" aria-hidden="true" /> Importieren
           </Link>
           {!eligibility.blocked ? (
             <Link href="/konto/deals/neu" className={buttonClasses({ size: 'sm' })}>

@@ -82,7 +82,20 @@ export type AuditAction =
   | 'moderation.deal_restored'
   | 'admin.deal_merchant_changed'
   | 'admin.deals_blocked'
-  | 'admin.deals_unblocked';
+  | 'admin.deals_unblocked'
+  | 'deal.import_uploaded'
+  | 'deal.import_committed'
+  | 'deal.feed_created'
+  | 'deal.feed_updated'
+  | 'deal.feed_paused'
+  | 'deal.feed_resumed'
+  | 'deal.feed_deleted'
+  | 'deal.feed_previewed'
+  | 'deal.feed_failing'
+  | 'deal.feed_ended'
+  | 'admin.deal_feed_approve'
+  | 'admin.deal_feed_reject'
+  | 'admin.deal_feed_pause';
 
 /** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
 export const IMPORTANT_AUDIT_PREFIXES = [

@@ -132,6 +132,8 @@ model User {
   payments            Payment[]
   deals               Deal[]
   dealerStores        DealerStore[]
+  dealImports         DealImport[]
+  dealFeeds           DealFeed[]
 
   @@index([status])
   @@index([accountType, status])
@@ -1005,6 +1007,10 @@ model Deal {
   viewCount                 Int                 @default(0) @map("view_count")
   clickCount                Int                 @default(0) @map("click_count")
   clientRequestId           String?             @map("client_request_id") @db.Uuid
+  /// Freigegebener Produktfeed, aus dem der Deal stammt (Herkunft FEED)
+  feedId                    String?             @map("feed_id")
+  /// Letzter Import (CSV oder Feed), der den Deal angelegt oder geändert hat
+  lastImportId              String?             @map("last_import_id")
   createdAt                 DateTime            @default(now()) @map("created_at")
   updatedAt                 DateTime            @updatedAt @map("updated_at")
   deletedAt                 DateTime?           @map("deleted_at")
@@ -1015,6 +1021,7 @@ model Deal {
   priceRecords DealPriceRecord[]
   reports      Report[]
   decisions    ModerationDecision[]
+  feed         DealFeed?            @relation(fields: [feedId], references: [id])
 
   @@unique([merchantId, externalId])
   @@unique([merchantId, clientRequestId])
@@ -1024,6 +1031,7 @@ model Deal {
   @@index([categoryId, status])
   @@index([lastVerifiedAt])
   @@index([linkCheckedAt])
+  @@index([feedId])
   @@map("deals")
 }
 
@@ -1116,4 +1124,96 @@ model ErrorEvent {
 
   @@index([lastSeenAt])
   @@map("error_events")
+}
+
+enum DealImportStatus {
+  PREVIEW
+  COMMITTED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum DealFeedFormat {
+  CSV
+  JSON
+}
+
+enum DealFeedStatus {
+  /// Wartet auf Freigabe durch das Team – wird nicht abgerufen
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+  /// Nach mehreren Fehlschlägen in Folge angehalten
+  FAILING
+}
+
+/// Massenimport (CSV-Datei oder Abruf eines Feeds): Vorschau, Ergebnis je Zeile, Historie
+model DealImport {
+  id                 String           @id @default(cuid())
+  merchantId         String           @map("merchant_id") @db.Uuid
+  feedId             String?          @map("feed_id")
+  source             DealSource
+  format             DealFeedFormat   @default(CSV)
+  fileName           String?          @map("file_name") @db.VarChar(200)
+  status             DealImportStatus @default(PREVIEW)
+  /// Rohdaten nur bis zur Übernahme bzw. bis zum Ablauf der Vorschau
+  rawText            String?          @map("raw_text")
+  headers            Json             @default("[]")
+  mapping            Json             @default("{}")
+  /// Ergebnis je Zeile (DealImportRowResult[])
+  rows               Json             @default("[]")
+  counts             Json             @default("{}")
+  hasReferencePrices Boolean          @default(false) @map("has_reference_prices")
+  publish            Boolean?
+  error              String?          @db.VarChar(500)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  committedAt        DateTime?        @map("committed_at")
+  expiresAt          DateTime?        @map("expires_at")
+
+  merchant User      @relation(fields: [merchantId], references: [id])
+  feed     DealFeed? @relation(fields: [feedId], references: [id])
+
+  @@index([merchantId, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@index([feedId, createdAt(sort: Desc)])
+  @@map("deal_imports")
+}
+
+/// Produktfeed eines Händlers (eigener oder lizenzierter Feed); wird erst nach Freigabe durch das Team abgerufen
+model DealFeed {
+  id                       String           @id @default(cuid())
+  merchantId               String           @map("merchant_id") @db.Uuid
+  name                     String           @db.VarChar(80)
+  url                      String           @db.VarChar(500)
+  format                   DealFeedFormat
+  intervalHours            Int              @map("interval_hours")
+  /// Herkunft und Nutzungsbedingungen laut Händler
+  licenseNote              String           @map("license_note") @db.VarChar(500)
+  licenseConfirmedAt       DateTime         @map("license_confirmed_at")
+  referencePricesConfirmed Boolean          @default(false) @map("reference_prices_confirmed")
+  imageRights              DealImageRights? @map("image_rights")
+  mapping                  Json             @default("{}")
+  status                   DealFeedStatus   @default(PENDING)
+  reviewNote               String?          @map("review_note") @db.VarChar(500)
+  reviewedById             String?          @map("reviewed_by_id") @db.Uuid
+  approvedAt               DateTime?        @map("approved_at")
+  etag                     String?          @db.VarChar(200)
+  lastModified             String?          @map("last_modified") @db.VarChar(100)
+  lastFetchedAt            DateTime?        @map("last_fetched_at")
+  nextFetchAt              DateTime?        @map("next_fetch_at")
+  lastError                String?          @map("last_error") @db.VarChar(500)
+  consecutiveFailures      Int              @default(0) @map("consecutive_failures")
+  createdAt                DateTime         @default(now()) @map("created_at")
+  updatedAt                DateTime         @updatedAt @map("updated_at")
+  deletedAt                DateTime?        @map("deleted_at")
+
+  merchant User         @relation(fields: [merchantId], references: [id])
+  deals    Deal[]
+  imports  DealImport[]
+
+  @@index([status, nextFetchAt])
+  @@index([merchantId])
+  @@map("deal_feeds")
 }

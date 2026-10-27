@@ -115,6 +115,14 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    /**
+     * Deals: freigegebene Produktfeeds der Händler regelmäßig abrufen (nur nach Freigabe durch das Team).
+     * false = keine Abrufe (z. B. Umgebung ohne Internetzugang); Händler können dann nur per CSV importieren.
+     */
+    DEAL_FEED_SYNC: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
     /** Nur Tests: ausgehende Abrufe an lokale Testserver (http, 127.0.0.1) erlauben. In Produktion verboten. */
     OUTBOUND_ALLOW_PRIVATE: z
       .enum(['true', 'false'])
