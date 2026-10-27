@@ -9,6 +9,8 @@ import { setupApp } from '../src/setup-app.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { SearchIndexService } from '../src/search/search-index.service.js';
 import { JobsService } from '../src/jobs/jobs.service.js';
+import { DEFAULT_PRODUCTS } from '../src/billing/pricing.service.js';
+import { STRIPE_GATEWAY, type StripeGateway } from '../src/billing/stripe.gateway.js';
 
 let searchIndex: SearchIndexService | undefined;
 let jobs: JobsService | undefined;
@@ -17,14 +19,16 @@ let jobs: JobsService | undefined;
  * Test-App gegen die Testdatenbank und den Test-Suchindex.
  * `meiliUrl` überschreibt die Meilisearch-Adresse, z. B. eine nicht erreichbare für den Ausweichbetrieb.
  */
-export async function createTestApp(options: { meiliUrl?: string } = {}) {
+export async function createTestApp(options: { meiliUrl?: string; stripe?: StripeGateway } = {}) {
   const original = process.env.MEILI_URL;
   if (options.meiliUrl !== undefined) {
     process.env.MEILI_URL = options.meiliUrl;
     resetEnvCache();
   }
   try {
-    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const builder = Test.createTestingModule({ imports: [AppModule] });
+    if (options.stripe) builder.overrideProvider(STRIPE_GATEWAY).useValue(options.stripe);
+    const moduleRef = await builder.compile();
     const app = moduleRef.createNestApplication<NestExpressApplication>({ bodyParser: false });
     setupApp(app);
     await app.init();
@@ -69,9 +73,18 @@ export async function resetData(prisma: PrismaService) {
   await searchIndex?.flush();
   await jobs?.drain().catch(() => jobs?.clear());
   await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listings, users CASCADE',
+    'TRUNCATE audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listing_view_days, payments, bookings, stripe_events, listings, users CASCADE',
   );
+  await restoreBillingDefaults(prisma);
   await searchIndex?.clear();
+}
+
+/** Leistungen und Einstellungen auf die Startkonfiguration zurücksetzen (alles kostenlos). */
+export async function restoreBillingDefaults(prisma: PrismaService) {
+  await prisma.product.deleteMany({});
+  await prisma.platformSettings.deleteMany({});
+  await prisma.product.createMany({ data: DEFAULT_PRODUCTS.map((p) => ({ ...p })) });
+  await prisma.platformSettings.create({ data: { id: 1 } });
 }
 
 /** Wartet, bis alle Änderungen im Suchindex angekommen sind (die API aktualisiert ihn im Hintergrund). */

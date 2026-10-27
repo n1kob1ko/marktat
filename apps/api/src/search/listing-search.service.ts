@@ -22,6 +22,33 @@ import { meiliFilters, meiliSort, sqlConditions, sqlOrder, type ResolvedSearch }
 
 /** Nach einem Fehler von Meilisearch so lange direkt PostgreSQL verwenden (keine Wartezeiten je Anfrage) */
 const BACKOFF_MS = 30_000;
+/** Top-Anzeigen über den Ergebnissen: so viele werden gezeigt, aus höchstens so vielen passenden ausgewählt */
+const TOP_ADS_SHOWN = 3;
+const TOP_ADS_POOL = 100;
+/** Die Auswahl wechselt in diesem Takt, damit jede Top-Anzeige gleich oft vorne steht */
+const TOP_ADS_ROTATION_MS = 10 * 60_000;
+
+/**
+ * Faire, vorhersagbare Rotation: Reihenfolge nach einem Hash aus Zeitfenster und ID. Innerhalb eines Fensters
+ * stabil (kein Springen beim Neuladen), über die Zeit kommt jede passende Top-Anzeige gleich oft dran –
+ * unabhängig davon, wann oder wie oft sie gebucht wurde.
+ */
+export function rotateTopAds(ids: string[], now: Date, count = TOP_ADS_SHOWN): string[] {
+  const bucket = Math.floor(now.getTime() / TOP_ADS_ROTATION_MS);
+  const hash = (value: string) => {
+    let h = 2166136261;
+    for (let i = 0; i < value.length; i++) h = Math.imul(h ^ value.charCodeAt(i), 16777619);
+    // Murmur3-Finalizer: ähnliche IDs (gleiches Präfix) landen sonst gehäuft vorne
+    h = Math.imul(h ^ (h >>> 16), 0x85ebca6b);
+    h = Math.imul(h ^ (h >>> 13), 0xc2b2ae35);
+    return (h ^ (h >>> 16)) >>> 0;
+  };
+  return [...new Set(ids)]
+    .map((id) => ({ id, rank: hash(`${bucket}:${id}`) }))
+    .sort((a, b) => a.rank - b.rank || (a.id < b.id ? -1 : 1))
+    .slice(0, count)
+    .map((entry) => entry.id);
+}
 
 type Center = NonNullable<ResolvedSearch['center']> & { summary: SearchResult['location'] };
 
@@ -79,7 +106,11 @@ export class ListingSearchService {
   }
 
   /** `categoryPath`: bereits aufgelöste Kategorie (`query.category` kann eine alte ID sein). */
-  async search(query: SearchQuery, categoryPath: string | null, options: { publishedAfter?: Date; publishedUntil?: Date } = {}): Promise<SearchResult> {
+  async search(
+    query: SearchQuery,
+    categoryPath: string | null,
+    options: { publishedAfter?: Date; publishedUntil?: Date; topAds?: boolean } = {},
+  ): Promise<SearchResult> {
     const center = await this.resolveCenter(query);
     const search: ResolvedSearch = {
       query,
@@ -100,18 +131,7 @@ export class ListingSearchService {
     }
     page ??= await this.searchPostgres(search);
 
-    const rows = page.ids.length
-      ? await this.prisma.listing.findMany({
-          where: {
-            id: { in: page.ids },
-            status: 'ACTIVE',
-            deletedAt: null,
-            expiresAt: { gt: new Date() },
-            seller: { status: 'ACTIVE', deletedAt: null },
-          },
-          include: listingInclude,
-        })
-      : [];
+    const rows = await this.loadVisible(page.ids);
     const byId = new Map(rows.map((row) => [row.id, row]));
     // Index noch nicht nachgezogen (z. B. eben pausiert): Treffer verwerfen und Eintrag korrigieren
     const stale = page.ids.filter((id) => !byId.has(id));
@@ -124,8 +144,17 @@ export class ListingSearchService {
       if (center && row.location) summary.distanceKm = distanceKm(center, row.location);
       return [summary];
     });
+    // Top-Anzeigen: dieselben Filter (nichts wird umgangen), nur auf Seite 1, nicht für Benachrichtigungen
+    const topAds =
+      options.topAds !== false && !options.publishedAfter && query.page === 1 && page.total > 0
+        ? await this.topAds(search, page.engine, center).catch((error: Error) => {
+            this.logger.warn(`Top-Anzeigen nicht geladen: ${error.message}`);
+            return [];
+          })
+        : [];
     return {
       items,
+      topAds,
       page: query.page,
       pageSize: query.pageSize,
       total: Math.max(0, page.total - stale.length),
@@ -133,6 +162,60 @@ export class ListingSearchService {
       location: center?.summary ?? null,
       engine: page.engine,
     };
+  }
+
+  /** Nur öffentlich sichtbare Inserate (gleiche Regel wie die Detailseite); Reihenfolge wie `ids` */
+  private loadVisible(ids: string[], extra: Prisma.ListingWhereInput = {}) {
+    if (!ids.length) return Promise.resolve([]);
+    return this.prisma.listing.findMany({
+      where: {
+        id: { in: ids },
+        status: 'ACTIVE',
+        deletedAt: null,
+        expiresAt: { gt: new Date() },
+        seller: { status: 'ACTIVE', deletedAt: null },
+        ...extra,
+      },
+      include: listingInclude,
+    });
+  }
+
+  private async topAds(search: ResolvedSearch, engine: SearchResult['engine'], center: Center | null) {
+    const now = new Date();
+    let pool: string[];
+    if (engine === 'meilisearch') {
+      const response = await this.index.client!.search<{ id: string }>(this.index.indexUid, {
+        q: search.query.q ?? '',
+        filter: [...meiliFilters(search, now), `topUntil > ${Math.floor(now.getTime() / 1000)}`],
+        limit: TOP_ADS_POOL,
+        attributesToRetrieve: ['id'],
+        matchingStrategy: 'all',
+      });
+      pool = response.hits.map((hit) => hit.id);
+    } else {
+      const rows = await this.prisma.$queryRaw<{ id: string }[]>`
+        SELECT l.id
+        FROM listings l
+        JOIN users u ON u.id = l.seller_id
+        LEFT JOIN categories c ON c.id = l.category_id
+        LEFT JOIN locations loc ON loc.id = l.location_id
+        LEFT JOIN districts d ON d.id = loc.district_id
+        LEFT JOIN states s ON s.id = d.state_id
+        WHERE ${Prisma.join([...sqlConditions(search), Prisma.sql`l.top_until > (now() AT TIME ZONE 'UTC')`], ' AND ')}
+        ORDER BY l.id
+        LIMIT ${TOP_ADS_POOL}`;
+      pool = rows.map((row) => row.id);
+    }
+    const chosen = rotateTopAds(pool, now);
+    const rows = await this.loadVisible(chosen, { topUntil: { gt: now } });
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return chosen.flatMap((id) => {
+      const row = byId.get(id);
+      if (!row) return [];
+      const summary = toListingSummary(row, this.urls);
+      if (center && row.location) summary.distanceKm = distanceKm(center, row.location);
+      return [summary];
+    });
   }
 
   private async searchMeili(search: ResolvedSearch) {

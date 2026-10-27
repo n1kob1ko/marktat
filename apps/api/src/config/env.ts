@@ -82,6 +82,19 @@ const envSchema = z
     MESSAGE_EMAIL_DELAY_SECONDS: z.coerce.number().int().min(0).max(86_400).default(120),
     /** Abstand der Prüfung gespeicherter Suchen auf neue Treffer */
     SAVED_SEARCH_ALERT_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
+    /**
+     * Stripe (Phase 7) – nur für den späteren kostenpflichtigen Betrieb. Ohne Schlüssel läuft die Plattform
+     * normal weiter (kostenlos). Erlaubt sind Testschlüssel (sk_test_/rk_test_); Live-Schlüssel nur mit
+     * STRIPE_LIVE_ENABLED=true – das erst nach ausdrücklicher Freigabe setzen (docs/monetarisierung.md).
+     */
+    STRIPE_SECRET_KEY: optional,
+    STRIPE_WEBHOOK_SECRET: optional,
+    STRIPE_LIVE_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    /** Basis-URL der Stripe-API (nur Tests überschreiben sie) */
+    STRIPE_API_URL: z.url().default('https://api.stripe.com'),
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',

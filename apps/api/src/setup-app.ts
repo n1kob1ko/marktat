@@ -28,6 +28,10 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   if (env.STORAGE_DRIVER === 'local') {
     app.use(`/${API_PREFIX}/local-storage`, express.raw({ type: () => true, limit: MAX_IMAGE_BYTES }));
   }
+  // Stripe-Webhooks brauchen den unveränderten Rohkörper für die Signaturprüfung (vor dem JSON-Parser)
+  app.use(`/${API_PREFIX}/billing/stripe/webhook`, express.raw({ type: () => true, limit: '512kb' }));
+  // Händlerlogo: Bilddatei als Rohdaten (Prüfung und Umwandlung in der API)
+  app.use(`/${API_PREFIX}/me/logo`, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: 5 * 1024 * 1024 }));
   app.useBodyParser('json', { limit: '100kb' });
   app.useGlobalFilters(new HttpExceptionFilter());
   app.enableShutdownHooks();

@@ -8,6 +8,7 @@ import { useUnread } from '@/lib/realtime';
 const NAV = [
   { href: '/konto', label: 'Profil' },
   { href: '/konto/anzeigen', label: 'Meine Anzeigen' },
+  { href: '/konto/leistungen', label: 'Leistungen' },
   { href: '/nachrichten', label: 'Nachrichten' },
   { href: '/konto/merkliste', label: 'Merkliste' },
   { href: '/konto/suchen', label: 'Gespeicherte Suchen' },

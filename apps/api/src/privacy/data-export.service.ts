@@ -21,7 +21,7 @@ export class DataExportService {
 
   async export(user: AuthUser, ip?: string) {
     const id = user.id;
-    const [profile, listings, favorites, savedSearches, conversations, blocks, reports, decisions, notifications, activity] = await Promise.all([
+    const [profile, listings, favorites, savedSearches, conversations, blocks, reports, decisions, notifications, activity, bookings] = await Promise.all([
       this.prisma.user.findUniqueOrThrow({ where: { id } }),
       this.prisma.listing.findMany({
         where: { sellerId: id },
@@ -50,6 +50,11 @@ export class DataExportService {
       this.prisma.moderationDecision.findMany({ where: { userId: id }, include: { appeal: true, listing: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
       this.prisma.notification.findMany({ where: { userId: id }, orderBy: { createdAt: 'asc' } }),
       this.prisma.auditLog.findMany({ where: { actorId: id }, select: { action: true, createdAt: true, ipPrefix: true }, orderBy: { createdAt: 'desc' }, take: ACTIVITY_LIMIT }),
+      this.prisma.booking.findMany({
+        where: { userId: id },
+        include: { product: { select: { code: true, name: true } }, listing: { select: { title: true } }, payment: true },
+        orderBy: { createdAt: 'asc' },
+      }),
     ]);
     const name = (u: { displayName: string; status: string }) => (u.status === 'DELETED' ? 'Gelöschtes Konto' : u.displayName);
 
@@ -74,6 +79,9 @@ export class DataExportService {
         companyRegisterNumber: profile.companyRegisterNumber,
         vatId: profile.vatId,
         companyAddress: profile.companyAddress,
+        website: profile.website,
+        showPhone: profile.showPhone,
+        hasLogo: Boolean(profile.logoKey),
         termsVersion: profile.termsVersion,
         termsAcceptedAt: profile.termsAcceptedAt,
         createdAt: profile.createdAt,
@@ -128,6 +136,20 @@ export class DataExportService {
       })),
       notifications: notifications.map((n) => ({ title: n.title, body: n.body, createdAt: n.createdAt, readAt: n.readAt })),
       activity: activity.map((a) => ({ action: a.action, at: a.createdAt, ipPrefix: a.ipPrefix })),
+      bookings: bookings.map((b) => ({
+        product: b.product.name,
+        listing: b.listing?.title ?? null,
+        status: b.status,
+        priceCents: b.priceCents,
+        currency: b.currency,
+        billingMode: b.billingMode,
+        startsAt: b.startsAt,
+        endsAt: b.endsAt,
+        createdAt: b.createdAt,
+        payment: b.payment
+          ? { status: b.payment.status, amountCents: b.payment.amountCents, refundedCents: b.payment.refundedCents, paidAt: b.payment.paidAt, invoiceNumber: b.payment.invoiceNumber }
+          : null,
+      })),
     };
   }
 }

@@ -56,7 +56,22 @@ API `400` mit deutschen Fehlermeldungen je Parameter; die Website ignoriert sie.
 
 Index `listings` (`MEILI_INDEX`), Dokument je sichtbarem Inserat (`apps/api/src/search/search-document.ts`):
 Texte, Kategoriepfade samt Oberkategorien, Preis in Cent, Zustand, privat/gewerblich, Bundesland, PLZ, `_geo`,
-Veröffentlichungszeit (ms), Ablaufzeit und die Filterwerte unter `attributes.*`.
+Veröffentlichungszeit (ms), Ablaufzeit und die Filterwerte unter `attributes.*`. Seit Phase 7 zusätzlich
+`sortedAt` (= späteres von Veröffentlichung und Hochschieben), `topUntil` (Top-Anzeige bis, Sekunden) und die
+Dokumentversion `v`.
+
+### Zusatzleistungen in der Suche (Phase 7)
+
+- **Hochschieben:** „Neueste“ sortiert nach `sortedAt` (PostgreSQL: `COALESCE(GREATEST(published_at, bumped_at), created_at)`).
+  Das Veröffentlichungsdatum ändert sich nicht.
+- **Top-Anzeigen:** nur auf Seite 1, mit **denselben Filtern** wie die Suche plus `topUntil > jetzt`. Aus bis zu 100
+  passenden Top-Anzeigen werden 3 gezeigt; die Auswahl wechselt alle 10 Minuten (Hash aus Zeitfenster und ID), damit
+  keine Anzeige dauerhaft vorne steht. Gesperrte, pausierte, gelöschte und abgelaufene Inserate sind nie dabei
+  (sie sind gar nicht im Index bzw. werden in PostgreSQL ausgefiltert). Die Antwort enthält `topAds`.
+- **Hervorhebung:** die Karte trägt `highlighted`; bezahlte Platzierungen zusätzlich `sponsored` („Gesponsert“).
+- Ablauf wirkt sofort (Vergleich mit „jetzt“); der Ablauf-Job aktualisiert danach die Dokumente einzeln.
+- **Kein kompletter Neuaufbau nötig:** Dokumente mit älterer Version `v` gelten beim Abgleich als veraltet und werden
+  einzeln neu geschrieben.
 
 - **Tippfehler:** ab 4 Zeichen ein, ab 8 Zeichen zwei Fehler („fahrad“ findet Fahrrad). Synonyme z. B.
   Rad/Fahrrad, Auto/PKW, Wohnung/Apartment. Alle Suchwörter müssen vorkommen.
@@ -100,7 +115,9 @@ direkt in PostgreSQL (Textsuche mit `ILIKE`, Umkreis mit PostGIS `ST_DWithin`). 
 | Meilisearch-Filter und SQL-Bedingungen | `apps/api/src/search/search-query.spec.ts` |
 | API mit echtem Meilisearch und PostgreSQL: Volltext, Tippfehler, Filter je Bereich, Umkreis, Sortierung, Lebenszyklus, Ausfall, Abgleich, Reindex, gleiche Ergebnisse beider Wege | `apps/api/test/search.e2e-spec.ts` |
 | Chips, Links, Formular → URL | `apps/web/src/lib/search.test.ts` |
-| Browser (Desktop + Smartphone) | `apps/web/e2e/search.spec.ts` |
+| Top-Anzeigen-Rotation | `apps/api/src/search/top-ads.spec.ts` |
+| Top-Anzeigen, Hochschieben, Ausweichbetrieb mit Top-Anzeigen | `apps/api/test/billing.e2e-spec.ts` |
+| Browser (Desktop + Smartphone) | `apps/web/e2e/search.spec.ts`, `apps/web/e2e/monetization.spec.ts` |
 
 ## Bekannte Einschränkungen
 

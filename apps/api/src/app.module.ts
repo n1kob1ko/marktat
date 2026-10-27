@@ -25,6 +25,9 @@ import { SavedSearchesModule } from './saved-searches/saved-searches.module.js';
 import { MessagesModule } from './messages/messages.module.js';
 import { ModerationModule } from './moderation/moderation.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
+import { BillingModule } from './billing/billing.module.js';
+import { StatsModule } from './stats/stats.module.js';
+import { DealersModule } from './dealers/dealers.module.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
@@ -56,6 +59,9 @@ import { HealthController } from './health/health.controller.js';
     MessagesModule,
     ModerationModule,
     PrivacyModule,
+    BillingModule,
+    StatsModule,
+    DealersModule,
   ],
   controllers: [HealthController],
   providers: [

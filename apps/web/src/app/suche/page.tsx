@@ -162,7 +162,8 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
             <EmptyState query={query} filtersActive={chips.length > 0} hrefFor={(change) => searchHref({ ...query, ...change, page: 1 }, filters)} />
           ) : (
             <>
-              <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+              {result.topAds.length ? <TopAds items={result.topAds} /> : null}
+              <ul aria-label="Suchergebnisse" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
                 {result.items.map((listing) => (
                   <li key={listing.id} className="flex">
                     <ListingCard listing={listing} />
@@ -175,6 +176,28 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
         </div>
       </section>
     </div>
+  );
+}
+
+/** Top-Anzeigen über den Ergebnissen: nur passende, wechselnd; bezahlte tragen auf der Karte „Gesponsert“. */
+function TopAds({ items }: { items: SearchResult['topAds'] }) {
+  const paid = items.some((item) => item.sponsored);
+  return (
+    <section aria-labelledby="top-ads-heading" className="mb-6 rounded-[var(--radius-card)] border border-accent-100 bg-accent-50/40 p-3 sm:p-4">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 px-1">
+        <h2 id="top-ads-heading" className="font-sans text-base font-semibold tracking-normal text-ink-900">Top-Anzeigen</h2>
+        <p className="text-xs text-ink-500">
+          {paid ? 'Passend zu deiner Suche, abwechselnd angezeigt. Bezahlte Platzierungen sind gekennzeichnet.' : 'Passend zu deiner Suche, abwechselnd angezeigt – während der Einführungsphase kostenlos.'}
+        </p>
+      </div>
+      <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+        {items.map((listing) => (
+          <li key={listing.id} className="flex">
+            <ListingCard listing={listing} />
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 

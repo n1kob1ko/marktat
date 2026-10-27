@@ -213,6 +213,9 @@ export class AccountDeletionService implements OnModuleInit {
       ...IMAGE_VARIANT_NAMES.map((variant) => variantKey(image.storageKey, variant)),
       ...(image.uploadKey ? [image.uploadKey] : []),
     ]);
+    // Händlerlogo
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { logoKey: true } });
+    if (user?.logoKey) keys.push(user.logoKey);
     for (let i = 0; i < keys.length; i += 500) await this.storage.deleteMany(keys.slice(i, i + 500));
   }
 
@@ -228,6 +231,8 @@ export class AccountDeletionService implements OnModuleInit {
       await tx.savedSearch.deleteMany({ where: { userId } });
       await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } });
       await tx.notification.deleteMany({ where: { userId } });
+      // Kostenlose Buchungen löschen; bezahlte bleiben (Aufbewahrungspflicht für Buchhaltung) am Platzhalter
+      await tx.booking.deleteMany({ where: { userId, priceCents: 0, payment: { is: null } } });
       // Inserate endgültig löschen: Bilder-Einträge und Merklisten anderer fallen per Cascade weg,
       // Verweise aus Meldungen und Entscheidungen werden null (der Schnappschuss in der Entscheidung bleibt).
       await tx.listing.deleteMany({ where: { sellerId: userId } });
@@ -248,6 +253,9 @@ export class AccountDeletionService implements OnModuleInit {
           companyRegisterNumber: null,
           vatId: null,
           companyAddress: null,
+          website: null,
+          showPhone: false,
+          logoKey: null,
           lastSeenAt: null,
           notifyMessagesByEmail: false,
           notifySearchesByEmail: false,

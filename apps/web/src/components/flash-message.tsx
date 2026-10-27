@@ -25,6 +25,14 @@ const MESSAGES: Record<string, { tone: 'success' | 'danger' | 'warning'; text: s
   'mod-entsperrt': { tone: 'success', text: 'Die Sperre ist aufgehoben. Die Person wurde informiert.' },
   'mod-einspruch': { tone: 'success', text: 'Der Einspruch ist entschieden. Die Person wurde informiert.' },
   'mod-geschlossen': { tone: 'success', text: 'Die Meldung ist ohne Maßnahme abgeschlossen. Die meldende Person wurde informiert.' },
+  'gebucht-highlight': { tone: 'success', text: 'Deine Anzeige ist jetzt hervorgehoben.' },
+  'gebucht-top': { tone: 'success', text: 'Deine Anzeige ist jetzt eine Top-Anzeige und erscheint abwechselnd über passenden Suchergebnissen.' },
+  'gebucht-bump': { tone: 'success', text: 'Deine Anzeige wurde hochgeschoben und steht bei „Neueste“ wieder weit oben.' },
+  'gebucht-listing': { tone: 'success', text: 'Deine Anzeige ist jetzt online.' },
+  'nicht-buchbar': { tone: 'warning', text: 'Diese Leistung ist für die Anzeige gerade nicht möglich. Den Grund siehst du bei der jeweiligen Leistung.' },
+  'zu-viele-buchungen': { tone: 'warning', text: 'Zu viele Buchungen in kurzer Zeit. Bitte versuche es später noch einmal.' },
+  'zahlung-nicht-moeglich': { tone: 'danger', text: 'Die Zahlung konnte gerade nicht gestartet werden. Es wurde nichts verrechnet.' },
+  zahlpflichtig: { tone: 'warning', text: 'Das Veröffentlichen ist derzeit kostenpflichtig. Du kannst es hier buchen – deine Anzeige bleibt bis dahin ein Entwurf.' },
   aktion: { tone: 'danger', text: 'Die Aktion konnte nicht ausgeführt werden. Bitte versuche es erneut.' },
 };
 

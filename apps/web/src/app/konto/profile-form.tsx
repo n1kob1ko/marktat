@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState } from 'react';
-import { Alert, Field, Input, Textarea } from '@marktat/ui';
+import { Alert, Checkbox, Field, Input, Textarea } from '@marktat/ui';
 import type { MeResponse } from '@marktat/shared';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
@@ -18,7 +18,11 @@ export function ProfileForm({ user }: { user: MeResponse }) {
         <Field label="Anzeigename" error={errors.displayName} required>
           <Input name="displayName" defaultValue={value('displayName')} maxLength={50} />
         </Field>
-        <Field label="Telefon (optional)" hint="Wird nicht öffentlich angezeigt." error={errors.phone}>
+        <Field
+          label="Telefon (optional)"
+          hint={user.accountType === 'BUSINESS' ? 'Öffentlich nur, wenn du es unten freigibst.' : 'Wird nicht öffentlich angezeigt.'}
+          error={errors.phone}
+        >
           <Input name="phone" type="tel" autoComplete="tel" defaultValue={value('phone')} />
         </Field>
       </div>
@@ -44,7 +48,11 @@ export function ProfileForm({ user }: { user: MeResponse }) {
             <Field label="Geschäftsanschrift" error={errors.companyAddress}>
               <Input name="companyAddress" autoComplete="street-address" defaultValue={value('companyAddress')} />
             </Field>
+            <Field label="Website (optional)" hint="z. B. https://www.radhaus.at" error={errors.website}>
+              <Input name="website" type="url" inputMode="url" autoComplete="url" defaultValue={value('website')} />
+            </Field>
           </div>
+          <Checkbox name="showPhone" defaultChecked={user.showPhone} label="Telefonnummer auf meinem Händlerprofil zeigen" />
         </fieldset>
       ) : null}
       <SubmitButton>Profil speichern</SubmitButton>

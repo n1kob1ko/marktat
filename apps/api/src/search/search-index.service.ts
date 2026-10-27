@@ -3,7 +3,14 @@ import { loadEnv } from '../config/env.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { MeiliClient } from './meili.client.js';
-import { indexSettings, isPubliclyVisible, searchDocumentInclude, toSearchDocument, type IndexableListing } from './search-document.js';
+import {
+  indexSettings,
+  isPubliclyVisible,
+  SEARCH_DOCUMENT_VERSION,
+  searchDocumentInclude,
+  toSearchDocument,
+  type IndexableListing,
+} from './search-document.js';
 
 const BATCH = 500;
 /** Wie oft fehlgeschlagene Aktualisierungen nachgeholt und abgelaufene Inserate entfernt werden */
@@ -172,7 +179,8 @@ export class SearchIndexService implements OnApplicationBootstrap, OnModuleDestr
       const indexed = new Map<string, number | undefined>();
       for (let offset = 0; ; offset += 1000) {
         const page = await client.getDocumentIds(this.indexUid, offset, 1000);
-        for (const doc of page.results) indexed.set(doc.id, doc.updatedAt);
+        // Dokumente in altem Aufbau gelten als veraltet und werden einzeln neu geschrieben
+        for (const doc of page.results) indexed.set(doc.id, doc.v === SEARCH_DOCUMENT_VERSION ? doc.updatedAt : undefined);
         if (offset + 1000 >= page.total) break;
       }
       const now = new Date();

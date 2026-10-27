@@ -133,8 +133,8 @@ export class MeiliClient {
 
   /** Dokument-IDs mit Änderungszeitpunkt seitenweise (für den Abgleich mit der Datenbank). */
   getDocumentIds(uid: string, offset: number, limit: number) {
-    return this.request<{ results: { id: string; updatedAt?: number }[]; total: number }>('POST', `/indexes/${uid}/documents/fetch`, {
-      fields: ['id', 'updatedAt'],
+    return this.request<{ results: { id: string; updatedAt?: number; v?: number }[]; total: number }>('POST', `/indexes/${uid}/documents/fetch`, {
+      fields: ['id', 'updatedAt', 'v'],
       offset,
       limit,
     });

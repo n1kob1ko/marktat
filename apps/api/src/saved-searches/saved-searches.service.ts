@@ -131,7 +131,7 @@ export class SavedSearchesService implements OnModuleInit {
     query.sort = 'neueste';
     query.page = 1;
     query.pageSize = ALERT_LISTINGS;
-    const result = await this.search.search(query, categoryPath, { publishedAfter: saved.lastCheckedAt, publishedUntil: until });
+    const result = await this.search.search(query, categoryPath, { publishedAfter: saved.lastCheckedAt, publishedUntil: until, topAds: false });
     if (result.total > 0) {
       const searchUrl = `${this.env.WEB_URL}/suche?${new URLSearchParams({ ...params, sortierung: 'neueste' })}`;
       const settingsUrl = `${this.env.WEB_URL}/konto/suchen`;

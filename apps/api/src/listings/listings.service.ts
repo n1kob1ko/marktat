@@ -1,13 +1,16 @@
 import {
   BadRequestException,
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
+  type OnModuleInit,
 } from '@nestjs/common';
 import {
   carryOverAttributes,
   categoryAttributeSchema,
-  DEFAULT_LISTING_DURATION_DAYS,
+  formatAmountCents,
   listingPublishSchema,
   missingRequiredAttributes,
   parseListingAttributes,
@@ -22,13 +25,14 @@ import {
   type ListingSummary,
   type UpdateListingInput,
 } from '@marktat/shared';
-import type { Category, Listing } from '../generated/prisma/client.js';
+import type { Category, Listing, Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
 import { ImageUrls } from '../images/image-urls.js';
 import { SearchIndexService } from '../search/search-index.service.js';
 import { ModerationService } from '../moderation/moderation.service.js';
+import { BookingsService } from '../billing/bookings.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
@@ -39,12 +43,16 @@ import {
 
 const DAY_MS = 86_400_000;
 
-function expiryFrom(date: Date) {
-  return new Date(date.getTime() + DEFAULT_LISTING_DURATION_DAYS * DAY_MS);
+/** Ablaufdatum aus der Laufzeit des Produkts „listing“ (Admin-Bereich, Standard 60 Tage) */
+function expiryFrom(date: Date, durationDays: number) {
+  return new Date(date.getTime() + durationDays * DAY_MS);
 }
 
+/** Status, aus denen ein Inserat veröffentlicht bzw. verlängert werden kann */
+const PUBLISHABLE: ListingStatus[] = ['DRAFT', 'EXPIRED', 'ACTIVE'];
+
 @Injectable()
-export class ListingsService {
+export class ListingsService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly categories: CategoriesService,
@@ -52,7 +60,51 @@ export class ListingsService {
     private readonly urls: ImageUrls,
     private readonly searchIndex: SearchIndexService,
     private readonly moderation: ModerationService,
+    private readonly bookings: BookingsService,
   ) {}
+
+  /** Bezahltes Veröffentlichen (nur im kostenpflichtigen Betrieb) läuft über die Buchungen. */
+  onModuleInit() {
+    this.bookings.registerListingHandler({
+      assertPublishable: async (userId, listingId) => {
+        const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
+        if (!listing || listing.sellerId !== userId || listing.status === 'DELETED') throw new NotFoundException('Dieses Inserat gibt es nicht.');
+        if (!PUBLISHABLE.includes(effectiveStatus(listing))) throw new ConflictException('Dieses Inserat kann nicht veröffentlicht werden.');
+        await this.assertPublishable(listing);
+      },
+      activate: async (tx, listingId, durationDays, now) => {
+        const expiresAt = expiryFrom(now, durationDays);
+        const current = await tx.listing.findUniqueOrThrow({ where: { id: listingId } });
+        await tx.listing.updateMany({
+          where: { id: listingId, status: { in: ['DRAFT', 'EXPIRED', 'ACTIVE'] } },
+          data: { status: 'ACTIVE', publishedAt: current.publishedAt ?? now, expiresAt },
+        });
+        return expiresAt;
+      },
+    });
+  }
+
+  /**
+   * Bedingungen fürs Veröffentlichen. Im kostenlosen Betrieb (Standard) immer 0,00 €; ist das Inserat
+   * kostenpflichtig, geht Veröffentlichen nur über eine Buchung mit Zahlung (402).
+   */
+  private async listingTerms(user: AuthUser) {
+    const terms = await this.bookings.listingTerms(user);
+    if (terms.price.requiresPayment) {
+      throw new HttpException(
+        {
+          statusCode: HttpStatus.PAYMENT_REQUIRED,
+          message: `Das Veröffentlichen kostet derzeit ${formatAmountCents(terms.price.priceCents)}. Speichere das Inserat als Entwurf und buche es unter „Meine Anzeigen“.`,
+        },
+        HttpStatus.PAYMENT_REQUIRED,
+      );
+    }
+    return terms;
+  }
+
+  private recordFreeListing(tx: Prisma.TransactionClient, user: AuthUser, listingId: string, terms: Awaited<ReturnType<ListingsService['listingTerms']>>, now: Date, endsAt: Date) {
+    return this.bookings.recordFreeListing(tx, { userId: user.id, listingId, product: terms.product, mode: terms.mode, startsAt: now, endsAt });
+  }
 
   async create(user: AuthUser, input: CreateListingInput, ip?: string) {
     const { publish, ...fields } = input;
@@ -63,9 +115,12 @@ export class ListingsService {
     const condition = this.conditionFor(schema, fields.condition);
     const price = this.pricingFor(schema, fields.priceType, fields.priceCents);
     if (publish) this.assertComplete({ ...fields, ...price, attributes: undefined }, schema, attributes);
+    const terms = publish ? await this.listingTerms(user) : null;
 
     const now = new Date();
-    const listing = await this.prisma.listing.create({
+    const expiresAt = terms ? expiryFrom(now, terms.durationDays) : null;
+    const listing = await this.prisma.$transaction(async (tx) => {
+      const created = await tx.listing.create({
       data: {
         sellerId: user.id,
         title: fields.title,
@@ -80,9 +135,12 @@ export class ListingsService {
         attributes,
         status: publish ? 'ACTIVE' : 'DRAFT',
         publishedAt: publish ? now : null,
-        expiresAt: publish ? expiryFrom(now) : null,
+        expiresAt,
       },
       include: listingInclude,
+      });
+      if (terms && expiresAt) await this.recordFreeListing(tx, user, created.id, terms, now, expiresAt);
+      return created;
     });
     this.audit.log({
       action: publish ? 'listing.published' : 'listing.created',
@@ -142,27 +200,27 @@ export class ListingsService {
   async publish(user: AuthUser, id: string, ip?: string) {
     const current = await this.requireOwned(user, id);
     const status = effectiveStatus(current);
-    if (!['DRAFT', 'EXPIRED', 'ACTIVE'].includes(status)) {
+    if (!PUBLISHABLE.includes(status)) {
       throw new ConflictException('Dieses Inserat kann nicht veröffentlicht werden.');
     }
-    const fields = this.editableFields(current);
-    const category = fields.categoryId ? await this.requireCategory(fields.categoryId, true) : null;
-    const schema = categoryAttributeSchema(category?.path);
-    // Altbestand: nicht (mehr) passende Angaben fallen weg, fehlende Pflichtangaben werden gemeldet.
-    const attributes = carryOverAttributes(schema, current.attributes);
-    this.assertComplete(fields, schema, attributes);
+    const attributes = await this.assertPublishable(current);
+    const terms = await this.listingTerms(user);
     const now = new Date();
+    const expiresAt = expiryFrom(now, terms.durationDays);
     // Nur aus dem geprüften Status heraus: eine gleichzeitige Moderationsentscheidung darf nicht überschrieben werden
-    const changed = await this.prisma.listing.updateMany({
-      where: { id, status: current.status },
-      data: {
-        attributes,
-        status: 'ACTIVE',
-        publishedAt: status === 'DRAFT' || !current.publishedAt ? now : current.publishedAt,
-        expiresAt: expiryFrom(now),
-      },
+    await this.prisma.$transaction(async (tx) => {
+      const changed = await tx.listing.updateMany({
+        where: { id, status: current.status },
+        data: {
+          attributes,
+          status: 'ACTIVE',
+          publishedAt: status === 'DRAFT' || !current.publishedAt ? now : current.publishedAt,
+          expiresAt,
+        },
+      });
+      if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
+      await this.recordFreeListing(tx, user, id, terms, now, expiresAt);
     });
-    if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
     const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
     this.audit.log({
       action: status === 'DRAFT' ? 'listing.published' : 'listing.renewed',
@@ -210,7 +268,14 @@ export class ListingsService {
       include: listingInclude,
       orderBy: { updatedAt: 'desc' },
     });
-    return rows.map((row) => toListingSummary(row, this.urls));
+    return rows.map((row) => {
+      const summary = toListingSummary(row, this.urls);
+      summary.promotionsUntil = {
+        highlighted: summary.highlighted ? row.highlightedUntil!.toISOString() : null,
+        top: summary.top ? row.topUntil!.toISOString() : null,
+      };
+      return summary;
+    });
   }
 
   /** Öffentlich nur aktive Inserate; Entwürfe usw. sieht ausschließlich der Eigentümer bzw. Moderation. */
@@ -230,6 +295,17 @@ export class ListingsService {
   }
 
   // --- Hilfsfunktionen -------------------------------------------------------
+
+  /** Vollständigkeit vor dem Veröffentlichen; gibt die bereinigten Zusatzangaben zurück. */
+  private async assertPublishable(listing: Listing) {
+    const fields = this.editableFields(listing);
+    const category = fields.categoryId ? await this.requireCategory(fields.categoryId, true) : null;
+    const schema = categoryAttributeSchema(category?.path);
+    // Altbestand: nicht (mehr) passende Angaben fallen weg, fehlende Pflichtangaben werden gemeldet.
+    const attributes = carryOverAttributes(schema, listing.attributes);
+    this.assertComplete(fields, schema, attributes);
+    return attributes;
+  }
 
   /** Merkliste und bestehende Unterhaltung der angemeldeten Person zu diesem Inserat */
   private async viewerState(listingId: string, viewer?: AuthUser) {

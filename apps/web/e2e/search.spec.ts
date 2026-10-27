@@ -25,9 +25,11 @@ async function confirmFilters(page: Page) {
 }
 
 test('Umkreissuche: Fahrräder 25 km um 1010 Wien, Filter teilen und entfernen', async ({ page, context }) => {
+  // Nach Preis sortiert: die Demoräder sind günstiger als die Testinserate anderer Specs und stehen so immer auf Seite 1
+  await page.goto(`/suche?kategorie=${BIKES}&sortierung=preis_auf`);
+  await expect(card(page, /Kinderrad 20 Zoll/)).toBeVisible();
   await page.goto(`/suche?kategorie=${BIKES}`);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(/^Fahrräder/);
-  await expect(card(page, /Kinderrad 20 Zoll/)).toBeVisible();
 
   let filters = await openFilters(page);
   await filters.getByRole('combobox', { name: 'PLZ oder Ort' }).fill('1010');
@@ -92,14 +94,16 @@ test('Bereichsfilter für Auto, Jobs und Immobilien', async ({ page }) => {
 });
 
 test('Volltextsuche verzeiht Tippfehler, sortiert nach Preis und blättert', async ({ page }) => {
-  await page.goto('/suche?q=fahrad');
+  // Viele Testinserate passen ebenfalls; nach Preis sortiert stehen die günstigeren Demoräder auf Seite 1
+  await page.goto('/suche?q=fahrad&sortierung=preis_auf');
   await expect(card(page, /Kinderrad 20 Zoll/)).toBeVisible();
   await expect(card(page, /Citybike Damen/)).toBeVisible();
 
   await page.goto(`/suche?kategorie=${BIKES}`);
   await page.getByLabel('Sortieren').selectOption('preis_auf');
   await expect(page).toHaveURL(/sortierung=preis_auf/);
-  const titles = await page.locator('article h3').allTextContents();
+  // Nur die Ergebnisliste (darüber können Top-Anzeigen stehen)
+  const titles = await page.getByRole('list', { name: 'Suchergebnisse' }).locator('article h3').allTextContents();
   expect(titles[0]).toMatch(/Kinderrad/);
 
   await page.goto('/suche?seite=999');

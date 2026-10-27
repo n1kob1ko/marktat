@@ -41,10 +41,32 @@ export type AuditAction =
   | 'privacy.deletion_requested'
   | 'privacy.deletion_completed'
   | 'privacy.deletion_failed'
-  | 'retention.cleanup';
+  | 'retention.cleanup'
+  // Phase 7: Monetarisierung, Händlerprofil
+  | 'billing.booking_created'
+  | 'billing.booking_activated'
+  | 'billing.booking_cancelled'
+  | 'billing.booking_refunded'
+  | 'billing.payment_succeeded'
+  | 'billing.payment_failed'
+  | 'billing.webhook_rejected'
+  | 'billing.promotions_expired'
+  | 'admin.product_updated'
+  | 'admin.billing_settings_updated'
+  | 'admin.billing_mode_changed'
+  | 'user.logo_updated';
 
 /** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
-export const IMPORTANT_AUDIT_PREFIXES = ['moderation.', 'appeal.', 'admin.', 'privacy.deletion', 'report.messages_viewed'];
+export const IMPORTANT_AUDIT_PREFIXES = [
+  'moderation.',
+  'appeal.',
+  'admin.',
+  'privacy.deletion',
+  'report.messages_viewed',
+  'billing.payment',
+  'billing.booking_refunded',
+  'billing.webhook_rejected',
+];
 
 export interface AuditEvent {
   action: AuditAction;

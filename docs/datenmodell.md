@@ -8,12 +8,12 @@ Kategorien sind CUIDs (nicht erratbar), Nutzer-IDs die UUID aus Supabase Auth.
 
 | Tabelle | Zweck | Wichtige Felder |
 | --- | --- | --- |
-| `users` | Profil zu einem Supabase-Konto | `id` (= `auth.users.id`), `email`, `display_name`, `account_type` (PRIVATE/BUSINESS), `role` (USER/MODERATOR/ADMIN), `status` (ACTIVE/SUSPENDED/DELETED), `suspended_at`, `reporting_blocked_until`, Firmenangaben (`company_name`, `company_register_number`, `vat_id`, `company_address`), `terms_version`, `terms_accepted_at`, `deleted_at`, `notify_messages_by_email`, `notify_searches_by_email` |
+| `users` | Profil zu einem Supabase-Konto | `id` (= `auth.users.id`), `email`, `display_name`, `account_type` (PRIVATE/BUSINESS), `role` (USER/MODERATOR/ADMIN), `status` (ACTIVE/SUSPENDED/DELETED), `suspended_at`, `reporting_blocked_until`, Firmenangaben (`company_name`, `company_register_number`, `vat_id`, `company_address`), Händlerprofil (`website`, `show_phone`, `logo_key`; Phase 7), `terms_version`, `terms_accepted_at`, `deleted_at`, `notify_messages_by_email`, `notify_searches_by_email` |
 | `states` | 9 Bundesländer | `id` 1–9, `code` (AT-1 … AT-9), `slug`, `name` |
 | `districts` | 93 politische Bezirke + 23 Wiener Gemeindebezirke | `id` = Bezirkskennziffer (Statistik Austria), `state_id` |
 | `locations` | Orte mit PLZ (vollständiges Verzeichnis, ~20.900 Orte) | `postal_code`, `place`, `municipality` (Gemeinde, wenn anders als der Ort), `district_id`, `latitude`, `longitude`, `geom geography(Point,4326)` mit GiST-Index, Trigramm-Index auf `place` |
 | `categories` | Kategoriebaum je Bereich | `parent_id`, `vertical`, `path` (eindeutig, für SEO-URLs; bestimmt auch die Zusatzfelder), `attribute_schema` (JSON, derzeit ungenutzt) |
-| `listings` | Inserate | `seller_id`, `category_id`, `vertical`, `title`, `description`, `price_type`, `price_cents` (BIGINT), `condition`, `attributes` (JSON, kategorieabhängige Zusatzangaben, siehe [Kategorie-Felder](kategorie-felder.md)), `status`, `location_id`, `published_at`, `expires_at`, `deleted_at` |
+| `listings` | Inserate | `seller_id`, `category_id`, `vertical`, `title`, `description`, `price_type`, `price_cents` (BIGINT), `condition`, `attributes` (JSON, kategorieabhängige Zusatzangaben, siehe [Kategorie-Felder](kategorie-felder.md)), `status`, `location_id`, `published_at`, `expires_at`, `deleted_at`, `view_count`; Zusatzleistungen (Phase 7): `highlighted_until`, `top_until`, `bumped_at`, `highlight_paid`, `top_paid` |
 | `listing_images` | Bilder je Inserat (Phase 2) | `status` (PENDING/READY), `upload_key` (Rohdatei, nach Verarbeitung leer), `storage_key` (Präfix der Varianten), `declared_type`/`declared_size`, `detected_type`, `width`, `height`, `stored_bytes`, `sort_order` (0 = Hauptbild) |
 | `favorites` | Merkliste (Phase 5) | Primärschlüssel `(user_id, listing_id)` – keine Duplikate; Cascade beim Löschen von Konto oder Inserat |
 | `saved_searches` | Gespeicherte Suchen (Phase 5) | `name`, `params` (JSON, kanonische Such-Parameter), `query_key` (Unique je Konto), `labels`, `notify`, `last_checked_at`, `last_notified_at` |
@@ -26,6 +26,12 @@ Kategorien sind CUIDs (nicht erratbar), Nutzer-IDs die UUID aus Supabase Auth.
 | `appeals` | Einsprüche (Phase 6) | `decision_id` (Unique – einer je Entscheidung), `user_id`, `body`, `status` (OPEN/UPHELD/REVERSED), `reviewer_id` (CHECK ≠ `user_id`), `response`, `decided_at` |
 | `notifications` | Mitteilungen im Konto (Phase 6) | `user_id`, `type`, `title`, `body`, `link`, `decision_id`, `read_at` |
 | `account_deletions` | Löschaufträge (Phase 6) | `user_id` (Unique), `status` (PENDING/COMPLETED/FAILED), `completed_steps` (TEXT[]), `attempts`, `last_error`, `requested_at`, `completed_at` |
+| `products` | Leistungen und Preise (Phase 7), siehe [Monetarisierung](monetarisierung.md) | `code` (listing/highlight/top/bump, eindeutig), `kind`, `price_cents`, `planned_price_cents`, `currency`, `duration_days`, `for_private`, `for_business`, `is_active`, `paid_enabled`, `promo_starts_at`/`promo_ends_at`, `max_active_per_user`, `max_active_total`, `max_per_period`, `period_days`, `cooldown_hours`; CHECK auf nicht negative Werte |
+| `platform_settings` | Eine Zeile (`id = 1`, CHECK): Betriebsmodus und Einführungsaktion (Phase 7) | `billing_mode` (FREE/PAID, Standard FREE), `billing_mode_changed_at`/`_by`, `intro_*`, `max_bookings_per_hour` |
+| `bookings` | Gebuchte Leistungen (Phase 7) | `user_id`, `listing_id` (beide SET NULL), `product_id`, `kind`, `status` (PENDING_PAYMENT/ACTIVE/COMPLETED/EXPIRED/CANCELLED/REFUNDED), `price_cents` und `snapshot` (Preis und Bedingungen zum Buchungszeitpunkt), `billing_mode`, `starts_at`, `ends_at`; Unique `(user_id, idempotency_key)` |
+| `payments` | Zahlung zu einer Buchung (Phase 7, nur im kostenpflichtigen Betrieb) | `booking_id` (Unique), `status`, `amount_cents`, `refunded_cents` (CHECK ≤ Betrag), `livemode`, `checkout_session_id`, `payment_intent_id`, `invoice_number`, `receipt_url`, `paid_at`, `refunded_at`, `failure_reason` |
+| `stripe_events` | Verarbeitete Stripe-Ereignisse (Idempotenz, Phase 7) | `id` (= Stripe-Event-ID), `type`, `livemode` |
+| `listing_view_days` | Aufrufe je Inserat und Tag (Phase 7) | Primärschlüssel `(listing_id, day)`, `views`; nur Tagessummen, keine Personendaten |
 | `audit_logs` | Sicherheitsrelevante Ereignisse | `actor_id`, `action`, `entity_type`, `entity_id`, `ip_prefix` (gekürzt), `metadata` |
 
 Extensions: `postgis` (Umkreissuche), `pg_trgm` (unscharfe Suche als Fallback zu Meilisearch).
@@ -49,7 +55,7 @@ Status, Inserate je Kategorie, Ablaufdatum (für einen späteren Ablauf-Job).
 
 | Phase | Tabellen | Notiz |
 | --- | --- | --- |
-| 4 | `products`, `orders`, `payments`, `invoices`, `listing_promotions` | Stripe Checkout/Webhooks, Beträge in Cent |
+| später | `invoices`, Händlerpakete | Rechnungen und Abos; Leistungen, Buchungen und Zahlungen gibt es seit Phase 7 |
 | 5 | `vehicle_details`, `property_details`, `job_details`, `companies`, `job_applications` | 1:1 zu `listings` für typisierte, filterbare Felder |
 | 6 | `ai_jobs` | optionale KI-Vorschläge, protokolliert und abschaltbar |
 

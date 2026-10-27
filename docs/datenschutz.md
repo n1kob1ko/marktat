@@ -18,6 +18,7 @@ gesperrte Konten). Die JSON-Datei enthält:
 | `reportsMade` | Eigene Meldungen mit Grund, Text und Status – ohne Angaben zur gemeldeten Person |
 | `moderationDecisions` | Entscheidungen über dich bzw. deine Inserate mit Begründung und Einspruch (ohne interne Notizen und Namen aus dem Team) |
 | `notifications`, `activity` | Mitteilungen und das eigene Aktivitätsprotokoll (Aktion, Zeitpunkt, gekürzte IP) |
+| `bookings` | Gebuchte Leistungen (Phase 7) mit Preis zum Buchungszeitpunkt, Laufzeit und ggf. Zahlungsstatus; im Profil zusätzlich Website, Telefon-Freigabe und ob ein Logo hinterlegt ist |
 
 Nicht enthalten: Nachrichten und Profildaten anderer Personen, Meldungen anderer über dich, interne Notizen.
 Bilddateien selbst sind nicht im Export (nur ihre Metadaten); sie können über die Inserate heruntergeladen werden.
@@ -37,9 +38,9 @@ Bilddateien selbst sind nicht im Export (nur ihre Metadaten); sie können über 
    - `auth` – Konto in Supabase Auth löschen (404 gilt als erledigt),
    - `jobs` – wartende E-Mails zu Unterhaltungen und Mitteilungen der Person abbrechen,
    - `search` – Inserate aus Meilisearch entfernen,
-   - `images` – alle Bildvarianten und Rohdateien in R2 bzw. im lokalen Speicher löschen,
+   - `images` – alle Bildvarianten und Rohdateien in R2 bzw. im lokalen Speicher sowie das Firmenlogo löschen,
    - `data` – in **einer** Transaktion: Unterhaltungen mit allen Nachrichten (beider Seiten), Merkliste, gespeicherte
-     Suchen, Blockierungen, Mitteilungen und Inserate löschen; eigene Meldungen behalten, aber ohne Verweis auf die
+     Suchen, Blockierungen, Mitteilungen, kostenlose Buchungen und Inserate löschen (bezahlte Buchungen samt Zahlung bleiben für die Buchhaltung, ohne Verweis auf Inserat und mit anonymisiertem Konto); eigene Meldungen behalten, aber ohne Verweis auf die
      meldende Person; Profil zu einem Platzhalter ohne Namen, E-Mail und Kontaktdaten anonymisieren.
 5. **Fehler:** Jeder Fehlversuch wird gespeichert (`last_error`, E-Mail-Adressen maskiert). Nach 5 Versuchen steht der
    Auftrag auf `FAILED`, erscheint im Admin-Dashboard und kann im Konto unter `/admin/nutzer/<id>` neu gestartet
