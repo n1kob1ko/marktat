@@ -44,6 +44,11 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
               <span className="truncate">
                 {listing.location.postalCode} {listing.location.place}
               </span>
+              {typeof listing.distanceKm === 'number' ? (
+                <span className="shrink-0 whitespace-nowrap text-ink-400">
+                  · {listing.distanceKm < 1 ? '< 1' : Math.round(listing.distanceKm).toLocaleString('de-AT')} km
+                </span>
+              ) : null}
             </span>
           ) : (
             <span />

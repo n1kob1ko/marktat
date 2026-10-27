@@ -65,7 +65,7 @@ async function ListingContent({
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
         <Link href="/" className="hover:text-brand-700 hover:underline">Startseite</Link>
         <span aria-hidden="true"> / </span>
-        <Link href={`/suche?kategorie=${listing.category.id}`} className="hover:text-brand-700 hover:underline">
+        <Link href={`/suche?kategorie=${listing.category.path}`} className="hover:text-brand-700 hover:underline">
           {listing.category.name}
         </Link>
       </nav>

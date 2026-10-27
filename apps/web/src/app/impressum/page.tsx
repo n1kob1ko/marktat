@@ -18,6 +18,11 @@ export default function ImprintPage() {
       </ul>
       <h2>Kontaktstelle nach dem Digital Services Act (Art. 11 und 12 DSA)</h2>
       <p>[E-Mail-Adresse für Behörden und Nutzer:innen, Sprachen: Deutsch, Englisch]</p>
+      <h2>Datenquellen</h2>
+      <p>
+        Postleitzahlen und Orte: <a href="https://www.geonames.org/">GeoNames</a>, Lizenz{' '}
+        <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, für MarktAT aufbereitet.
+      </p>
     </LegalPage>
   );
 }

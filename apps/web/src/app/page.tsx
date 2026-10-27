@@ -164,7 +164,7 @@ async function MarketplaceCategories() {
       {categories.map((category) => (
         <li key={category.id}>
           <Link
-            href={`/suche?kategorie=${category.id}`}
+            href={`/suche?kategorie=${category.path}`}
             className="flex h-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5 transition-colors hover:border-brand-300 hover:bg-brand-50"
           >
             <CategoryIcon name={category.icon} className="size-5 shrink-0 text-brand-700" />
