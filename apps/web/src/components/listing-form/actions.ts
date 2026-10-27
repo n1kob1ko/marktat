@@ -4,6 +4,7 @@ import { updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   createListingSchema,
+  ATTRIBUTE_FIELDS,
   parseEuroInputToCents,
   updateListingSchema,
   type ListingDetail,
@@ -20,8 +21,24 @@ function readForm(formData: FormData) {
     string
   >;
   const priceCents = values.price ? parseEuroInputToCents(values.price) : null;
+  const attributes: Record<string, string | number | boolean> = {};
+  const attributeErrors: Record<string, string[]> = {};
+  for (const field of Object.values(ATTRIBUTE_FIELDS).flat()) {
+    const raw = formData.get(`attr_${field.key}`);
+    if (typeof raw !== 'string' || !raw.trim()) continue;
+    values[`attributes.${field.key}`] = raw.trim();
+    if (field.kind === 'number') {
+      const number = Number(raw.trim().replace(',', '.'));
+      if (!Number.isFinite(number)) {
+        attributeErrors[`attributes.${field.key}`] = [`Bitte gib eine gültige Zahl für ${field.label} ein.`];
+        continue;
+      }
+      attributes[field.key] = number;
+    } else attributes[field.key] = raw.trim();
+  }
   const input = {
     title: values.title,
+    attributes,
     description: values.description || undefined,
     categoryId: values.categoryId || undefined,
     priceType: values.priceType || undefined,
@@ -30,7 +47,7 @@ function readForm(formData: FormData) {
     locationId: values.locationId ? Number(values.locationId) : undefined,
   };
   const priceInvalid = Boolean(values.price) && priceCents === null;
-  return { values, input, priceInvalid };
+  return { values, input, priceInvalid, attributeErrors };
 }
 
 function errorState(error: unknown, values: Record<string, string>): FormState {
@@ -46,7 +63,8 @@ function errorState(error: unknown, values: Record<string, string>): FormState {
 export async function createListingAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const { token } = await requireUser('/inserieren');
   const publish = formData.get('intent') === 'publish';
-  const { values, input, priceInvalid } = readForm(formData);
+  const { values, input, priceInvalid, attributeErrors } = readForm(formData);
+  if (Object.keys(attributeErrors).length) return { status: 'error', message: 'Bitte prüfe die Zusatzangaben.', fieldErrors: attributeErrors, values };
   if (priceInvalid) return { status: 'error', fieldErrors: { price: ['Bitte gib einen gültigen Betrag ein, z. B. 49,90.'] }, values };
 
   const parsed = createListingSchema.safeParse({ ...input, publish });
@@ -72,7 +90,8 @@ export async function updateListingAction(_prev: FormState, formData: FormData):
   const id = String(formData.get('id') ?? '');
   const { token } = await requireUser(`/anzeige/${id}/bearbeiten`);
   const publish = formData.get('intent') === 'publish';
-  const { values, input, priceInvalid } = readForm(formData);
+  const { values, input, priceInvalid, attributeErrors } = readForm(formData);
+  if (Object.keys(attributeErrors).length) return { status: 'error', message: 'Bitte prüfe die Zusatzangaben.', fieldErrors: attributeErrors, values };
   if (priceInvalid) return { status: 'error', fieldErrors: { price: ['Bitte gib einen gültigen Betrag ein, z. B. 49,90.'] }, values };
 
   const parsed = updateListingSchema.safeParse(input);
