@@ -34,7 +34,7 @@ Regeln verwenden und sie typgeprüft und getestet sind. Zugeordnet wird über `c
 | | Gewerbeimmobilien | Art der Immobilie, Nutzfläche | Stockwerk, Baujahr, Betriebskosten, Heizung, Ausstattung, HWB, fGEE |
 | | Grundstücke | Angebotsart (Kauf/Miete), Grundstücksfläche | Widmung |
 | | Garagen & Parkplätze | Angebotsart, Art | Lademöglichkeit für E-Autos |
-| Jobs | Vollzeit | Berufsbezeichnung, Beschäftigungsart, Arbeitsort, Gehalt + Zeitraum | Arbeitszeit, Arbeitszeitmodell, Überzahlung, Berufserfahrung |
+| Jobs | Vollzeit | Berufsbezeichnung, Beschäftigungsart, Arbeitsort, Gehalt + Zeitraum | Berufsbereich, Arbeitszeit, Arbeitszeitmodell, Überzahlung, Berufserfahrung |
 | | Teilzeit | wie Vollzeit, zusätzlich Arbeitszeit | |
 | | Lehrstellen, Praktika, Geringfügig | Berufsbezeichnung, Arbeitsort, Gehalt + Zeitraum (Geringfügig: auch Arbeitszeit) | Lehrzeit bzw. Dauer, Arbeitszeit |
 | | Freelance | Berufsbezeichnung, Beschäftigungsart, Arbeitsort | Honorar + Zeitraum, Arbeitszeit, Berufserfahrung |
@@ -79,9 +79,19 @@ Wer eine solche Auto-, Immobilien- oder Job-Anzeige **bearbeitet oder verlänger
 ergänzen; das Formular zeigt die fehlenden Felder an. Gespeicherte Werte, die es nicht (mehr) gibt, werden weder
 angezeigt noch beim nächsten Speichern übernommen.
 
+## Suchfilter (Phase 4)
+
+Dieselben Definitionen steuern die Filter der Suche. Ein Feld mit `filter: { param: 'kilometer' }` wird zum Filter
+mit dem URL-Namen `kilometer` (Zahlen und Jahre als Bereich `kilometer_ab`/`kilometer_bis`, Auswahl als Liste,
+Mehrfachauswahl wie Ausstattung als „alle gewählten“, Text als Wortsuche, Ja/Nein als Häkchen). Optional ersetzt
+`filter.label` die Beschriftung. Neu für die Suche ist das optionale Feld **Berufsbereich** (`jobField`) bei allen Jobs.
+Details und die Regeln für Oberkategorien stehen in [suche.md](suche.md).
+
 ## Neue Felder ergänzen
 
-1. Feld in `definitions.ts` bei der passenden Kategorie eintragen (Schlüssel nie nachträglich umbenennen).
+1. Feld in `definitions.ts` bei der passenden Kategorie eintragen (Schlüssel nie nachträglich umbenennen). Soll danach
+   gefiltert werden können, `filter: { param }` ergänzen (URL-Name eindeutig, ein Test prüft Kollisionen) und
+   anschließend `pnpm --filter @marktat/api search:reindex` ausführen.
 2. Bei Auswahlfeldern die Liste in `options.ts` ergänzen; gespeicherte Werte nicht umbenennen.
 3. `pnpm --filter @marktat/shared test` und `pnpm --filter @marktat/api test` prüfen u. a., dass jede Regel auf eine
    existierende Kategorie zeigt und die Demo-Inserate gültig sind.

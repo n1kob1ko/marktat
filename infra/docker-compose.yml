@@ -95,7 +95,7 @@ services:
     volumes:
       - redis-data:/data
 
-  # Volltextsuche – wird ab Phase 2 genutzt.
+  # Volltextsuche (Phase 4). Ohne Meilisearch sucht die API direkt in PostgreSQL.
   meilisearch:
     image: getmeili/meilisearch:v1.56
     restart: unless-stopped
@@ -107,6 +107,11 @@ services:
       - '${MEILI_PORT:-7700}:7700'
     volumes:
       - meili-data:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-sf', 'http://localhost:7700/health']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
 volumes:
   db-data:

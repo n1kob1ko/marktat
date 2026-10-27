@@ -27,8 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Nur Entwicklungswerte aus .env.example – CI braucht keine echten Zugangsdaten.
       - run: cp .env.example .env
-      - name: Datenbank starten (PostGIS)
-        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db
+      - name: Datenbank und Suche starten (PostGIS, Meilisearch)
+        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db meilisearch
       - run: pnpm build
       - run: pnpm lint
       - run: pnpm typecheck
@@ -55,8 +55,11 @@ jobs:
       - name: Lokale Umgebung starten
         run: pnpm infra:up --wait
       - run: pnpm db:migrate
-      - run: pnpm db:seed
+      # Demo-Inserate: die Suchtests (e2e/search.spec.ts) prüfen Filter und Umkreis daran
+      - run: pnpm db:seed -- --demo
       - run: pnpm build
+      - name: Suchindex aus den Demodaten aufbauen
+        run: pnpm --filter @marktat/api search:reindex
       - name: Playwright-Browser installieren
         run: pnpm --filter @marktat/web exec playwright install --with-deps chromium
       - name: API und Web starten
