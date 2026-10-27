@@ -125,6 +125,19 @@ const median = (values: number[]) => {
   return sorted[Math.floor(sorted.length / 2)]!;
 };
 
+/**
+ * Mittelpunkte der 23 Wiener Gemeindebezirke (gerundet, ca. ±1 km). GeoNames liefert für die meisten Wiener
+ * PLZ nur den Stadtmittelpunkt (Stephansplatz) bzw. vereinzelt Punkte außerhalb Wiens – für die Umkreissuche
+ * ersetzen wir sie durch den Mittelpunkt des Bezirks.
+ */
+export const VIENNA_DISTRICT_CENTRES: Record<number, [lat: number, lon: number]> = {
+  901: [48.2085, 16.3721], 902: [48.218, 16.4], 903: [48.1983, 16.3948], 904: [48.1916, 16.3713], 905: [48.1872, 16.355],
+  906: [48.195, 16.3497], 907: [48.2021, 16.349], 908: [48.2106, 16.3477], 909: [48.2252, 16.358], 910: [48.1585, 16.382],
+  911: [48.17, 16.43], 912: [48.175, 16.33], 913: [48.175, 16.27], 914: [48.2, 16.27], 915: [48.195, 16.325],
+  916: [48.212, 16.31], 917: [48.228, 16.3], 918: [48.23, 16.33], 919: [48.255, 16.34], 920: [48.24, 16.375],
+  921: [48.278, 16.41], 922: [48.23, 16.47], 923: [48.14, 16.29],
+};
+
 export interface BuildResult {
   locations: LocationRow[];
   skipped: Map<string, number>;
@@ -136,6 +149,7 @@ export interface BuildResult {
  *  - Koordinaten: mehr als 80 km vom Bezirksmittelpunkt entfernt → unplausibel, verworfen
  *  - Duplikate (gleiche PLZ + gleicher Name nach Normalisierung) zusammenführen
  *  - Gemeinde ohne gleichnamige Ortschaft (z. B. 9500 Villach) als eigener Eintrag ergänzen
+ *  - Wien: Koordinaten des jeweiligen Gemeindebezirks (siehe VIENNA_DISTRICT_CENTRES)
  */
 export function buildLocations(rows: GeoNamesRow[], knownDistricts: ReadonlySet<number>): BuildResult {
   const skipped = new Map<string, number>();
@@ -162,7 +176,8 @@ export function buildLocations(rows: GeoNamesRow[], knownDistricts: ReadonlySet<
       skip(districtId === null ? 'Bezirk nicht ermittelbar' : `unbekannter Bezirk ${districtId}`);
       continue;
     }
-    resolved.push({ ...row, districtId });
+    const vienna = VIENNA_DISTRICT_CENTRES[districtId];
+    resolved.push(vienna ? { ...row, districtId, latitude: vienna[0], longitude: vienna[1] } : { ...row, districtId });
   }
 
   const centre = new Map<number, { latitude: number; longitude: number }>();

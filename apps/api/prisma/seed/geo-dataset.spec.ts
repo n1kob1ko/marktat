@@ -34,9 +34,14 @@ describe('Ortsverzeichnis', () => {
     expect(state('7000', 'Eisenstadt')).toBe(1);
     expect(rows.filter((r) => r.postalCode === '6020').length).toBeGreaterThan(5);
     // Wien: alle 23 Gemeindebezirke mit ihrer Haupt-PLZ (1010 … 1230)
+    const centres = new Set<string>();
     for (let i = 1; i <= 23; i++) {
       const postalCode = `1${String(i).padStart(2, '0')}0`;
-      expect(rows.find((r) => r.postalCode === postalCode && r.place === 'Wien')?.districtId).toBe(900 + i);
+      const vienna = rows.find((r) => r.postalCode === postalCode && r.place === 'Wien')!;
+      expect(vienna.districtId).toBe(900 + i);
+      centres.add(`${vienna.latitude},${vienna.longitude}`);
     }
+    // Jeder Bezirk hat einen eigenen Mittelpunkt (nicht alle am Stephansplatz)
+    expect(centres.size).toBe(23);
   });
 });

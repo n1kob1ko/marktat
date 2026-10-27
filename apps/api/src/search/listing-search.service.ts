@@ -11,7 +11,7 @@ import {
 } from '@marktat/shared';
 import { Prisma } from '../generated/prisma/client.js';
 import { CategoriesService } from '../categories/categories.service.js';
-import { locationInclude, toLocationSummary } from '../geo/geo.service.js';
+import { GeoService, locationInclude, toLocationSummary } from '../geo/geo.service.js';
 import { ImageUrls } from '../images/image-urls.js';
 import { listingInclude, toListingSummary } from '../listings/listings.mapper.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -39,6 +39,7 @@ export class ListingSearchService {
     private readonly categories: CategoriesService,
     private readonly index: SearchIndexService,
     private readonly urls: ImageUrls,
+    private readonly geo: GeoService,
   ) {}
 
   /** Prüft die Parameter (400 bei ungültigen Werten) und sucht. */
@@ -167,10 +168,10 @@ export class ListingSearchService {
     return { latitude: location.latitude, longitude: location.longitude, postalCode: location.postalCode, summary: toLocationSummary(location) };
   }
 
+  /** Hauptort einer PLZ – dieselbe Reihenfolge wie die Ortsvorschläge (8010 → Graz, 2340 → Mödling) */
   private async mainLocation(postalCode: string) {
-    const rows = await this.prisma.location.findMany({ where: { postalCode }, include: locationInclude, orderBy: { place: 'asc' } });
-    const isCity = (r: (typeof rows)[number]) => r.district.name.endsWith('(Stadt)') || r.district.state.code === 'AT-9';
-    return rows.find((r) => r.place === r.municipality && isCity(r)) ?? rows.find((r) => r.place === r.municipality) ?? rows[0] ?? null;
+    const [first] = await this.geo.searchLocations(postalCode, 1);
+    return first ? this.prisma.location.findUnique({ where: { id: first.id }, include: locationInclude }) : null;
   }
 }
 

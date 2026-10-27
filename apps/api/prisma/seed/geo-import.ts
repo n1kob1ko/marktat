@@ -39,6 +39,7 @@ async function main() {
     await upsertLocations(prisma, built.locations);
 
     console.log(`Importiert/aktualisiert: ${built.locations.length} Orte`);
+    console.log("Hinweis: Koordinaten im Suchindex mit `pnpm --filter @marktat/api search:reindex` aktualisieren.");
     for (const [reason, count] of [...parsed.skipped, ...built.skipped]) console.log(`Übersprungen (${reason}): ${count}`);
   } finally {
     await prisma.$disconnect();

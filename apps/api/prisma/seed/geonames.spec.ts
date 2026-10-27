@@ -81,6 +81,14 @@ describe('buildLocations', () => {
     expect(skipped.get('Koordinaten unplausibel (über 80 km vom Bezirk entfernt)')).toBe(1);
   });
 
+  it('setzt in Wien den Mittelpunkt des Gemeindebezirks statt des Stadtzentrums', () => {
+    const { locations } = buildLocations(
+      [row({ postalCode: '1210', place: 'Wien, Floridsdorf', stateCode: '9', districtId: 921, municipality: null, latitude: 48.2085, longitude: 16.3721 })],
+      new Set([921]),
+    );
+    expect(locations).toEqual([{ postalCode: '1210', place: 'Wien', municipality: 'Wien', districtId: 921, latitude: 48.278, longitude: 16.41 }]);
+  });
+
   it('Datensatzzeilen lassen sich verlustfrei schreiben und lesen', () => {
     const location = { postalCode: '6020', place: 'Wilten', municipality: 'Innsbruck', districtId: 701, latitude: 47.258, longitude: 11.388 };
     expect(fromDatasetLine(toDatasetLine(location))).toEqual(location);

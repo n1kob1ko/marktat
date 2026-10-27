@@ -27,14 +27,31 @@ export const DEMO_LISTINGS = [
   },
   {
     title: 'Bürokauffrau/-mann (Vollzeit)', path: 'jobs/vollzeit', price: null, priceType: 'ON_REQUEST', postalCode: '8010', condition: null,
-    attributes: { jobTitle: 'Bürokauffrau/-mann', employmentType: 'employee', weeklyHours: 38.5, workingTimeModel: 'flextime', workplaceType: 'hybrid', salaryGross: 2400, salaryPeriod: 'month', overpayment: true, experience: 'junior' },
+    attributes: { jobTitle: 'Bürokauffrau/-mann', jobField: 'office', employmentType: 'employee', weeklyHours: 38.5, workingTimeModel: 'flextime', workplaceType: 'hybrid', salaryGross: 2400, salaryPeriod: 'month', overpayment: true, experience: 'junior' },
+  },
+  // Für die Umkreissuche: Räder rund um Wien
+  {
+    title: 'E-Bike Trekking, Akku neu', path: 'marktplatz/sport-freizeit/fahrraeder', price: 120_000, priceType: 'NEGOTIABLE', postalCode: '2340', place: 'Mödling', condition: 'LIKE_NEW',
+    attributes: { bikeType: 'e-bike', wheelSize: '28' },
+  },
+  {
+    title: 'Kinderrad 20 Zoll mit Stützrädern', path: 'marktplatz/sport-freizeit/fahrraeder', price: 6_000, priceType: 'FIXED', postalCode: '3100', condition: 'ACCEPTABLE',
+    attributes: { bikeType: 'kids', wheelSize: '20' },
+  },
+  {
+    title: 'Eigentumswohnung 3 Zimmer mit Terrasse', path: 'immobilien/wohnungen/eigentumswohnungen', price: 34_900_000, priceType: 'FIXED', postalCode: '8010', condition: null,
+    attributes: { offerType: 'BUY', livingAreaSqm: 84, rooms: 3, constructionYear: 2015, heating: 'district', features: ['terrace', 'elevator', 'parking'], hwb: 38.2, fgee: 0.82 },
+  },
+  {
+    title: 'Softwareentwickler/in TypeScript (Teilzeit)', path: 'jobs/teilzeit', price: null, priceType: 'ON_REQUEST', postalCode: '1010', condition: null,
+    attributes: { jobTitle: 'Softwareentwickler/in', jobField: 'it', employmentType: 'employee', weeklyHours: 30, workingTimeModel: 'flextime', workplaceType: 'remote', salaryGross: 48_000, salaryPeriod: 'year', experience: 'mid' },
   },
 ] as const;
 
 /** Hauptort einer PLZ (z. B. 8010 → Graz statt eines Ortsteils der Umlandgemeinden). */
-async function mainLocation(prisma: PrismaClient, postalCode: string) {
+async function mainLocation(prisma: PrismaClient, postalCode: string, place?: string) {
   const rows = await prisma.location.findMany({
-    where: { postalCode },
+    where: { postalCode, ...(place && { place }) },
     include: { district: true },
     orderBy: { place: 'asc' },
   });
@@ -58,7 +75,7 @@ export async function seedDemoData(prisma: PrismaClient) {
   const now = Date.now();
   for (const [i, item] of DEMO_LISTINGS.entries()) {
     const category = await prisma.category.findUniqueOrThrow({ where: { path: item.path } });
-    const location = await mainLocation(prisma, item.postalCode);
+    const location = await mainLocation(prisma, item.postalCode, 'place' in item ? item.place : undefined);
     const publishedAt = new Date(now - i * 3_600_000);
     await prisma.listing.create({
       data: {
