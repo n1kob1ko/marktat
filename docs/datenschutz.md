@@ -70,3 +70,28 @@ für ihre endgültige Löschung ist noch festzulegen (siehe Risiken in [sicherhe
 
 Siehe [Moderation](moderation.md#private-nachrichten): kein pauschaler Zugriff, nur zu einer offenen Meldung, nach
 Bestätigung und protokolliert.
+
+## Prüfung vor dem Start (Phase 8)
+
+Technisch geprüft und umgesetzt:
+- **Logs**: API-Zugriffslogs (JSON) ohne IP, Query-String, Token und IDs im Pfad; Fehlermeldungen in Log und
+  Fehlerübersicht mit ersetzten E-Mail-Adressen, UUIDs und Zahlen. Web-Fehlerlog nur mit Routenmuster.
+- **Fehlerübersicht** (`error_events`): kein Personenbezug, wird 30 Tage nach dem letzten Auftreten gelöscht.
+- **Aufrufstatistik**: nur Zähler je Inserat und Tag, keine IPs (Doppelzählungsschutz flüchtig in Redis).
+- **Indexierung**: Konto, Nachrichten, Admin usw. nie in Suchmaschinen; vor dem Start gar nichts.
+- **Sicherungen** enthalten personenbezogene Daten – Umgang in [betrieb.md](betrieb.md#sicherung-und-wiederherstellung).
+- Gefundener und behobener technischer Fehler: keiner mit Datenschutzbezug; die gefundenen Fehler betrafen die
+  Verfügbarkeit (siehe Abschlussbericht Phase 8).
+
+**Braucht eine rechtliche Entscheidung (keine Frist eigenmächtig festgelegt):**
+
+| Daten | Heute | Frage |
+| --- | --- | --- |
+| Nachrichten aktiver Konten | bleiben bis zur Kontolöschung | Höchstdauer, z. B. nach Ende/Löschung des Inserats? |
+| Vom Anbieter gelöschte Inserate (`DELETED`) samt Bildern | bleiben in der Datenbank bzw. in R2 | Frist bis zur endgültigen Löschung |
+| Abgelaufene Inserate | bleiben, Verlängerung möglich | Frist bis zur Löschung |
+| Buchungen (auch kostenlose) | bleiben; bei Kontolöschung ohne Kontobezug | Aufbewahrungspflichten (Buchhaltung) vs. Datenminimierung; kostenlose Buchungen früher löschen? |
+| Protokoll von Supabase Auth (`auth.audit_log_entries`, enthält IP-Adressen) | wird von GoTrue nicht automatisch gelöscht | Frist und Löschjob festlegen |
+| Verarbeitete Stripe-Ereignisse (`stripe_events`, nur ID/Typ) | bleiben | unkritisch, Frist optional |
+| Sicherungen (später im Livebetrieb) | – | Aufbewahrungsdauer, Speicherort, Löschung in Sicherungen |
+| Vorgeschlagene Fristen oben (Mitteilungen, Audit-Log, Meldungen, Entscheidungen) | technisch umgesetzt | rechtlich bestätigen |

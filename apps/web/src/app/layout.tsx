@@ -16,6 +16,8 @@ export const metadata: Metadata = {
     'Kostenlos inserieren und Schnäppchen finden: Marktplatz, Auto & Motor, Immobilien und Jobs in ganz Österreich.',
   applicationName: 'MarktAT',
   openGraph: { type: 'website', locale: 'de_AT', siteName: 'MarktAT' },
+  // Vor dem offiziellen Start nicht indexieren (ALLOW_INDEXING, siehe next.config.ts)
+  ...(serverEnv.allowIndexing ? {} : { robots: { index: false, follow: false } }),
 };
 
 export const viewport: Viewport = {

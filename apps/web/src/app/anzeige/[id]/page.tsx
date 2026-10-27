@@ -23,15 +23,30 @@ import { ListingGallery } from '@/components/listing-gallery';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
+import { JsonLd } from '@/components/json-ld';
+import { serverEnv } from '@/lib/env';
+import { listingJsonLd, metaDescription } from '@/lib/seo';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
-  const { id } = await params;
-  const listing = await api<ListingDetail>(`/listings/${id}`, { cache: 'no-store' }).catch(() => null);
+  const [{ id }, token] = await Promise.all([params, getAccessToken()]);
+  // Mit Sitzung, damit Eigentümer auch bei Entwürfen und abgelaufenen Inseraten den richtigen Titel sehen
+  const listing = await api<ListingDetail>(`/listings/${id}`, { token: token ?? undefined, cache: 'no-store' }).catch(() => null);
   if (!listing) return { title: 'Anzeige nicht gefunden', robots: { index: false } };
+  const description = metaDescription(listing.description, `${listing.title} – Kleinanzeige auf MarktAT`);
+  const image = listing.images[0];
   return {
     title: listing.title,
-    description: listing.description.slice(0, 155),
+    description,
     alternates: { canonical: `/anzeige/${listing.id}` },
+    // Nur öffentlich sichtbare Inserate gehören in Suchmaschinen
+    ...(listing.status === 'ACTIVE' ? {} : { robots: { index: false, follow: false } }),
+    openGraph: {
+      type: 'website',
+      title: listing.title,
+      description,
+      url: `/anzeige/${listing.id}`,
+      ...(image ? { images: [{ url: image.url, width: image.width, height: image.height, alt: listing.title }] } : {}),
+    },
   };
 }
 
@@ -64,6 +79,7 @@ async function ListingContent({
 
   return (
     <div className="space-y-6">
+      <JsonLd data={listingJsonLd(listing, serverEnv.webUrl)} />
       <FlashMessage hinweis={hinweis} fehler={fehler} />
       {listing.isOwner ? <OwnerBar listing={listing} /> : <ViewBeacon listingId={listing.id} />}
       {staff ? (

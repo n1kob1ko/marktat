@@ -3,6 +3,25 @@
 > ⚠️ **Muss von einer österreichischen Rechtsanwältin bzw. einem österreichischen Rechtsanwalt geprüft werden.**
 > Die Seiten Impressum, Datenschutz, AGB und Meldestelle im Frontend sind Platzhalter mit Struktur, keine Rechtstexte.
 > Diese Liste ist eine technische Gedächtnisstütze und keine Rechtsberatung.
+> Stand Phase 8 (27.10.2026): kein öffentlicher Start, keine echten Zahlungen, Suchmaschinen gesperrt.
+
+## Vor dem öffentlichen Start zu erledigen
+
+- [ ] Impressum mit echten Angaben (Betreiber, Anschrift, Kontakt, ggf. UID/Firmenbuch) – Platzhalter ersetzen
+- [ ] Datenschutzerklärung vollständig (Verarbeitungen, Empfänger, Fristen, Rechte, Kontakt) – Platzhalter ersetzen
+- [ ] AGB / Nutzungsbedingungen inkl. Liste verbotener Artikel – Platzhalter ersetzen, neue Version setzen (`TERMS_VERSION`)
+- [ ] Löschfristen bestätigen bzw. festlegen (offene Fragen in [datenschutz.md](datenschutz.md#prüfung-vor-dem-start-phase-8))
+- [ ] AV-Verträge: Hoster, Supabase, Cloudflare (R2), E-Mail-Versand, Stripe (erst bei echten Zahlungen), ggf. Monitoring
+- [ ] Drittlandübermittlung je Anbieter prüfen (EU-Regionen gewählt?)
+- [ ] Verzeichnis der Verarbeitungstätigkeiten (Art. 30 DSGVO)
+- [ ] DSA: Kontaktstelle (Art. 11/12), Transparenzbericht, ggf. Transparenzdatenbank; Meldungen ohne Konto (Art. 16)?
+- [ ] KoPl-G: Anwendbarkeit klären
+- [ ] Cookie-Hinweis: nur technisch notwendige Cookies – Bestätigung, dass kein Banner nötig ist
+- [ ] Aufbewahrung von Sicherungen (Dauer, Ort, Löschung) festlegen
+- [ ] Monitoring-Dienst (falls gewünscht): Freigabe, AV-Vertrag, EU-Region
+- [ ] Vor echten Zahlungen: Preisangaben, Rechnungen, Rücktrittsrecht/Widerruf (FAGG), Steuern – derzeit alles kostenlos
+
+## Übersicht
 
 | Thema | Rechtsgrundlage (Stichwort) | Stand im Code |
 | --- | --- | --- |
@@ -22,5 +41,9 @@
 | Verbotene Inhalte / Kategorien | u. a. Waffen-, Arzneimittel-, Tierschutzrecht | Meldegrund „Verbotener Artikel“ und Moderation vorhanden (Phase 6); Liste verbotener Artikel in den AGB festlegen und prüfen |
 | Jobs: Gleichbehandlung | GlBG § 9 (geschlechtsneutrale Ausschreibung), § 9 Abs. 2 (Gehaltsangabe) | Pflichtfeld Gehalt in Phase 5 |
 | Immobilien: Energieausweis | EAVG § 3 (HWB/fGEE in Inseraten) | Pflichtfelder in Phase 5 |
-| Bezahlte Leistungen | Preisangaben, Rechnungslegung, Rücktrittsrecht (FAGG) | Phase 4 |
+| Bezahlte Leistungen | Preisangaben, Rechnungslegung, Rücktrittsrecht (FAGG) | Phase 7: vorbereitet, Betrieb kostenlos, Stripe nur Testmodus ([monetarisierung.md](monetarisierung.md)) |
 | Quellenangabe Geodaten | CC BY 4.0 (GeoNames) | Namensnennung im Impressum unter „Datenquellen“ |
+| Zwei-Faktor-Anmeldung für das Team | DSGVO Art. 32 (Sicherheit der Verarbeitung) | Phase 8: TOTP für Admin und Moderation, Pflicht in Produktion; Protokollierung von Einrichtung und Zurücksetzen |
+| Sicherungen | DSGVO Art. 32 Abs. 1 lit. c (Wiederherstellbarkeit) | Phase 8: lokale Sicherungs-/Wiederherstellungsroutine mit Probelauf ([betrieb.md](betrieb.md)); Livebetrieb offen |
+| Suchmaschinen / Sichtbarkeit | – | Phase 8: bis zum Start `noindex`; private Bereiche immer `noindex` |
+| Staging | – | Phase 8: nur Konzept ([staging.md](staging.md)), nur synthetische Daten vorgesehen |

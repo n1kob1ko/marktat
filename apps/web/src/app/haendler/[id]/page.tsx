@@ -8,6 +8,9 @@ import { formatDate, type DealerProfile } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { ListingCard } from '@/components/listing-card';
 import { Pagination } from '@/components/pagination';
+import { JsonLd } from '@/components/json-ld';
+import { serverEnv } from '@/lib/env';
+import { dealerJsonLd, metaDescription } from '@/lib/seo';
 
 const ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -25,10 +28,18 @@ export async function generateMetadata({ params }: PageProps<'/haendler/[id]'>):
   const { id } = await params;
   const dealer = await loadDealer(id).catch(() => null);
   if (!dealer) return { title: 'Händler nicht gefunden', robots: { index: false } };
+  const description = metaDescription(dealer.description ?? '', `Aktuelle Angebote von ${dealer.companyName} auf MarktAT.`);
   return {
     title: dealer.companyName,
-    description: (dealer.description ?? `Aktuelle Angebote von ${dealer.companyName} auf MarktAT.`).slice(0, 155),
+    description,
     alternates: { canonical: `/haendler/${dealer.id}` },
+    openGraph: {
+      type: 'profile',
+      title: dealer.companyName,
+      description,
+      url: `/haendler/${dealer.id}`,
+      ...(dealer.logoUrl ? { images: [{ url: dealer.logoUrl, width: 400, height: 400, alt: `Logo ${dealer.companyName}` }] } : {}),
+    },
   };
 }
 
@@ -52,6 +63,7 @@ async function Dealer({ params, searchParams }: PageProps<'/haendler/[id]'>) {
 
   return (
     <div className="grid gap-6 lg:grid-cols-[20rem_1fr] lg:gap-8">
+      <JsonLd data={dealerJsonLd(dealer, serverEnv.webUrl)} />
       <aside className="space-y-4 lg:self-start">
         <Card className="p-5">
           {dealer.logoUrl ? (

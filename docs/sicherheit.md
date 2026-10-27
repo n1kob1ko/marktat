@@ -94,14 +94,36 @@
 | Thema | Plan |
 | --- | --- |
 | CSP mit Nonce | Aktuell `'unsafe-inline'` für Skripte, weil Next.js Inline-Skripte erzeugt. Umstellung auf Nonce über den Proxy, sobald die Seiten-Caching-Strategie feststeht. |
-| 2FA | Supabase unterstützt TOTP; für Admin- und Moderationskonten vor dem Livebetrieb dringend empfohlen (heute schützt nur das Passwort den Admin-Bereich). |
-| Monitoring und Alarmierung | Fehlgeschlagene Aufträge und Löschungen stehen im Admin-Dashboard; Sentry o. Ä. und Alarme (E-Mail/Chat) fehlen noch. |
+| 2FA | Umgesetzt in Phase 8 (siehe unten). Offen: Wiederherstellungscodes (Supabase bietet derzeit keine eigenen; Ersatz: zweites Gerät oder Zurücksetzen durch die Administration). |
+| Monitoring und Alarmierung | Phase 8: Healthchecks, Systemzustand und Fehlerübersicht im Admin-Bereich, JSON-Logs ([betrieb.md](betrieb.md)). Offen: externer Dienst (Sentry o. Ä.) und Alarme per E-Mail/Chat – brauchen Freigabe. |
 | Endgültige Löschung soft-gelöschter Inserate | Vom Anbieter gelöschte Inserate bleiben als `DELETED` erhalten; Frist und Löschauftrag festlegen (inkl. Bilder in R2). |
 | Bilder im Datenexport | Export enthält Bild-Metadaten, nicht die Dateien. |
 | Meldungen ohne Konto | Meldeformular nur angemeldet; ob das nach Art. 16 DSA reicht, rechtlich prüfen. |
 | Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)). Offen: automatische Inhaltsprüfung (z. B. bekannte Missbrauchsdarstellungen). |
 
+## Phase 8: Härtung vor dem Start
+
+**Zwei-Faktor-Anmeldung (TOTP)**
+- Über Supabase MFA; Einrichtung unter `/konto/sicherheit` (nur Team-Konten), bis zu 3 Geräte.
+- `STAFF_MFA_REQUIRED` (Standard in Produktion: an): Admin- und Moderationsrouten verlangen eine Sitzung mit
+  `aal2`. Die API prüft das selbst anhand des Tokens (`MfaGuard`), unabhängig von der Web-App.
+- Kritische Aktionen (Konto sperren/entsperren, Rolle ändern, 2FA zurücksetzen, Preise/Einstellungen, Umstellung
+  auf kostenpflichtig) verlangen zusätzlich einen frischen Code (`@StepUp`, höchstens `STEP_UP_MAX_AGE_MINUTES` alt).
+- Aussperren verhindert: Der letzte Faktor lässt sich bei 2FA-Pflicht nicht entfernen; Zurücksetzen durch eine
+  andere Administration oder per Kommandozeile ([betrieb.md](betrieb.md#notfälle)). Alles wird protokolliert.
+
+**Robustheit gegen doppeltes Abschicken**
+- Nachrichten tragen eine `clientId`, neue Inserate eine `clientRequestId` (eindeutig je Konto). Wiederholte
+  Anfragen – Doppelklick, Wiederholen nach Zeitüberschreitung – liefern den schon gespeicherten Eintrag.
+  Buchungen hatten bereits einen Idempotenzschlüssel (Phase 7).
+
+**Suchmaschinen**: bis zum Start vollständig `noindex`; private Bereiche immer (siehe [betrieb.md](betrieb.md#suchmaschinen)).
+Strukturierte Daten werden so serialisiert, dass Inseratstexte das `<script>`-Element nicht verlassen können.
+
 ## Backup-Konzept (für den Produktionsbetrieb)
+
+Lokale Routine und Probelauf: [betrieb.md](betrieb.md#sicherung-und-wiederherstellung).
+
 
 - Postgres: tägliche automatische Backups mit Point-in-Time-Recovery (bei verwalteten Anbietern Standard), Aufbewahrung 14–30 Tage, Speicherort in der EU.
 - Zusätzlich wöchentlicher `pg_dump` in einen getrennten Bucket mit anderer Zugangsberechtigung.

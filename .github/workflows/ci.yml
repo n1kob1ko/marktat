@@ -18,9 +18,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -40,6 +40,26 @@ jobs:
       - run: pnpm test
       - name: API-Integrationstests
         run: pnpm --filter @marktat/api test:e2e
+      # Schema und Migrationen müssen übereinstimmen (leere Hilfsdatenbank marktat_shadow aus dem Init-Skript)
+      - name: Migrationen prüfen
+        run: pnpm --filter @marktat/api db:check-migrations
+      # Sicherung und Wiederherstellung mit synthetischen Daten in eigenen, temporären Datenbanken
+      - name: Sicherung und Wiederherstellung prüfen
+        run: pnpm --filter @marktat/api db:backup-check
+
+  audit:
+    name: Sicherheitslücken in Abhängigkeiten
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      # Nur Laufzeit-Abhängigkeiten; ab „high“ schlägt der Job fehl (moderate stehen im Log)
+      - run: pnpm audit --prod --audit-level high
 
   e2e:
     name: Browser-Tests (Playwright)
@@ -51,9 +71,9 @@ jobs:
       # E-Mails zu Nachrichten sofort, damit der Zwei-Konten-Test sie in Mailpit prüfen kann
       MESSAGE_EMAIL_DELAY_SECONDS: '0'
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
           cache: pnpm
@@ -86,7 +106,7 @@ jobs:
       - if: failure()
         run: cat api.log web.log
       - if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-report
           path: apps/web/playwright-report

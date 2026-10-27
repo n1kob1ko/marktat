@@ -679,6 +679,14 @@ export interface ListingStats {
   countingSince: string | null;
 }
 
+/** Öffentliche Adressen für die Sitemap (GET /v1/seo/sitemap) */
+export interface SitemapEntries {
+  listings: { id: string; updatedAt: string }[];
+  dealers: { id: string; updatedAt: string }[];
+  /** Kategoriepfade, z. B. "marktplatz/sport-freizeit/fahrraeder" */
+  categories: string[];
+}
+
 export interface DealerProfile {
   id: string;
   companyName: string;
