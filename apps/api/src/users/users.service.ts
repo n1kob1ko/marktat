@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ACCOUNT_TYPES, displayNameSchema, type UpdateProfileInput } from '@marktat/shared';
+import { ACCOUNT_TYPES, displayNameSchema, type NotificationSettingsInput, type UpdateProfileInput } from '@marktat/shared';
 import type { AccountType } from '../generated/prisma/enums.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -73,6 +73,11 @@ export class UsersService {
   async getMe(userId: string) {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
     return toMe(user);
+  }
+
+  async updateNotifications(user: AuthUser, input: NotificationSettingsInput) {
+    const updated = await this.prisma.user.update({ where: { id: user.id }, data: input });
+    return toMe(updated);
   }
 
   async updateMe(user: AuthUser, input: UpdateProfileInput, ip?: string) {

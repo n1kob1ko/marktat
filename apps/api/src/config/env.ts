@@ -51,6 +51,30 @@ const envSchema = z
     MEILI_MASTER_KEY: optional,
     /** Name des Suchindex (Tests verwenden einen eigenen) */
     MEILI_INDEX: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('listings'),
+    /** Redis für Hintergrundaufgaben (BullMQ) und Echtzeit-Ereignisse über mehrere API-Instanzen. Leer = im Prozess. */
+    REDIS_URL: optional.pipe(z.url().optional()),
+    /** Präfix der Warteschlangen in Redis (Tests verwenden ein eigenes) */
+    QUEUE_PREFIX: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('marktat'),
+    /** false = diese Instanz arbeitet keine Hintergrundaufgaben ab (z. B. reine Web-Instanzen) */
+    JOBS_WORKER: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /** E-Mail-Versand (lokal: Mailpit). Leer = E-Mails werden nur protokolliert. */
+    SMTP_HOST: optional,
+    SMTP_PORT: z.coerce.number().int().positive().default(587),
+    SMTP_USER: optional,
+    SMTP_PASSWORD: optional,
+    /** true = TLS ab Verbindungsbeginn (Port 465); sonst STARTTLS, falls der Server es anbietet */
+    SMTP_SECURE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    MAIL_FROM: z.string().min(3).default('MarktAT <noreply@marktat.local>'),
+    /** Wartezeit vor der E-Mail zu einer neuen Nachricht. Wer in dieser Zeit liest, bekommt keine E-Mail. */
+    MESSAGE_EMAIL_DELAY_SECONDS: z.coerce.number().int().min(0).max(86_400).default(120),
+    /** Abstand der Prüfung gespeicherter Suchen auf neue Treffer */
+    SAVED_SEARCH_ALERT_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',

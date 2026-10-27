@@ -50,7 +50,10 @@ export interface SearchDocument {
 }
 
 /** Nur diese Inserate gehören in den Index – dieselbe Regel wie für die öffentliche Anzeige. */
-export function isPubliclyVisible(listing: Pick<IndexableListing, 'status' | 'deletedAt' | 'expiresAt' | 'seller'>, now = new Date()) {
+export function isPubliclyVisible(
+  listing: Pick<IndexableListing, 'status' | 'deletedAt' | 'expiresAt'> & { seller: Pick<IndexableListing['seller'], 'status' | 'deletedAt'> },
+  now = new Date(),
+) {
   return (
     listing.status === 'ACTIVE' &&
     listing.deletedAt === null &&

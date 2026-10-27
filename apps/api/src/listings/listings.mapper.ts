@@ -71,7 +71,17 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
   };
 }
 
-export function toListingDetail(listing: ListingWithRelations, urls: ImageUrls, viewerId?: string): ListingDetail {
+export interface ViewerState {
+  isFavorite: boolean;
+  conversationId: string | null;
+}
+
+export function toListingDetail(
+  listing: ListingWithRelations,
+  urls: ImageUrls,
+  viewerId?: string,
+  viewer: ViewerState = { isFavorite: false, conversationId: null },
+): ListingDetail {
   const signed = needsSignedUrls(listing);
   return {
     ...toListingSummary(listing, urls),
@@ -83,5 +93,6 @@ export function toListingDetail(listing: ListingWithRelations, urls: ImageUrls, 
     updatedAt: listing.updatedAt.toISOString(),
     seller: toPublicSeller(listing.seller),
     isOwner: viewerId === listing.sellerId,
+    ...viewer,
   };
 }
