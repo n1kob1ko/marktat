@@ -4,6 +4,7 @@ import { z } from 'zod';
 z.config(z.locales.de());
 
 export * from './austria.js';
+export * from './attributes.js';
 export * from './enums.js';
 export * from './format.js';
 export * from './slug.js';
