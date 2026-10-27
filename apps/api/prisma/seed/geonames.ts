@@ -87,7 +87,7 @@ export function parseGeoNamesLine(line: string): ParseResult {
       place,
       stateCode: String(Number(stateCode)),
       districtId,
-      municipality: municipality && !/^Gemeindebezirk /.test(municipality) ? municipality : null,
+      municipality: municipality && !municipality.startsWith('Gemeindebezirk ') ? municipality : null,
       latitude,
       longitude,
     },

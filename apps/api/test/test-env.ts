@@ -16,4 +16,6 @@ export function applyTestEnv() {
   process.env.STORAGE_DRIVER = 'local';
   process.env.LOCAL_STORAGE_DIR = fileURLToPath(new URL('../.storage-test', import.meta.url));
   process.env.API_URL = 'http://localhost:4000';
+  // Eigener Suchindex, damit Tests die Entwicklungsdaten nicht berühren
+  process.env.MEILI_INDEX = 'listings_test';
 }

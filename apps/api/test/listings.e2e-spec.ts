@@ -1,7 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, resetData, tokenFor } from './helpers.js';
+import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
 
 describe('Inserate', () => {
   let app: NestExpressApplication;
@@ -51,6 +51,7 @@ describe('Inserate', () => {
     const days = (Date.parse(res.body.expiresAt) - Date.now()) / 86_400_000;
     expect(Math.round(days)).toBe(60);
 
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.total).toBe(1);
     expect(list.body.items[0].id).toBe(res.body.id);
@@ -91,6 +92,7 @@ describe('Inserate', () => {
     await request(server()).get(`/v1/listings/${draft.body.id}`).expect(404);
     await request(server()).get(`/v1/listings/${draft.body.id}`).set(stranger.auth).expect(404);
     await request(server()).get(`/v1/listings/${draft.body.id}`).set(seller.auth).expect(200);
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.total).toBe(0);
     const mine = await request(server()).get('/v1/listings/mine').set(seller.auth).expect(200);
@@ -150,6 +152,7 @@ describe('Inserate', () => {
     const { body: listing } = await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201);
     await prisma.listing.update({ where: { id: listing.id }, data: { expiresAt: new Date(Date.now() - 1000) } });
 
+    await flushSearch();
     expect((await request(server()).get('/v1/listings').expect(200)).body.total).toBe(0);
     const mine = await request(server()).get('/v1/listings/mine').set(seller.auth).expect(200);
     expect(mine.body[0].status).toBe('EXPIRED');
@@ -174,6 +177,7 @@ describe('Inserate', () => {
       })
       .expect(201);
 
+    await flushSearch();
     const byText = await request(server()).get('/v1/listings').query({ q: 'rennrad' }).expect(200);
     expect(byText.body.total).toBe(1);
     const byParent = await request(server()).get('/v1/listings').query({ categoryId: parentCategoryId }).expect(200);

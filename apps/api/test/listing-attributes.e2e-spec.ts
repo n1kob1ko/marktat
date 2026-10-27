@@ -1,7 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, resetData, tokenFor } from './helpers.js';
+import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
 
 /** Kategorieabhängige Zusatzangaben (Phase 3): Pflichtfelder, Entwürfe, Kategoriewechsel, Manipulation, Altbestand. */
 describe('Inserate mit Zusatzangaben', () => {
@@ -63,6 +63,7 @@ describe('Inserate mit Zusatzangaben', () => {
       .expect(201);
     expect(res.body).toMatchObject({ status: 'ACTIVE', vertical: 'VEHICLES', attributes: carAttributes, condition: null });
 
+    await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.items[0]).toMatchObject({
       vertical: 'VEHICLES',

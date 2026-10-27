@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ITEM_CONDITIONS, PRICE_TYPES, VERTICALS } from '../enums.js';
+import { ITEM_CONDITIONS, PRICE_TYPES } from '../enums.js';
 
 /** Obergrenze: 1 Mrd. Euro in Cent – deckt auch Immobilien ab. */
 export const MAX_PRICE_CENTS = 100_000_000_000;
@@ -82,12 +82,3 @@ export type CreateListingInput = z.infer<typeof createListingSchema>;
 export const updateListingSchema = listingDraftSchema.partial();
 export type UpdateListingInput = z.infer<typeof updateListingSchema>;
 
-export const listingQuerySchema = z.object({
-  q: z.string().trim().max(100).optional(),
-  categoryId: z.string().max(40).optional(),
-  vertical: z.enum(VERTICALS).optional(),
-  state: z.string().max(40).optional(),
-  page: z.coerce.number().int().min(1).max(500).default(1),
-  pageSize: z.coerce.number().int().min(1).max(50).default(24),
-});
-export type ListingQuery = z.infer<typeof listingQuerySchema>;

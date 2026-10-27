@@ -4,16 +4,16 @@ import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
 import {
   createListingSchema,
-  listingQuerySchema,
   updateListingSchema,
   type CreateListingInput,
-  type ListingQuery,
+  type RawSearchParams,
   type UpdateListingInput,
 } from '@marktat/shared';
 import { CurrentUser, Public } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { openApiSchema } from '../common/openapi.js';
+import { ListingSearchService } from '../search/listing-search.service.js';
 import { ListingsService } from './listings.service.js';
 
 /** Strengeres Limit für schreibende Aktionen (Spam-Schutz) */
@@ -22,13 +22,22 @@ const WRITE_LIMIT = { default: { limit: 20, ttl: 60_000 } };
 @ApiTags('Inserate')
 @Controller('listings')
 export class ListingsController {
-  constructor(private readonly listings: ListingsService) {}
+  constructor(
+    private readonly listings: ListingsService,
+    private readonly search: ListingSearchService,
+  ) {}
 
   @Public()
   @Get()
-  @ApiOperation({ summary: 'Aktive Inserate (Suche, Kategorie, Bundesland, Seiten)' })
-  list(@Query(new ZodValidationPipe(listingQuerySchema)) query: ListingQuery) {
-    return this.listings.findPublic(query);
+  @ApiOperation({
+    summary: 'Suche in aktiven Inseraten',
+    description:
+      'Parameter wie in der Such-URL der Website (siehe docs/suche.md): q, bereich, kategorie (Pfad oder ID), bundesland, plz, ort, ' +
+      'umkreis (5/10/25/50/100/200 km), preis_ab, preis_bis (Euro), anbieter (privat/gewerblich), zustand, sortierung, seite, pageSize ' +
+      'sowie die Eigenschaftsfilter der Kategorie (z. B. kraftstoff=diesel, kilometer_bis=100000). Ungültige Werte ergeben 400.',
+  })
+  list(@Query() query: RawSearchParams) {
+    return this.search.searchParams(query);
   }
 
   @Get('mine')

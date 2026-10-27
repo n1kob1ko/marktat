@@ -17,6 +17,16 @@ export interface Paginated<T> {
   total: number;
 }
 
+/** Ergebnis von `GET /v1/listings` */
+export interface SearchResult extends Paginated<ListingSummary> {
+  /** Anzahl erreichbarer Seiten (bei sehr vielen Treffern begrenzt) */
+  totalPages: number;
+  /** Gewählter Ort bzw. Mittelpunkt der Umkreissuche */
+  location: LocationSummary | null;
+  /** Welche Suche geantwortet hat; `postgres` = Ausweichbetrieb ohne Meilisearch */
+  engine: 'meilisearch' | 'postgres';
+}
+
 export interface ApiError {
   statusCode: number;
   message: string;
@@ -90,6 +100,8 @@ export interface ListingSummary {
   priceSuffix: string | null;
   /** Nur Jobs: Gehaltsangabe statt Preis */
   salary: string | null;
+  /** Nur bei Suchen mit Ort: Luftlinie zum gewählten Ort in km */
+  distanceKm?: number | null;
   publishedAt: string | null;
   createdAt: string;
 }

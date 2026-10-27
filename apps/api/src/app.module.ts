@@ -13,6 +13,7 @@ import { CategoriesModule } from './categories/categories.module.js';
 import { ListingsModule } from './listings/listings.module.js';
 import { ImagesModule } from './images/images.module.js';
 import { StorageModule } from './storage/storage.module.js';
+import { SearchModule } from './search/search.module.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
@@ -26,6 +27,7 @@ import { HealthController } from './health/health.controller.js';
     GeoModule,
     CategoriesModule,
     StorageModule.forRoot(),
+    SearchModule,
     ListingsModule,
     ImagesModule,
   ],
