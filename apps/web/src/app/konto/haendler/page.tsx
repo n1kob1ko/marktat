@@ -70,7 +70,7 @@ async function Dashboard() {
         <Card className="overflow-hidden">
           <h3 className="px-5 pt-5 font-sans text-base font-semibold tracking-normal">Meistgesehene aktive Anzeigen</h3>
           {data.topListings.length ? (
-            <div className="mt-3 overflow-x-auto">
+            <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Meistgesehene aktive Anzeigen (seitlich scrollbar)">
               <table className="w-full min-w-[28rem] text-left text-sm">
                 <thead className="text-xs text-ink-500">
                   <tr>

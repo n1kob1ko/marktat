@@ -141,7 +141,7 @@ async function ListingContent({
             <ListingDetails items={describeListingAttributes(categoryAttributeSchema(listing.category.path), listing.attributes)} />
             <h2 className="mt-8 font-sans text-lg font-semibold tracking-normal">Beschreibung</h2>
             <div className="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-800">
-              {listing.description || <span className="text-ink-400">Keine Beschreibung.</span>}
+              {listing.description || <span className="text-ink-500">Keine Beschreibung.</span>}
             </div>
           </Card>
         </div>

@@ -130,7 +130,7 @@ async function System() {
                       {e.stack ? (
                         <details className="mt-1">
                           <summary className="cursor-pointer text-xs font-semibold text-brand-700">Stacktrace</summary>
-                          <pre className="mt-1 overflow-x-auto text-xs whitespace-pre text-ink-600">{e.stack}</pre>
+                          <pre tabIndex={0} className="mt-1 overflow-x-auto text-xs whitespace-pre text-ink-600">{e.stack}</pre>
                         </details>
                       ) : null}
                     </td>

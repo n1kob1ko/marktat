@@ -312,7 +312,7 @@ function MessageBubble({
         <span className="sr-only">{mine ? 'Du' : 'Nachricht'}, {formatMessageTime(message.createdAt)}: </span>
         {message.body}
         <span
-          className={cn('ml-2 inline-flex translate-y-0.5 items-center gap-1 align-bottom text-[0.6875rem] whitespace-nowrap', mine && message.status !== 'failed' ? 'text-white/70' : 'text-ink-400')}
+          className={cn('ml-2 inline-flex translate-y-0.5 items-center gap-1 align-bottom text-[0.6875rem] whitespace-nowrap', mine && message.status !== 'failed' ? 'text-white/70' : 'text-ink-500')}
           aria-hidden="true"
           suppressHydrationWarning
         >

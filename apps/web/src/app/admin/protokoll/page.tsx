@@ -79,7 +79,7 @@ async function Audit({ searchParams }: Pick<PageProps<'/admin/protokoll'>, 'sear
                     {e.entityId ? <span className="text-xs break-all text-ink-600">{e.entityType} {e.entityId}</span> : '–'}
                   </td>
                   <td className={table.td} data-label="Details">
-                    {e.metadata ? <pre className="max-h-32 max-w-xs overflow-auto rounded-lg bg-canvas p-2 text-xs whitespace-pre-wrap text-ink-700">{JSON.stringify(e.metadata, null, 1)}</pre> : '–'}
+                    {e.metadata ? <pre tabIndex={0} aria-label="Details zum Eintrag" className="max-h-32 max-w-xs overflow-auto rounded-lg bg-canvas p-2 text-xs whitespace-pre-wrap text-ink-700">{JSON.stringify(e.metadata, null, 1)}</pre> : '–'}
                   </td>
                   <td className={table.td} data-label="Zeit">{formatDateTime(e.createdAt)}</td>
                 </tr>

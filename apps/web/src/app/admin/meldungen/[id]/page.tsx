@@ -83,7 +83,7 @@ async function ReportDetail({ params, searchParams }: Pick<PageProps<'/admin/mel
                 </>
               ) : null}
               <dt className="text-ink-500">Begründung</dt>
-              <dd className="whitespace-pre-line text-ink-800">{report.details || <span className="text-ink-400">Keine Angaben.</span>}</dd>
+              <dd className="whitespace-pre-line text-ink-800">{report.details || <span className="text-ink-500">Keine Angaben.</span>}</dd>
               <dt className="text-ink-500">Meldende Person</dt>
               <dd>
                 <PersonLink person={report.reporter} fallback="Gelöschtes Konto" />

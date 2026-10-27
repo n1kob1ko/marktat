@@ -282,7 +282,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
         <Card className="overflow-hidden">
           <div className="aspect-[4/3] bg-canvas" />
           <div className="space-y-2 p-4">
-            <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-400')}>{title || 'Dein Titel'}</p>
+            <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-500')}>{title || 'Dein Titel'}</p>
             {previewFacts.length ? <p className="text-sm text-ink-600">{previewFacts.join(' · ')}</p> : null}
             <PriceTag
               priceType={hasPrice ? priceType : 'ON_REQUEST'}
