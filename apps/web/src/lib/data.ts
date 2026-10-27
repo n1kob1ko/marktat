@@ -1,6 +1,6 @@
 import 'server-only';
 import { cacheLife, cacheTag } from 'next/cache';
-import type { CategoryNode, ListingSummary, Paginated } from '@marktat/shared';
+import type { CategoryNode, DealCategoryView, DealSearchResult, DealSummary, ListingSummary, Paginated } from '@marktat/shared';
 import { api } from './api';
 
 /**
@@ -28,6 +28,34 @@ export async function getLatestListings(pageSize = 12): Promise<ListingSummary[]
   cacheTag('listings');
   try {
     const page = await api<Paginated<ListingSummary>>(`/listings?pageSize=${pageSize}`);
+    cacheLife('minutes');
+    return page.items;
+  } catch {
+    cacheLife('seconds');
+    return [];
+  }
+}
+
+export async function getDealCategories(): Promise<DealCategoryView[]> {
+  'use cache';
+  cacheTag('deal-categories');
+  try {
+    const categories = await api<DealCategoryView[]>('/deals/categories');
+    cacheLife('hours');
+    return categories;
+  } catch {
+    cacheLife('seconds');
+    return [];
+  }
+}
+
+/** Startseite: wenige, tatsächlich aktuelle Deals (die API zeigt nur aktive, bestätigte Angebote) */
+export async function getLatestDeals(pageSize = 4): Promise<DealSummary[]> {
+  'use cache';
+  cacheTag('deals');
+  try {
+    const page = await api<DealSearchResult>(`/deals?pageSize=${pageSize}`);
+    // Kurz zwischenspeichern: abgelaufene oder pausierte Deals sollen schnell verschwinden
     cacheLife('minutes');
     return page.items;
   } catch {

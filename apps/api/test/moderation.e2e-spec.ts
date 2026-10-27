@@ -351,6 +351,8 @@ describe('Moderation und Admin-Bereich', () => {
       await request(server()).post(`/v1/admin/users/${target.id}/decisions`).set(moderator.auth).send(restore).expect(403);
       await request(server()).post(`/v1/admin/users/${target.id}/decisions`).set(admin.auth).send(restore).expect(201);
       await request(server()).get('/v1/listings/mine').set(target.auth).expect(200);
+      // Die Freigabe aktualisiert Inserate und Deals im Hintergrund – erst danach den Index prüfen
+      await searchIndex.flush();
       expect(await indexedIds(searchIndex)).toContain(listing.id);
     });
 

@@ -241,6 +241,7 @@ export class AdminService {
       reportsReceived: await this.reports.summaries(reportRows),
       reportsMade: { total: made.reduce((sum, g) => sum + g._count, 0), abusive: made.find((g) => g.abusive)?._count ?? 0 },
       reportingBlockedUntil: user.reportingBlockedUntil?.toISOString() ?? null,
+      dealsBlockedAt: user.dealsBlockedAt?.toISOString() ?? null,
       decisions: decisions.map((d) => toAdminDecision(d)),
       deletion: user.deletion ? { status: user.deletion.status, requestedAt: user.deletion.requestedAt.toISOString() } : null,
     };

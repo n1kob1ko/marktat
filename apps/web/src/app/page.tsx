@@ -7,7 +7,8 @@ import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
-import { getCategories, getLatestListings } from '@/lib/data';
+import { getCategories, getLatestDeals, getLatestListings } from '@/lib/data';
+import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
 
@@ -82,6 +83,20 @@ export default function HomePage() {
         />
         <Suspense fallback={<GridSkeleton count={8} className="h-72" />}>
           <LatestListings />
+        </Suspense>
+      </Container>
+
+      <Container className="mt-16">
+        <SectionHeading
+          title="Aktuelle Deals & Angebote"
+          action={
+            <Link href="/deals" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+              Alle Deals <ArrowRight className="size-4" aria-hidden="true" />
+            </Link>
+          }
+        />
+        <Suspense fallback={<GridSkeleton count={4} className="h-80" />}>
+          <LatestDeals />
         </Suspense>
       </Container>
 
@@ -228,6 +243,31 @@ async function LatestListings() {
       {listings.map((listing) => (
         <li key={listing.id} className="flex">
           <ListingCard listing={listing} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Nur tatsächlich aktive, bestätigte Deals (die API liefert keine anderen); ohne Deals ein Hinweis für Händler */
+async function LatestDeals() {
+  const deals = await getLatestDeals(4);
+  if (!deals.length) {
+    return (
+      <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
+        <p className="font-semibold text-ink-900">Hier erscheinen bald Angebote von Händlern</p>
+        <p className="mt-1 text-sm text-ink-500">Du bist Händler:in? Stelle deine Aktionen kostenlos ein – online oder für deine Filialen.</p>
+        <Link href="/konto/deals" className={buttonClasses({ variant: 'outline', className: 'mt-5' })}>
+          Angebot einstellen
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+      {deals.map((deal) => (
+        <li key={deal.id} className="flex">
+          <DealCard deal={deal} />
         </li>
       ))}
     </ul>

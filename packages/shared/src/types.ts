@@ -459,6 +459,8 @@ export interface AdminUserDetail extends AdminUserSummary {
   reportsReceived: AdminReportSummary[];
   reportsMade: { total: number; abusive: number };
   reportingBlockedUntil: string | null;
+  /** Für Deals gesperrt seit (nur gewerbliche Konten) */
+  dealsBlockedAt: string | null;
   decisions: AdminDecision[];
   deletion: { status: 'PENDING' | 'COMPLETED' | 'FAILED'; requestedAt: string } | null;
 }

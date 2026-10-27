@@ -3,6 +3,7 @@ import { DECISION_GROUNDS } from '../schemas/moderation.js';
 import { z } from '../schemas/zod.js';
 import type { UserStatus } from '../schemas/moderation.js';
 import type { AdminDecision, AdminReportSummary, PersonRef } from '../types.js';
+import type { DealDisplayStatus } from './enums.js';
 import type { DealDetail, DealerEligibility, MerchantDeal } from './types.js';
 
 /** Filter der Deal-Moderation */
@@ -103,7 +104,7 @@ export interface AdminDealDetail {
   decisions: AdminDecision[];
   reports: AdminReportSummary[];
   /** Andere Deals desselben Händlers mit gleichem Titel (mögliche Doppelte) */
-  duplicates: { id: string; title: string; status: string }[];
+  duplicates: { id: string; title: string; status: DealDisplayStatus }[];
   linkFailures: number;
   linkCheckedAt: string | null;
   viewCount: number;

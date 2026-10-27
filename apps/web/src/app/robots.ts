@@ -23,6 +23,7 @@ export default function robots(): MetadataRoute.Robots {
         '/auth/',
         '/anzeige/*/bearbeiten',
         '/anzeige/*/bilder',
+        '/deals/*/zum-angebot',
       ],
     },
     sitemap: `${base}/sitemap.xml`,

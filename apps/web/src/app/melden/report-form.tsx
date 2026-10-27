@@ -5,16 +5,18 @@ import { Alert, Checkbox, Field, Textarea } from '@marktat/ui';
 import { REPORT_REASON_HINTS, REPORT_REASON_LABELS, REPORT_REASONS } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
-import { reportListingAction } from './actions';
+import { reportDealAction, reportListingAction } from './actions';
 
-/** Meldeformular nach Art. 16 DSA: Grund, Begründung, Erklärung nach Treu und Glauben. */
-export function ReportListingForm({ listingId }: { listingId: string }) {
-  const [state, action] = useActionState(reportListingAction, initialFormState);
+/** Meldeformular nach Art. 16 DSA: Grund, Begründung, Erklärung nach Treu und Glauben. Für Inserate und Deals. */
+export function ReportListingForm({ listingId, dealId }: { listingId?: string; dealId?: string }) {
+  const [state, action] = useActionState(dealId ? reportDealAction : reportListingAction, initialFormState);
+  const what = dealId ? 'das Angebot' : 'die Anzeige';
   const errors = state.fieldErrors ?? {};
   return (
     <form action={action} className="space-y-5">
       {state.status === 'error' && state.message ? <Alert tone="danger">{state.message}</Alert> : null}
-      <input type="hidden" name="listingId" value={listingId} />
+      {listingId ? <input type="hidden" name="listingId" value={listingId} /> : null}
+      {dealId ? <input type="hidden" name="dealId" value={dealId} /> : null}
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">
           Was stimmt nicht?<span className="ml-0.5 text-danger-600" aria-hidden="true">*</span>
@@ -37,7 +39,7 @@ export function ReportListingForm({ listingId }: { listingId: string }) {
       </fieldset>
       <Field
         label="Begründung"
-        hint="Beschreibe möglichst konkret, warum die Anzeige gegen Regeln oder Gesetze verstößt (mindestens 10 Zeichen)."
+        hint={`Beschreibe möglichst konkret, warum ${what} gegen Regeln oder Gesetze verstößt${dealId ? ', z. B. ein nicht stimmender Vergleichspreis' : ''} (mindestens 10 Zeichen).`}
         error={errors.details}
         required
       >
@@ -48,7 +50,7 @@ export function ReportListingForm({ listingId }: { listingId: string }) {
         {errors.goodFaith ? <p className="mt-1 text-sm font-medium text-danger-600">{errors.goodFaith[0]}</p> : null}
       </div>
       <p className="text-xs leading-relaxed text-ink-500">
-        Ein Mensch aus unserem Team prüft jede Meldung. Die Anbieterin bzw. der Anbieter erfährt nicht, wer gemeldet hat. Über das Ergebnis informieren wir dich in deinem Konto unter
+        Ein Mensch aus unserem Team prüft jede Meldung. {dealId ? 'Der Händler' : 'Die Anbieterin bzw. der Anbieter'} erfährt nicht, wer gemeldet hat. Über das Ergebnis informieren wir dich in deinem Konto unter
         „Mitteilungen“. Bei akuter Gefahr wende dich bitte direkt an die Polizei (133).
       </p>
       <SubmitButton variant="danger">Meldung senden</SubmitButton>

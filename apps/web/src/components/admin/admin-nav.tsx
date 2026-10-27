@@ -8,6 +8,7 @@ const NAV = [
   { href: '/admin', label: 'Übersicht', adminOnly: false },
   { href: '/admin/meldungen', label: 'Meldungen', adminOnly: false },
   { href: '/admin/inserate', label: 'Inserate', adminOnly: false },
+  { href: '/admin/deals', label: 'Deals', adminOnly: false },
   { href: '/admin/einsprueche', label: 'Einsprüche', adminOnly: false },
   { href: '/admin/nutzer', label: 'Konten', adminOnly: true },
   { href: '/admin/monetarisierung', label: 'Monetarisierung', adminOnly: true },

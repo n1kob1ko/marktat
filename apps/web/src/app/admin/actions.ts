@@ -4,7 +4,9 @@ import { revalidatePath, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   appealDecisionSchema,
+  assignDealMerchantSchema,
   changeRoleSchema,
+  dealsBlockSchema,
   dismissReportSchema,
   listingDecisionSchema,
   reportingRestrictionSchema,
@@ -114,6 +116,81 @@ export async function decideListingAction(_prev: FormState, formData: FormData):
   }
   updateTag('listings');
   redirect(`/admin/inserate/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-freigegeben' : 'mod-entschieden'}`);
+}
+
+export async function decideDealAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/deals/${id}`);
+  try {
+    await api(`/admin/deals/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/deals/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-deal-freigegeben' : 'mod-deal-entschieden'}`);
+}
+
+/** Konto für Deals sperren (Moderation) bzw. Sperre aufheben (nur Administratoren, prüft die API) */
+export async function dealsBlockAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = dealsBlockSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'UNBLOCK') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const session = await requireStaff(`/admin/nutzer/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  try {
+    await api(`/admin/users/${id}/deals-block`, { method: 'POST', token: auth.token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/nutzer/${id}?hinweis=${parsed.data.decision === 'BLOCK' ? 'mod-deals-gesperrt' : 'mod-deals-entsperrt'}`);
+}
+
+/** Deal einem anderen gewerblichen Konto zuordnen (nur Administratoren, prüft die API) */
+export async function assignDealMerchantAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['merchantId', 'note']);
+  const parsed = assignDealMerchantSchema.safeParse({ merchantId: (text(formData, 'merchantId') ?? '').trim(), note: String(formData.get('note') ?? '') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const session = await requireStaff(`/admin/deals/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  try {
+    await api(`/admin/deals/${id}/merchant`, { method: 'PUT', token: auth.token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/deals/${id}?hinweis=deal-haendler-geaendert`);
 }
 
 export async function decideUserAction(_prev: FormState, formData: FormData): Promise<FormState> {

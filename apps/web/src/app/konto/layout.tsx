@@ -17,5 +17,5 @@ export default function AccountLayout({ children }: LayoutProps<'/konto'>) {
 
 async function AccountNavForUser() {
   const user = await getCurrentUser();
-  return <AccountNav showSecurity={isStaff(user)} />;
+  return <AccountNav showSecurity={isStaff(user)} showDeals={user?.accountType === 'BUSINESS'} />;
 }

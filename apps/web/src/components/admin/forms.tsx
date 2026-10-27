@@ -8,8 +8,10 @@ import { SubmitButton } from '@/components/submit-button';
 import { StepUpField } from '@/components/security/step-up-field';
 import {
   decideAppealAction,
+  decideDealAction,
   decideListingAction,
   decideUserAction,
+  dealsBlockAction,
   dismissReportAction,
 } from '@/app/admin/actions';
 
@@ -39,8 +41,15 @@ export interface DecisionOption {
   restrictive: boolean;
 }
 
+const DECISION_ACTIONS = {
+  listing: decideListingAction,
+  user: decideUserAction,
+  deal: decideDealAction,
+  dealsBlock: dealsBlockAction,
+} satisfies Record<string, Action>;
+
 /**
- * Entscheidung über ein Inserat oder Konto. Die Begründung geht wörtlich an die betroffene Person
+ * Entscheidung über ein Inserat, einen Deal oder ein Konto. Die Begründung geht wörtlich an die betroffene Person
  * (Art. 17 DSA), die interne Notiz sieht nur das Team.
  */
 export function DecisionForm({
@@ -54,14 +63,14 @@ export function DecisionForm({
 }: {
   /** Kritische Aktion (Kontosperre): Bestätigungscode abfragen, wenn die Sitzung 2FA nutzt */
   stepUp?: { enabled: boolean; maxAgeMinutes: number };
-  target: 'listing' | 'user';
+  target: keyof typeof DECISION_ACTIONS;
   id: string;
   options: DecisionOption[];
   version?: string;
   reportId?: string;
   defaultReason?: ReportReason;
 }) {
-  const [state, formAction] = useActionState(target === 'listing' ? decideListingAction : decideUserAction, initialFormState);
+  const [state, formAction] = useActionState(DECISION_ACTIONS[target], initialFormState);
   const [choice, setDecision] = useState(state.values?.decision ?? options[0]?.value ?? '');
   // Nach einer Entscheidung ändert sich der Status und damit die möglichen Maßnahmen
   const decision = options.some((o) => o.value === choice) ? choice : (options[0]?.value ?? '');
