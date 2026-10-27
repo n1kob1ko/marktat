@@ -34,7 +34,11 @@ export const messageBodySchema = z
       .max(MESSAGE_MAX_LENGTH, `Eine Nachricht darf höchstens ${MESSAGE_MAX_LENGTH.toLocaleString('de-AT')} Zeichen lang sein.`),
   );
 
-export const sendMessageSchema = z.object({ body: messageBodySchema }).strict();
+/**
+ * `clientId`: vom Gerät erzeugte Kennung je Nachricht. Wird dieselbe Nachricht erneut abgeschickt
+ * (Doppelklick, Wiederholung nach Verbindungsabbruch), entsteht keine zweite.
+ */
+export const sendMessageSchema = z.object({ body: messageBodySchema, clientId: z.uuid().optional() }).strict();
 export type SendMessageInput = z.infer<typeof sendMessageSchema>;
 
 export const savedSearchNameSchema = z

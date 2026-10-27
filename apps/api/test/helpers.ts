@@ -17,12 +17,15 @@ let jobs: JobsService | undefined;
 
 /**
  * Test-App gegen die Testdatenbank und den Test-Suchindex.
- * `meiliUrl` überschreibt die Meilisearch-Adresse, z. B. eine nicht erreichbare für den Ausweichbetrieb.
+ * `meiliUrl` überschreibt die Meilisearch-Adresse, z. B. eine nicht erreichbare für den Ausweichbetrieb;
+ * `env` überschreibt weitere Umgebungsvariablen (z. B. REDIS_URL) nur für diese App.
  */
-export async function createTestApp(options: { meiliUrl?: string; stripe?: StripeGateway } = {}) {
-  const original = process.env.MEILI_URL;
-  if (options.meiliUrl !== undefined) {
-    process.env.MEILI_URL = options.meiliUrl;
+export async function createTestApp(options: { meiliUrl?: string; stripe?: StripeGateway; env?: Record<string, string> } = {}) {
+  const overrides = { ...options.env, ...(options.meiliUrl !== undefined ? { MEILI_URL: options.meiliUrl } : {}) };
+  const isolated = Object.keys(overrides).length > 0;
+  const original = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
+  if (isolated) {
+    Object.assign(process.env, overrides);
     resetEnvCache();
   }
   try {
@@ -34,14 +37,17 @@ export async function createTestApp(options: { meiliUrl?: string; stripe?: Strip
     await app.init();
     const index = app.get(SearchIndexService);
     await index.ensureReady();
-    if (options.meiliUrl === undefined) {
+    if (!isolated) {
       searchIndex = index;
       jobs = app.get(JobsService);
     }
     return { app, prisma: app.get(PrismaService), searchIndex: index };
   } finally {
-    if (options.meiliUrl !== undefined) {
-      process.env.MEILI_URL = original;
+    if (isolated) {
+      for (const [key, value] of Object.entries(original)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       resetEnvCache();
     }
   }

@@ -1,6 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { ACCOUNT_TYPES, displayNameSchema, type NotificationSettingsInput, type UpdateProfileInput } from '@marktat/shared';
 import type { AccountType } from '../generated/prisma/enums.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { AccountUser, AuthUser, SupabaseClaims } from '../auth/auth.types.js';
@@ -53,21 +54,26 @@ export class UsersService {
         : null;
     const termsVersion = typeof meta['terms_version'] === 'string' ? meta['terms_version'].slice(0, 20) : null;
 
-    const created = await this.prisma.user.upsert({
-      where: { id: claims.sub },
-      update: {},
-      create: {
-        id: claims.sub,
-        email,
-        displayName: parsedName.success ? parsedName.data : email.split('@')[0]!.slice(0, 50),
-        accountType,
-        companyName,
-        termsVersion,
-        termsAcceptedAt: termsVersion ? new Date() : null,
-        lastSeenAt: new Date(),
-      },
-      select,
-    });
+    const data = {
+      id: claims.sub,
+      email,
+      displayName: parsedName.success ? parsedName.data : email.split('@')[0]!.slice(0, 50),
+      accountType,
+      companyName,
+      termsVersion,
+      termsAcceptedAt: termsVersion ? new Date() : null,
+      lastSeenAt: new Date(),
+    };
+    let created;
+    try {
+      created = await this.prisma.user.create({ data, select });
+    } catch (error) {
+      // Erster Seitenaufruf schickt mehrere Anfragen gleichzeitig: Eine andere hat das Konto gerade angelegt
+      if (!(error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')) throw error;
+      const raced = await this.prisma.user.findUnique({ where: { id: claims.sub }, select });
+      if (!raced) throw error;
+      return raced;
+    }
     this.audit.log({ action: 'user.created', actorId: created.id, entityType: 'user', entityId: created.id, ip });
     return created;
   }

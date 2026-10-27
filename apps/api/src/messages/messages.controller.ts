@@ -41,7 +41,7 @@ export class MessagesController {
     @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput,
     @Req() req: Request,
   ) {
-    return this.messages.start(user, listingId, body.body, req.ip);
+    return this.messages.start(user, listingId, body.body, req.ip, body.clientId);
   }
 
   @Get('conversations')
@@ -76,7 +76,7 @@ export class MessagesController {
   @ApiOperation({ summary: 'Nachricht senden' })
   @ApiBody({ schema: openApiSchema(sendMessageSchema) })
   send(@CurrentUser() user: AuthUser, @Param('id') id: string, @Body(new ZodValidationPipe(sendMessageSchema)) body: SendMessageInput) {
-    return this.messages.send(user, id, body.body);
+    return this.messages.send(user, id, body.body, body.clientId);
   }
 
   @Post('conversations/:id/read')

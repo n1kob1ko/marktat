@@ -18,6 +18,15 @@ export interface EnqueueOptions {
 }
 
 const QUEUE_NAME = 'jobs';
+/** Höchstens so lange wartet eine Anfrage auf Redis, bevor der Auftrag im Prozess läuft */
+const ENQUEUE_TIMEOUT_MS = 3000;
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) => setTimeout(() => reject(new Error('Zeitüberschreitung')), ms).unref()),
+  ]);
+}
 const MAX_REMEMBERED_FAILURES = 50;
 
 export interface JobStats {
@@ -95,7 +104,8 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     if (this.env.NODE_ENV === 'test' || !this.env.JOBS_WORKER) return;
     for (const [name, intervalMs] of this.schedules) {
       if (this.queue) {
-        await this.queue.upsertJobScheduler(name, { every: intervalMs }, { name, data: {} }).catch((error: Error) => {
+        // Nicht abwarten: Ohne Redis würde der Start sonst hängen; BullMQ legt den Zeitplan an, sobald Redis da ist
+        void this.queue.upsertJobScheduler(name, { every: intervalMs }, { name, data: {} }).catch((error: Error) => {
           this.logger.warn(`Zeitplan ${name} konnte nicht angelegt werden: ${error.message}`);
         });
       } else {
@@ -109,8 +119,17 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
   async add(name: string, data: Record<string, unknown>, options: EnqueueOptions = {}): Promise<void> {
     if (!this.handlers.has(name)) throw new Error(`Unbekannter Auftrag ${name}`);
     if (this.queue) {
-      await this.queue.add(name, data, { delay: options.delayMs, jobId: options.jobId });
-      return;
+      // Redis weg: BullMQ würde den Befehl puffern und die Anfrage bis zum Wiederverbinden hängen lassen
+      // (Folge: Nutzer schicken erneut ab → Doppelte). Daher sofort im Prozess ausführen statt warten.
+      if (await this.redisReady()) {
+        try {
+          await withTimeout(this.queue.add(name, data, { delay: options.delayMs, jobId: options.jobId }), ENQUEUE_TIMEOUT_MS);
+          return;
+        } catch (error) {
+          this.logger.warn(`Auftrag ${name} nicht in Redis angelegt: ${(error as Error).message}`);
+        }
+      }
+      this.logger.warn(`Redis nicht erreichbar – Auftrag ${name} läuft ersatzweise in diesem Prozess`);
     }
     const key = options.jobId ?? `${name}:${++this.counter}`;
     if (this.pending.has(key)) return;
@@ -134,12 +153,24 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     this.pending.set(key, promise);
   }
 
+  /** Verbindung zu Redis steht (ioredis-Status „ready“) */
+  private async redisReady(): Promise<boolean> {
+    if (!this.queue) return false;
+    try {
+      const client = await withTimeout(this.queue.getBackend().client, 500);
+      return client.status === 'ready';
+    } catch {
+      return false;
+    }
+  }
+
   /** Wartende Aufträge entfernen (z. B. E-Mails an ein Konto, das gerade gelöscht wird). Unbekannte IDs sind kein Fehler. */
   async cancel(jobIds: string[]): Promise<void> {
     for (const jobId of jobIds) {
-      if (this.queue) {
-        // Laufende oder gesperrte Aufträge lassen sich nicht entfernen; ihre Handler prüfen den Zustand selbst.
-        await this.queue.remove(jobId).catch(() => 0);
+      if (this.queue && (await this.redisReady())) {
+        // Laufende oder gesperrte Aufträge lassen sich nicht entfernen; ihre Handler prüfen den Zustand selbst
+        // (das gilt auch, wenn Redis gerade nicht erreichbar ist).
+        await withTimeout(this.queue.remove(jobId), ENQUEUE_TIMEOUT_MS).catch(() => 0);
       }
     }
   }
@@ -155,8 +186,11 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
         recentFailures: this.memoryFailures.slice(0, 10),
       };
     }
-    const counts = await this.queue.getJobCounts('waiting', 'delayed', 'failed');
-    const failed = await this.queue.getJobs(['failed'], 0, 9, false);
+    if (!(await this.redisReady())) throw new Error('Redis nicht erreichbar');
+    const [counts, failed] = await withTimeout(
+      Promise.all([this.queue.getJobCounts('waiting', 'delayed', 'failed'), this.queue.getJobs(['failed'], 0, 9, false)]),
+      ENQUEUE_TIMEOUT_MS,
+    );
     return {
       backend: 'redis',
       waiting: counts.waiting ?? 0,
@@ -171,18 +205,17 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     };
   }
 
-  /** Für Tests: wartet, bis alle anstehenden Aufträge erledigt sind. */
+  /** Für Tests: wartet, bis alle anstehenden Aufträge erledigt sind (auch ersatzweise im Prozess laufende). */
   async drain(timeoutMs = 15_000): Promise<void> {
     const deadline = Date.now() + timeoutMs;
     while (Date.now() < deadline) {
-      if (this.queue) {
-        const counts = await this.queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'waiting-children');
-        if (Object.values(counts).every((n) => n === 0)) return;
-      } else {
-        if (!this.pending.size) return;
+      if (this.pending.size) {
         await Promise.all(this.pending.values());
         continue;
       }
+      if (!this.queue || !(await this.redisReady())) return;
+      const counts = await this.queue.getJobCounts('waiting', 'active', 'delayed', 'prioritized', 'waiting-children');
+      if (Object.values(counts).every((n) => n === 0)) return;
       await new Promise((resolve) => setTimeout(resolve, 50));
     }
     throw new Error('Hintergrundaufträge wurden nicht rechtzeitig fertig.');
@@ -202,7 +235,7 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
   async onApplicationShutdown() {
     for (const timer of this.timers) clearTimeout(timer);
     this.timers.clear();
-    await this.worker?.close();
-    await this.queue?.close();
+    // Ohne Redis warten close() sonst unbegrenzt – der Prozess ließe sich nicht beenden
+    await withTimeout(Promise.all([this.worker?.close(), this.queue?.close()]), 5000).catch(() => undefined);
   }
 }

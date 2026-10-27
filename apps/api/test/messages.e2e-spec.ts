@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { AddressInfo } from 'node:net';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
@@ -202,6 +203,34 @@ describe('Nachrichten', () => {
     }
     const fresh = await publishListing(app, seller.auth, { title: 'Noch ein Rad' });
     await request(server()).post(`/v1/listings/${fresh.id}/conversations`).set(spammer.auth).send({ body: 'Hallo' }).expect(429);
+  });
+
+  it('speichert eine erneut abgeschickte Nachricht (gleiche clientId) nur einmal', async () => {
+    const seller = await signIn(app);
+    const buyer = await signIn(app);
+    const listing = await publishListing(app, seller.auth);
+    const first = { body: 'Ist das Rad noch da?', clientId: randomUUID() };
+    const start = () => request(server()).post(`/v1/listings/${listing.id}/conversations`).set(buyer.auth).send(first);
+    const [a, b] = await Promise.all([start(), start()]);
+    const retry = await start().expect(201);
+    expect([a.status, b.status]).toEqual([201, 201]);
+    expect(new Set([a.body.message.id, b.body.message.id, retry.body.message.id]).size).toBe(1);
+    const conversationId = retry.body.conversationId as string;
+
+    const reply = { body: 'Ja, noch da.', clientId: randomUUID() };
+    const sendReply = () => request(server()).post(`/v1/conversations/${conversationId}/messages`).set(seller.auth).send(reply);
+    const [c, d] = await Promise.all([sendReply(), sendReply()]);
+    expect([c.status, d.status]).toEqual([201, 201]);
+    expect(c.body.id).toBe(d.body.id);
+    expect(await prisma.message.count({ where: { conversationId } })).toBe(2);
+    // Ungelesen zählt die Nachricht nur einmal
+    expect((await request(server()).get('/v1/me/unread').set(seller.auth).expect(200)).body.messages).toBe(1);
+
+    // Ohne clientId (ältere Clients) bleibt alles wie bisher; dieselbe clientId in einer anderen Unterhaltung ist ein Fehler
+    await send(seller, conversationId, 'Noch eine Frage?').expect(201);
+    const otherListing = await publishListing(app, seller.auth, { title: 'Kinderrad 20 Zoll' });
+    await request(server()).post(`/v1/listings/${otherListing.id}/conversations`).set(buyer.auth).send(first).expect(409);
+    expect(await prisma.message.count({ where: { conversationId } })).toBe(3);
   });
 
   it('blockiert in beide Richtungen und hebt die Blockierung wieder auf', async () => {

@@ -72,10 +72,13 @@ export const listingDraftSchema = z
   .partial({ condition: true, priceCents: true, attributes: true });
 export type ListingDraftInput = z.infer<typeof listingDraftSchema>;
 
+/** Kennung des Formulars: Wird es erneut abgeschickt (Doppelklick, Verbindungsabbruch), entsteht kein zweites Inserat. */
+const clientRequestId = z.uuid().optional();
+
 /** Anlegen: `publish: true` veröffentlicht sofort, sonst wird ein Entwurf gespeichert. */
 export const createListingSchema = z.discriminatedUnion('publish', [
-  listingPublishSchema.safeExtend({ publish: z.literal(true) }),
-  listingDraftSchema.extend({ publish: z.literal(false) }),
+  listingPublishSchema.safeExtend({ publish: z.literal(true), clientRequestId }),
+  listingDraftSchema.extend({ publish: z.literal(false), clientRequestId }),
 ]);
 export type CreateListingInput = z.infer<typeof createListingSchema>;
 

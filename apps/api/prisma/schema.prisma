@@ -244,6 +244,8 @@ model Listing {
   /// Wurde die aktuelle Platzierung bezahlt? Dann wird sie als Werbung gekennzeichnet.
   highlightPaid    Boolean   @default(false) @map("highlight_paid")
   topPaid          Boolean   @default(false) @map("top_paid")
+  /// Kennung des Anlegeformulars: erneutes Abschicken liefert dasselbe Inserat statt eines zweiten
+  clientRequestId  String?   @map("client_request_id") @db.Uuid
 
   seller        User                 @relation(fields: [sellerId], references: [id])
   category      Category?            @relation(fields: [categoryId], references: [id])
@@ -256,6 +258,7 @@ model Listing {
   bookings      Booking[]
   viewDays      ListingViewDay[]
 
+  @@unique([sellerId, clientRequestId])
   @@index([status, publishedAt(sort: Desc)])
   @@index([topUntil])
   @@index([sellerId, status])
@@ -380,12 +383,15 @@ model Message {
   readAt         DateTime?    @map("read_at")
   /// Zeitpunkt der E-Mail an den Empfänger (bzw. der Entscheidung, keine zu senden)
   notifiedAt     DateTime?    @map("notified_at")
+  /// Vom Gerät erzeugte Kennung: erneutes Abschicken derselben Nachricht legt keine zweite an
+  clientId       String?      @map("client_id") @db.Uuid
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient      User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([recipientId, readAt])
+  @@unique([senderId, clientId])
   @@index([senderId, createdAt])
   @@map("messages")
 }

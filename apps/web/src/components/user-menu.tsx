@@ -9,7 +9,17 @@ import { logoutAction } from '@/app/(auth)/actions';
 
 /** Liest die Sitzung – steht deshalb im Header hinter einer Suspense-Grenze. */
 export async function UserMenu() {
-  const user = await getCurrentUser();
+  // Ist die API gerade gestört, soll nicht jede Seite am Header scheitern (auch Anmelden, Impressum …)
+  const user = await getCurrentUser().catch(() => undefined);
+  if (user === undefined) {
+    return (
+      <Link href="/konto" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+        <CircleUserRound className="size-5 shrink-0" aria-hidden="true" />
+        <span className="hidden lg:inline">Mein Konto</span>
+        <span className="sr-only lg:hidden">Mein Konto</span>
+      </Link>
+    );
+  }
   if (!user) {
     return (
       <>

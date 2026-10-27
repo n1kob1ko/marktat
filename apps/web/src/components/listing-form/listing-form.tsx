@@ -24,6 +24,7 @@ import {
   type Vertical,
 } from '@marktat/shared';
 import { PriceTag } from '@/components/price-tag';
+import { ClientIdField } from '@/components/client-id-field';
 import { initialFormState, type FormState } from '@/lib/form-state';
 import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
 
@@ -58,6 +59,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   // was bei kontrollierten Auswahllisten die sichtbare Auswahl verliert.
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const formData = new FormData(event.currentTarget, submitter);
     setIntent(formData.get('intent') === 'draft' ? 'draft' : 'publish');
@@ -126,7 +128,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_20rem]" noValidate>
-      {listing ? <input type="hidden" name="id" value={listing.id} /> : null}
+      {listing ? <input type="hidden" name="id" value={listing.id} /> : <ClientIdField name="clientRequestId" />}
       <div className="space-y-6">
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
 

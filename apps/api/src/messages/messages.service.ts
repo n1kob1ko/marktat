@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ConflictException,
   ForbiddenException,
   HttpException,
   HttpStatus,
@@ -73,6 +74,8 @@ type UserRow = ConversationRow['buyer'];
 
 const MESSAGE_EMAIL_JOB = 'message-email';
 
+const DUPLICATE_CLIENT_ID = 'Diese Nachricht wurde bereits in einer anderen Unterhaltung gesendet. Bitte lade die Seite neu.';
+
 /**
  * Private Nachrichten zwischen Interessent und Anbieter, je Inserat eine Unterhaltung.
  * Jede Abfrage ist auf die beiden Beteiligten beschränkt; fremde IDs ergeben 404 (keine Bestätigung,
@@ -99,8 +102,22 @@ export class MessagesService implements OnModuleInit {
 
   // --- Unterhaltungen ----------------------------------------------------------
 
-  /** Erste Nachricht zu einem Inserat. Besteht schon eine Unterhaltung, wird sie fortgesetzt. */
-  async start(user: AuthUser, listingId: string, body: string, ip?: string): Promise<{ conversationId: string; message: ChatMessage }> {
+  /**
+   * Erste Nachricht zu einem Inserat. Besteht schon eine Unterhaltung, wird sie fortgesetzt.
+   * Mit `clientId` ist das Senden wiederholbar: Ein zweiter Aufruf liefert die schon gespeicherte Nachricht.
+   */
+  async start(
+    user: AuthUser,
+    listingId: string,
+    body: string,
+    ip?: string,
+    clientId?: string,
+  ): Promise<{ conversationId: string; message: ChatMessage }> {
+    const previous = await this.previousSend(user.id, clientId);
+    if (previous) {
+      if (previous.conversation.listingId !== listingId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      return { conversationId: previous.conversationId, message: toChatMessage(previous, user.id) };
+    }
     const listing = ENTITY_ID.test(listingId)
       ? await this.prisma.listing.findFirst({ where: { id: listingId, ...publiclyVisibleWhere() }, select: { id: true, sellerId: true } })
       : null;
@@ -115,19 +132,28 @@ export class MessagesService implements OnModuleInit {
     if (!existing) await this.assertConversationLimit(user.id);
     await this.assertMessageLimit(user.id);
 
-    const { conversationId, message } = await this.prisma.$transaction(async (tx) => {
-      const conversation = await tx.conversation.upsert({
-        where: { listingId_buyerId: { listingId, buyerId: user.id } },
-        create: { listingId, buyerId: user.id, sellerId: listing.sellerId },
-        update: {},
-        select: { id: true },
+    let created: { conversationId: string; message: Message };
+    try {
+      created = await this.prisma.$transaction(async (tx) => {
+        const conversation = await tx.conversation.upsert({
+          where: { listingId_buyerId: { listingId, buyerId: user.id } },
+          create: { listingId, buyerId: user.id, sellerId: listing.sellerId },
+          update: {},
+          select: { id: true },
+        });
+        const message = await tx.message.create({
+          data: { conversationId: conversation.id, senderId: user.id, recipientId: listing.sellerId, body, clientId },
+        });
+        await tx.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: message.createdAt } });
+        return { conversationId: conversation.id, message };
       });
-      const message = await tx.message.create({
-        data: { conversationId: conversation.id, senderId: user.id, recipientId: listing.sellerId, body },
-      });
-      await tx.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: message.createdAt } });
-      return { conversationId: conversation.id, message };
-    });
+    } catch (error) {
+      // Gleichzeitig doppelt abgeschickt: Die andere Anfrage hat die Nachricht schon gespeichert
+      const raced = await this.previousSendAfter(error, user.id, clientId);
+      if (raced.conversation.listingId !== listingId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      return { conversationId: raced.conversationId, message: toChatMessage(raced, user.id) };
+    }
+    const { conversationId, message } = created;
     if (!existing) {
       this.audit.log({ action: 'conversation.started', actorId: user.id, entityType: 'conversation', entityId: conversationId, ip, metadata: { listingId } });
     }
@@ -204,7 +230,13 @@ export class MessagesService implements OnModuleInit {
     };
   }
 
-  async send(user: AuthUser, conversationId: string, body: string): Promise<ChatMessage> {
+  /** Mit `clientId` wiederholbar wie `start` */
+  async send(user: AuthUser, conversationId: string, body: string, clientId?: string): Promise<ChatMessage> {
+    const previous = await this.previousSend(user.id, clientId);
+    if (previous) {
+      if (previous.conversationId !== conversationId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      return toChatMessage(previous, user.id);
+    }
     const conversation = await this.requireParticipant(user.id, conversationId);
     const partner = conversation.buyerId === user.id ? conversation.seller : conversation.buyer;
     const [blockedByMe, blockedMe] = await this.blockState(user.id, partner.id);
@@ -212,13 +244,20 @@ export class MessagesService implements OnModuleInit {
     if (reason) throw new ForbiddenException(reason);
     await this.assertMessageLimit(user.id);
 
-    const message = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.message.create({
-        data: { conversationId: conversation.id, senderId: user.id, recipientId: partner.id, body },
+    let message: Message;
+    try {
+      message = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.message.create({
+          data: { conversationId: conversation.id, senderId: user.id, recipientId: partner.id, body, clientId },
+        });
+        await tx.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: created.createdAt } });
+        return created;
       });
-      await tx.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: created.createdAt } });
-      return created;
-    });
+    } catch (error) {
+      const raced = await this.previousSendAfter(error, user.id, clientId);
+      if (raced.conversationId !== conversationId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      return toChatMessage(raced, user.id);
+    }
     await this.afterSend(message);
     return toChatMessage(message, user.id);
   }
@@ -353,6 +392,20 @@ export class MessagesService implements OnModuleInit {
   }
 
   // --- intern ----------------------------------------------------------------------
+
+  /** Schon mit dieser Kennung gesendete Nachricht (erneutes Abschicken nach Doppelklick oder Verbindungsabbruch) */
+  private previousSend(senderId: string, clientId?: string) {
+    if (!clientId) return Promise.resolve(null);
+    return this.prisma.message.findFirst({ where: { senderId, clientId }, include: { conversation: { select: { listingId: true } } } });
+  }
+
+  /** Nach einem Fehler beim Speichern: Lag es an einer gleichzeitig gespeicherten Nachricht mit derselben Kennung? */
+  private async previousSendAfter(error: unknown, senderId: string, clientId?: string) {
+    const duplicate = clientId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+    const previous = duplicate ? await this.previousSend(senderId, clientId) : null;
+    if (!previous) throw error;
+    return previous;
+  }
 
   private async afterSend(message: Message) {
     const [recipientUnread, senderUnread, recipient] = await Promise.all([

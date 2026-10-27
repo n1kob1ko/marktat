@@ -22,8 +22,12 @@ const MESSAGES: Record<string, string> = {
   mfa_totp_enroll_not_enabled: 'Die Zwei-Faktor-Anmeldung ist auf diesem Server nicht aktiviert.',
 };
 
-export function authErrorMessage(error: { code?: string; status?: number } | null | undefined): string {
+export function authErrorMessage(error: { code?: string; status?: number; name?: string } | null | undefined): string {
   if (error?.code && MESSAGES[error.code]) return MESSAGES[error.code]!;
   if (error?.status === 429) return MESSAGES.over_request_rate_limit!;
+  // Anmeldedienst nicht erreichbar (Netzwerkfehler oder 5xx vom Gateway)
+  if (error?.name === 'AuthRetryableFetchError' || (error?.status !== undefined && (error.status === 0 || error.status >= 500))) {
+    return 'Die Anmeldung ist gerade nicht erreichbar. Bitte versuche es in ein paar Minuten erneut.';
+  }
   return 'Das hat leider nicht geklappt. Bitte versuche es später erneut.';
 }

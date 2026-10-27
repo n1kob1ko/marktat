@@ -33,11 +33,12 @@ async function tokenOrFailure(): Promise<string | { ok: false; message: string; 
 export async function startConversationAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const listingId = String(formData.get('listingId') ?? '');
   const body = String(formData.get('body') ?? '');
+  const clientId = String(formData.get('clientId') ?? '') || undefined;
   if (!ID_PATTERN.test(listingId)) return { status: 'error', message: 'Diese Anzeige gibt es nicht.' };
   const token = await getAccessToken();
   if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(`/anzeige/${listingId}`)}&hinweis=nachricht`);
 
-  const parsed = sendMessageSchema.safeParse({ body });
+  const parsed = sendMessageSchema.safeParse({ body, clientId });
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values: { body } };
   let conversationId: string;
   try {
@@ -53,9 +54,9 @@ export async function startConversationAction(_prev: FormState, formData: FormDa
   redirect(`/nachrichten/${conversationId}`);
 }
 
-export async function sendMessageAction(conversationId: string, body: string): Promise<Result<ChatMessage>> {
+export async function sendMessageAction(conversationId: string, body: string, clientId?: string): Promise<Result<ChatMessage>> {
   if (!ID_PATTERN.test(conversationId)) return { ok: false, message: 'Diese Unterhaltung gibt es nicht.', status: 404 };
-  const parsed = sendMessageSchema.safeParse({ body });
+  const parsed = sendMessageSchema.safeParse({ body, clientId });
   if (!parsed.success) return { ok: false, message: parsed.error.issues[0]?.message ?? 'Ungültige Nachricht.', status: 400 };
   const token = await tokenOrFailure();
   if (typeof token !== 'string') return token;
