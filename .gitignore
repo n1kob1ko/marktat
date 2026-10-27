@@ -13,3 +13,7 @@ next-env.d.ts
 apps/api/src/generated/
 playwright-report/
 test-results/
+
+# Lokaler Speichertreiber (Bilder in Entwicklung/Tests)
+apps/api/.storage/
+apps/api/.storage-test/

@@ -1,6 +1,6 @@
 # Architektur
 
-Stand: Phase 1 (Fundament). Dieses Dokument beschreibt, was gebaut ist, und markiert Geplantes ausdrücklich als „geplant“.
+Stand: Phase 2 (Bild-Upload). Dieses Dokument beschreibt, was gebaut ist, und markiert Geplantes ausdrücklich als „geplant“.
 
 ## Überblick
 
@@ -12,10 +12,10 @@ Browser ──► apps/web (Next.js 16, Server Components, Server Actions)
             apps/api (NestJS 12, REST unter /v1, OpenAPI unter /docs)
               │            │
               ▼            ▼
-        PostgreSQL 16   Supabase Auth (GoTrue)
-        + PostGIS       Registrierung, Login, E-Mail-Bestätigung, Passwort-Reset
+        PostgreSQL 16   Supabase Auth (GoTrue)         Cloudflare R2 (privat)
+        + PostGIS       Registrierung, Login, …        Bilder; Browser lädt per signierter URL direkt hoch
 
-geplant: Meilisearch (Suche), Redis/BullMQ (Jobs), Cloudflare R2 (Bilder), Stripe (Zahlungen), OpenAI (optional)
+geplant: Meilisearch (Suche), Redis/BullMQ (Jobs), Stripe (Zahlungen), OpenAI (optional)
 ```
 
 Der Browser spricht für Auth direkt mit Supabase Auth (über die Server Actions der Web-App), für alle Fachdaten ausschließlich mit der API. Die API vertraut nur dem signierten JWT, nicht den Angaben des Clients.
@@ -44,6 +44,7 @@ Werkzeuge: pnpm-Workspaces, Turborepo (`build`, `dev`, `lint`, `typecheck`, `tes
 - **Caching im Frontend:** Öffentliche Daten (Kategorien, neueste Inserate) mit `'use cache'` + `cacheTag`, nach Änderungen `updateTag('listings')`. Nutzerabhängige Teile liegen in `Suspense`-Grenzen.
 - **Suche in Phase 1:** einfache Postgres-Suche (`ILIKE` auf Titel/Beschreibung) mit Filtern nach Kategorie (inkl. Unterkategorien), Bereich und Bundesland. Meilisearch folgt in Phase 2.
 - **Geodaten:** Bundesland → Bezirk → Ort (PLZ) mit PostGIS-Punkt für spätere Umkreissuche. Siehe [geodaten.md](geodaten.md).
+- **Bilder:** Upload direkt vom Browser nach R2 über kurzlebige Presigned-URLs, danach Prüfung und Optimierung in der API (sharp), Auslieferung über stabile API-URLs mit Weiterleitung auf signierte R2-URLs. Austauschbarer Speicher (`ObjectStorage`): R2 oder lokales Dateisystem für Tests. Siehe [bilder.md](bilder.md).
 
 ## API-Endpunkte (Phase 1)
 
@@ -59,17 +60,19 @@ Werkzeuge: pnpm-Workspaces, Turborepo (`build`, `dev`, `lint`, `typecheck`, `tes
 | POST | `/v1/listings` · PATCH `/v1/listings/:id` | angemeldet, Schreib-Limit |
 | POST | `/v1/listings/:id/publish` · `/pause` · `/resume` | angemeldet, nur eigene |
 | DELETE | `/v1/listings/:id` | angemeldet, nur eigene (Soft-Delete) |
+| GET/POST/PUT/DELETE | `/v1/listings/:id/images…` | angemeldet, nur eigene (siehe [bilder.md](bilder.md)) |
+| GET | `/v1/images/:imageId/:variante` | öffentlich für aktive Inserate, sonst nur mit Signatur |
 
 Vollständige Schemas: `http://localhost:4000/docs` (Swagger UI).
 
 ## Web-Seiten (Phase 1)
 
-`/` Startseite · `/suche` · `/anzeige/[id]` · `/inserieren` · `/anzeige/[id]/bearbeiten` · `/registrieren` · `/anmelden` · `/passwort-vergessen` · `/passwort-neu` · `/auth/confirm` · `/konto` · `/konto/anzeigen` · `/impressum` · `/datenschutz` · `/agb` · `/melden`
+`/` Startseite · `/suche` · `/anzeige/[id]` · `/inserieren` · `/anzeige/[id]/bearbeiten` · `/anzeige/[id]/bilder` · `/registrieren` · `/anmelden` · `/passwort-vergessen` · `/passwort-neu` · `/auth/confirm` · `/konto` · `/konto/anzeigen` · `/impressum` · `/datenschutz` · `/agb` · `/melden`
 
 ## Phasenplan
 
 1. **Fundament** (dieser Stand): Monorepo, Docker, Datenmodell, Auth, Inserate ohne Bilder, Basis-Suche, Tests, CI.
-2. Bild-Upload (R2), kategorieabhängige Felder, Meilisearch, Umkreissuche, Favoriten, gespeicherte Suchen.
+2. Bild-Upload (R2) – umgesetzt. Offen: kategorieabhängige Felder, Meilisearch, Umkreissuche, Favoriten, gespeicherte Suchen.
 3. Nachrichten zwischen Nutzern, Meldungen, Moderation, Admin-Bereich, Kontolöschung (DSGVO), E-Mail-Benachrichtigungen über BullMQ.
 4. Bezahlte Zusatzleistungen mit Stripe (Hervorheben, Hochschieben), Rechnungen, Händlerkonten.
 5. Vertikalen ausbauen: Auto & Motor (Fahrzeugdaten), Immobilien (Fläche, Zimmer, HWB), Jobs (Firmenprofile, Bewerbungen).

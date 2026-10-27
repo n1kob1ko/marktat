@@ -7,7 +7,9 @@ import {
   Logger,
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
+import { S3ServiceException } from '@aws-sdk/client-s3';
 import { Prisma } from '../generated/prisma/client.js';
+import { StorageNotConfiguredError } from '../storage/storage.types.js';
 
 /**
  * Einheitliches Fehlerformat: { statusCode, message, errors? }.
@@ -47,6 +49,23 @@ export class HttpExceptionFilter implements ExceptionFilter {
           .status(HttpStatus.CONFLICT)
           .json({ statusCode: 409, message: 'Der Eintrag existiert bereits.' });
       }
+    }
+
+    if (exception instanceof StorageNotConfiguredError) {
+      this.logger.warn(exception.message);
+      return response.status(HttpStatus.SERVICE_UNAVAILABLE).json({
+        statusCode: 503,
+        message: 'Der Bild-Upload ist derzeit nicht verfügbar.',
+      });
+    }
+
+    if (exception instanceof S3ServiceException) {
+      // Code und Status reichen zur Diagnose; die Meldung kann Bucket- oder Schlüsselnamen enthalten.
+      this.logger.error(`${request.method} ${request.route?.path ?? request.path}: Objektspeicher ${exception.name} (${exception.$metadata.httpStatusCode})`);
+      return response.status(HttpStatus.BAD_GATEWAY).json({
+        statusCode: 502,
+        message: 'Der Bildspeicher ist gerade nicht erreichbar. Bitte versuche es später erneut.',
+      });
     }
 
     // Nur Methode und Pfad ohne Query-String loggen – Query kann personenbezogene Daten enthalten.

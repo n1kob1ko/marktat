@@ -10,8 +10,8 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
     <article className="group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]">
       <div className="relative aspect-[4/3] bg-canvas">
         {listing.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Bild-Pipeline (R2 + Optimierung) folgt in Phase 2
-          <img src={listing.imageUrl} alt="" className="size-full object-cover" loading="lazy" />
+          // eslint-disable-next-line @next/next/no-img-element -- Vorschaubild ist serverseitig optimiert (WebP 480 × 360)
+          <img src={listing.imageUrl} alt="" width={480} height={360} className="size-full object-cover" loading="lazy" decoding="async" />
         ) : (
           <div className="flex size-full items-center justify-center bg-[repeating-linear-gradient(135deg,transparent,transparent_12px,rgb(18_23_21/0.025)_12px,rgb(18_23_21/0.025)_24px)]">
             <ImageIcon className="size-8 text-ink-300" aria-hidden="true" />

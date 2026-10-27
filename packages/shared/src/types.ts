@@ -75,14 +75,38 @@ export interface ListingSummary {
   status: ListingStatus;
   category: { id: string; name: string; slug: string };
   location: LocationSummary | null;
+  /** Vorschaubild (Hauptbild, 480 × 360) oder null */
   imageUrl: string | null;
   isBusiness: boolean;
   publishedAt: string | null;
   createdAt: string;
 }
 
+/** Ein fertig verarbeitetes Bild. URLs zeigen nie auf die unverarbeitete Originaldatei. */
+export interface ListingImage {
+  id: string;
+  /** Große Ansicht, max. 1600 px Kantenlänge */
+  url: string;
+  /** Vorschaubild 480 × 360 */
+  thumbUrl: string;
+  width: number;
+  height: number;
+  /** 0 = Hauptbild */
+  position: number;
+}
+
+/** Antwort auf die Upload-Anmeldung: Datei per HTTP PUT mit genau diesen Headern hochladen. */
+export interface ImageUploadTicket {
+  imageId: string;
+  uploadUrl: string;
+  method: 'PUT';
+  headers: Record<string, string>;
+  expiresAt: string;
+}
+
 export interface ListingDetail extends ListingSummary {
   description: string;
+  images: ListingImage[];
   condition: ItemCondition | null;
   attributes: Record<string, string | number | boolean>;
   expiresAt: string | null;

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { BadgeCheck, CalendarDays, Flag, ImageIcon, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
+import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
 import { Badge, Button, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
 import { formatDate, ITEM_CONDITION_LABELS, type ListingDetail } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
@@ -11,6 +11,7 @@ import { PriceTag } from '@/components/price-tag';
 import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { FlashMessage } from '@/components/flash-message';
 import { listingStatusAction } from '@/app/konto/anzeigen/actions';
+import { ListingGallery } from '@/components/listing-gallery';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
   const { id } = await params;
@@ -64,17 +65,7 @@ async function ListingContent({
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-6">
-          <div className="flex aspect-[16/10] items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface">
-            {listing.imageUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element -- Bild-Pipeline folgt in Phase 2
-              <img src={listing.imageUrl} alt={listing.title} className="size-full rounded-[var(--radius-card)] object-cover" />
-            ) : (
-              <div className="text-center text-ink-400">
-                <ImageIcon className="mx-auto size-10" aria-hidden="true" />
-                <p className="mt-2 text-sm">Keine Bilder vorhanden</p>
-              </div>
-            )}
-          </div>
+          <ListingGallery images={listing.images} title={listing.title} />
 
           <Card className="p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
@@ -149,6 +140,9 @@ function OwnerBar({ listing }: { listing: ListingDetail }) {
       <div className="flex flex-wrap gap-2">
         <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
           <Pencil className="size-4" aria-hidden="true" /> Bearbeiten
+        </Link>
+        <Link href={`/anzeige/${listing.id}/bilder`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+          <Images className="size-4" aria-hidden="true" /> Bilder ({listing.images.length})
         </Link>
         <form action={listingStatusAction}>
           <input type="hidden" name="id" value={listing.id} />

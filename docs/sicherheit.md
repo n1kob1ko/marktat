@@ -46,7 +46,7 @@
 | CSP mit Nonce | Aktuell `'unsafe-inline'` für Skripte, weil Next.js Inline-Skripte erzeugt. Umstellung auf Nonce über den Proxy, sobald die Seiten-Caching-Strategie feststeht. |
 | Reverse-Proxy/IP | Hinter Load-Balancer muss `trust proxy` gesetzt werden, sonst greift das Rate-Limit pro Proxy-IP statt pro Nutzer. |
 | Rate-Limit verteilt | Throttler speichert im Speicher; bei mehreren API-Instanzen Redis-Storage verwenden. |
-| Bild-Uploads | Phase 2: signierte Upload-URLs, Typ- und Größenprüfung, EXIF-Daten entfernen, Virenscan prüfen. |
+| Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)): signierte, kurzlebige Upload-URLs, Typ- und Größenprüfung vor und nach dem Upload, Inhaltsprüfung, Neukodierung ohne EXIF/GPS, privater Bucket. Offen: automatische Inhaltsmoderation (Phase 3). |
 | Kontolöschung/Datenexport | Phase 3 (DSGVO Art. 17/20) über die Supabase-Admin-API. |
 | 2FA | Supabase unterstützt TOTP; Aktivierung für Händler und Admins in Phase 3. |
 | Monitoring | Sentry o. Ä. und Alarmierung in Phase 6. |

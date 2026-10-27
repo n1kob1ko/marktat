@@ -1,7 +1,9 @@
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { waitForMailLink } from './mailpit';
 
 const PASSWORD = 'Sicheres-Passwort-2026';
+const fixture = (name: string) => path.join(__dirname, 'fixtures', name);
 
 test.describe.configure({ mode: 'serial' });
 
@@ -59,15 +61,39 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   await expect(page.getByLabel('Anzeigenvorschau')).toContainText('8010 Graz');
   await page.getByRole('button', { name: 'Anzeige veröffentlichen' }).click();
 
+  // 3b. Bilder: nach dem Veröffentlichen direkt zur Bildverwaltung
+  await expect(page).toHaveURL(/\/anzeige\/\w+\/bilder\?neu=veroeffentlicht/);
+  await expect(page.getByText('Deine Anzeige ist online. Füge jetzt Bilder hinzu')).toBeVisible();
+  await page.locator('#bilder-auswahl').setInputFiles(fixture('kein-erlaubtes-format.gif'));
+  await expect(page.getByText('Erlaubt sind nur JPEG, PNG oder WebP.')).toBeVisible();
+  await page.locator('#bilder-auswahl').setInputFiles([fixture('testbild-mit-gps.jpg'), fixture('testbild-mit-gps.jpg')]);
+  const gallery = page.getByRole('list', { name: 'Bilder der Anzeige' });
+  await expect(gallery.getByRole('img')).toHaveCount(2, { timeout: 20_000 });
+  await expect(page.getByText('2 von 10 Bildern')).toBeVisible();
+  await expect(gallery.getByText('Hauptbild')).toHaveCount(1);
+  await page.getByRole('button', { name: 'Bild 2 als Hauptbild' }).click();
+  await expect(page.getByRole('status').filter({ hasText: 'Das Hauptbild wurde geändert.' })).toBeAttached();
+  await page.getByRole('button', { name: 'Bild 2 löschen' }).click();
+  await expect(gallery.getByRole('img')).toHaveCount(1);
+  // Das verarbeitete Bild muss tatsächlich laden (Weiterleitung API -> Speicher)
+  await expect
+    .poll(() => gallery.getByRole('img').first().evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth))
+    .toBe(480);
+  await page.getByRole('link', { name: 'Fertig' }).click();
+
   await expect(page).toHaveURL(/\/anzeige\/\w+\?hinweis=veroeffentlicht/);
   await expect(page.getByText('Deine Anzeige ist jetzt online.')).toBeVisible();
   await expect(page.getByRole('heading', { level: 1, name: title })).toBeVisible();
   await expect(page.getByText('€ 249,50').first()).toBeVisible();
+  const mainImage = page.getByRole('img', { name: title });
+  await expect.poll(() => mainImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1200);
   const listingUrl = page.url().split('?')[0]!;
 
   // 4. Über die Suche auffindbar
   await page.goto(`/suche?q=${encodeURIComponent(title)}`);
   await expect(page.getByRole('link', { name: title })).toBeVisible();
+  const card = page.getByRole('article').filter({ hasText: title });
+  await expect.poll(() => card.locator('img').evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(480);
 
   // 5. Pausieren entfernt die Anzeige aus der öffentlichen Ansicht
   await page.goto(listingUrl);

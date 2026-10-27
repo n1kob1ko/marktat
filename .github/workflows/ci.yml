@@ -40,6 +40,9 @@ jobs:
     name: Browser-Tests (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      # Bilder im lokalen Dateisystem statt R2 – die CI hat (und braucht) keine Cloudflare-Zugangsdaten.
+      STORAGE_DRIVER: local
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

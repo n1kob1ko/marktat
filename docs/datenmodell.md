@@ -14,7 +14,7 @@ Kategorien sind CUIDs (nicht erratbar), Nutzer-IDs die UUID aus Supabase Auth.
 | `locations` | Orte mit PLZ | `postal_code`, `place`, `district_id`, `latitude`, `longitude`, `geom geography(Point,4326)` mit GiST-Index |
 | `categories` | Kategoriebaum je Bereich | `parent_id`, `vertical`, `path` (eindeutig, für SEO-URLs), `attribute_schema` (JSON, ab Phase 2) |
 | `listings` | Inserate | `seller_id`, `category_id`, `vertical`, `title`, `description`, `price_type`, `price_cents` (BIGINT), `condition`, `attributes` (JSON), `status`, `location_id`, `published_at`, `expires_at`, `deleted_at` |
-| `listing_images` | Bilder je Inserat (Tabelle angelegt, Upload ab Phase 2) | `storage_key`, `url`, `width`, `height`, `sort_order` |
+| `listing_images` | Bilder je Inserat (Phase 2) | `status` (PENDING/READY), `upload_key` (Rohdatei, nach Verarbeitung leer), `storage_key` (Präfix der Varianten), `declared_type`/`declared_size`, `detected_type`, `width`, `height`, `stored_bytes`, `sort_order` (0 = Hauptbild) |
 | `audit_logs` | Sicherheitsrelevante Ereignisse | `actor_id`, `action`, `entity_type`, `entity_id`, `ip_prefix` (gekürzt), `metadata` |
 
 Extensions: `postgis` (Umkreissuche), `pg_trgm` (unscharfe Suche als Fallback zu Meilisearch).

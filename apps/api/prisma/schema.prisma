@@ -212,19 +212,41 @@ model Listing {
   @@map("listings")
 }
 
-/// Bilder eines Inserats (Upload nach Cloudflare R2 ab Phase 2)
-model ListingImage {
-  id         String   @id @default(cuid())
-  listingId  String   @map("listing_id")
-  storageKey String   @map("storage_key")
-  url        String
-  width      Int?
-  height     Int?
-  sortOrder  Int      @default(0) @map("sort_order")
-  createdAt  DateTime @default(now()) @map("created_at")
-  listing    Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+/// Verarbeitungsstand eines Inseratsbilds
+enum ImageStatus {
+  /// Upload-URL ausgegeben, Datei noch nicht geprüft
+  PENDING
+  /// geprüft, bereinigt, Varianten erzeugt – darf angezeigt werden
+  READY
+}
 
-  @@index([listingId, sortOrder])
+/// Bilder eines Inserats. Rohdateien liegen privat unter `uploadKey`, nur verarbeitete Varianten
+/// (ohne EXIF, WebP) unter `storageKey` werden ausgeliefert. Reihenfolge: `sortOrder` 0 = Hauptbild.
+model ListingImage {
+  id               String      @id @default(cuid())
+  listingId        String      @map("listing_id")
+  status           ImageStatus @default(PENDING)
+  /// Schlüssel der unverarbeiteten Datei, z. B. "uploads/<listingId>/<imageId>"; nach Verarbeitung null
+  uploadKey        String?     @map("upload_key")
+  /// Präfix der Varianten, z. B. "images/<listingId>/<imageId>" (+ "/large.webp", "/thumb.webp")
+  storageKey       String      @map("storage_key")
+  /// Vom Browser angekündigter Typ und Größe (nur Plausibilität, maßgeblich ist die Prüfung nach dem Upload)
+  declaredType     String      @map("declared_type")
+  declaredSize     Int         @map("declared_size")
+  /// Tatsächlich erkannter Typ der Originaldatei
+  detectedType     String?     @map("detected_type")
+  width            Int?
+  height           Int?
+  /// Gesamtgröße der gespeicherten Varianten in Byte
+  storedBytes      Int?        @map("stored_bytes")
+  sortOrder        Int         @default(0) @map("sort_order")
+  createdAt        DateTime    @default(now()) @map("created_at")
+  updatedAt        DateTime    @updatedAt @map("updated_at")
+  processedAt      DateTime?   @map("processed_at")
+  listing          Listing     @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@index([listingId, status, sortOrder])
+  @@index([status, createdAt])
   @@map("listing_images")
 }
 

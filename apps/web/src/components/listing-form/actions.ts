@@ -63,7 +63,8 @@ export async function createListingAction(_prev: FormState, formData: FormData):
     return errorState(error, values);
   }
   updateTag('listings');
-  redirect(publish ? `/anzeige/${listing.id}?hinweis=veroeffentlicht` : '/konto/anzeigen?hinweis=entwurf');
+  // Nächster Schritt: Bilder hinzufügen (die Seite führt danach dorthin weiter, wo es sonst hinginge)
+  redirect(`/anzeige/${listing.id}/bilder?neu=${publish ? 'veroeffentlicht' : 'entwurf'}`);
 }
 
 /** Bestehendes Inserat speichern und optional (erneut) veröffentlichen. */
