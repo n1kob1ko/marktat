@@ -7,6 +7,7 @@ import {
 import {
   DEFAULT_LISTING_DURATION_DAYS,
   listingPublishSchema,
+  validateListingAttributes,
   slugify,
   type CreateListingInput,
   type ListingQuery,
@@ -47,6 +48,7 @@ export class ListingsService {
     const { publish, ...fields } = input;
     const category = fields.categoryId ? await this.requireCategory(fields.categoryId, publish) : null;
     if (fields.locationId) await this.requireLocation(fields.locationId);
+    this.assertAttributes(category?.vertical ?? 'MARKETPLACE', fields.attributes ?? {});
 
     const now = new Date();
     const listing = await this.prisma.listing.create({
@@ -84,6 +86,8 @@ export class ListingsService {
     if (input.locationId) await this.requireLocation(input.locationId);
 
     const merged = { ...this.editableFields(current), ...input };
+    const category = input.categoryId ? await this.requireCategory(input.categoryId, current.status === 'ACTIVE') : null;
+    this.assertAttributes(category?.vertical ?? current.vertical, merged.attributes ?? {});
     // Aktive Inserate müssen nach jeder Änderung vollständig bleiben.
     if (current.status === 'ACTIVE' || current.status === 'PAUSED') {
       this.assertPublishable(merged);
@@ -121,7 +125,8 @@ export class ListingsService {
     }
     const fields = this.editableFields(current);
     this.assertPublishable(fields);
-    await this.requireCategory(fields.categoryId!, true);
+    const category = await this.requireCategory(fields.categoryId!, true);
+    this.assertAttributes(category.vertical, fields.attributes ?? {});
     const now = new Date();
     const updated = await this.prisma.listing.update({
       where: { id },
@@ -255,6 +260,11 @@ export class ListingsService {
   private async requireLocation(locationId: number) {
     const exists = await this.prisma.location.count({ where: { id: locationId } });
     if (!exists) throw new BadRequestException('Der gewählte Ort ist unbekannt.');
+  }
+
+  private assertAttributes(vertical: 'MARKETPLACE' | 'VEHICLES' | 'REAL_ESTATE' | 'JOBS', attrs: Record<string, string | number | boolean>) {
+    const errors = validateListingAttributes(vertical, attrs);
+    if (errors.length) throw new BadRequestException({ statusCode: 400, message: 'Bitte prüfe die Zusatzangaben.', errors });
   }
 
   private priceFor(priceType: string | null | undefined, priceCents: number | null | undefined) {
