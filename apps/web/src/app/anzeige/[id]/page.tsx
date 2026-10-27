@@ -122,6 +122,12 @@ async function ListingContent({
               salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
               className="mt-3 text-3xl"
             />
+            {/* Am Handy steht der Kontakt erst unter der Beschreibung – Abkürzung direkt dorthin */}
+            {listing.isOwner || listing.status !== 'ACTIVE' ? null : (
+              <a href="#kontakt" className={buttonClasses({ size: 'lg', className: 'mt-4 w-full lg:hidden' })}>
+                <MessageCircle className="size-5" aria-hidden="true" /> Anbieter kontaktieren
+              </a>
+            )}
             <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-600">
               {listing.location ? (
                 <div className="flex items-center gap-1.5">
@@ -147,7 +153,7 @@ async function ListingContent({
         </div>
 
         <aside className="space-y-4">
-          <Card className="p-5">
+          <Card className="scroll-mt-20 p-5" id="kontakt">
             <div className="flex items-center gap-3">
               {seller.accountType === 'BUSINESS' && seller.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)

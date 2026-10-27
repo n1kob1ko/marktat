@@ -33,6 +33,18 @@ test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({
   }
 });
 
+test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im Bild', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 640 });
+  for (const path of ['/', '/suche?q=rad', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
+    await page.goto(path);
+    await page.waitForLoadState('networkidle').catch(() => undefined);
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
+    expect(overflow, `${path}: seitliches Scrollen`).toBeLessThanOrEqual(0);
+    const button = await page.locator('header a[href="/inserieren"]').boundingBox();
+    expect(button!.x + button!.width, `${path}: „Inserieren“ im Bild`).toBeLessThanOrEqual(320);
+  }
+});
+
 test('Angemeldete Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ page }, testInfo) => {
   const email = `a11y-${testInfo.project.name}-${Date.now()}@example.test`;
   await registerConfirmed(page, 'Barriere Frei', email);
