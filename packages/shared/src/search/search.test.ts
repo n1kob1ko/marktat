@@ -29,6 +29,9 @@ describe('searchFiltersFor', () => {
     expect(values).toContain('vw');
     expect(values).toContain('ducati');
     expect(new Set(values).size).toBe(values.length);
+    // Spezialfilter nur einer Unterkategorie erst dort
+    expect(keys('auto-motor')).not.toContain('sleepingPlaces');
+    expect(keys('auto-motor/wohnmobile-wohnwagen')).toContain('sleepingPlaces');
   });
 
   it('kennt Kaufen/Mieten, Fläche, Zimmer und Ausstattung bei Immobilien', () => {

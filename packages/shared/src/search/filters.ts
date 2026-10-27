@@ -30,6 +30,8 @@ export interface RangeFilter extends FilterBase {
   unit?: string;
   /** Beträge in Euro (Gehalt) */
   euro?: boolean;
+  /** Jahreszahl (Erstzulassung, Baujahr) */
+  year?: boolean;
 }
 
 /** Freitext: Treffer enthalten alle eingegebenen Wörter (Modell „Golf TSI“) */
@@ -63,7 +65,7 @@ function toFilter(field: AttributeField): Collected | null {
       if (field.key === 'salaryGross') return { ...base, key: SALARY_FILTER_KEY, kind: 'range', min: 0, max: 100_000, decimals: 0, unit: '€', euro: true };
       return { ...base, kind: 'range', min: field.min, max: field.max, decimals: field.decimals, unit: field.unit };
     case 'year':
-      return { ...base, kind: 'range', min: field.min, max: new Date().getFullYear() + field.maxAhead, decimals: 0 };
+      return { ...base, kind: 'range', min: field.min, max: new Date().getFullYear() + field.maxAhead, decimals: 0, year: true };
     case 'text':
       return { ...base, kind: 'words', placeholder: field.placeholder };
     case 'boolean':
@@ -92,9 +94,11 @@ const cache = new Map<string, SearchFilter[]>();
 
 /**
  * Filter für eine Kategorie (Pfad) oder einen Bereich (Slug, z. B. „auto-motor“).
- * Bei Oberkategorien werden die Filter aller Unterkategorien zusammengeführt, damit z. B. unter
- * „Immobilien“ Kaufen/Mieten, Wohnfläche und Zimmer auswählbar sind. Im Marktplatz als Ganzes gibt es
- * keine Eigenschaftsfilter (zu unterschiedliche Waren), erst in der jeweiligen Kategorie.
+ * Bei Oberkategorien werden die Filter der Unterkategorien zusammengeführt, damit z. B. unter
+ * „Immobilien“ Kaufen/Mieten, Wohnfläche und Zimmer auswählbar sind. Haben mehrere Unterkategorien
+ * Filter, bleiben nur die, die mindestens zwei davon gemeinsam haben – Spezialfilter wie Schlafplätze
+ * (Wohnmobile) erscheinen erst in ihrer Kategorie. Im Marktplatz als Ganzes gibt es keine
+ * Eigenschaftsfilter (zu unterschiedliche Waren).
  */
 export function searchFiltersFor(path: string | null | undefined): SearchFilter[] {
   if (!path || path === VERTICAL_SLUGS.MARKETPLACE) return [];
@@ -103,10 +107,13 @@ export function searchFiltersFor(path: string | null | undefined): SearchFilter[
 
   const paths = [path, ...ATTRIBUTE_RULE_PATHS.filter((p) => p.startsWith(`${path}/`))];
   const byKey = new Map<string, Collected | null>();
+  const seenIn = new Map<string, number>();
+  let withFilters = 0;
   for (const p of paths) {
-    for (const field of categoryAttributeSchema(p).fields) {
-      const filter = toFilter(field);
-      if (!filter) continue;
+    const fieldFilters = categoryAttributeSchema(p).fields.map(toFilter).filter((f): f is Collected => f !== null);
+    if (fieldFilters.length) withFilters++;
+    for (const filter of fieldFilters) {
+      seenIn.set(filter.key, (seenIn.get(filter.key) ?? 0) + 1);
       if (!byKey.has(filter.key)) byKey.set(filter.key, filter);
       else {
         const existing = byKey.get(filter.key);
@@ -115,7 +122,7 @@ export function searchFiltersFor(path: string | null | undefined): SearchFilter[
     }
   }
   const filters = [...byKey.values()]
-    .filter((f): f is Collected => f !== null)
+    .filter((f): f is Collected => f !== null && (withFilters < 2 || seenIn.get(f.key)! >= 2))
     .map(({ only, ...filter }): SearchFilter =>
       filter.kind === 'options' && only ? { ...filter, options: filter.options.filter((o) => only.has(o.value)) } : filter,
     )
