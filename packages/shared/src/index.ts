@@ -1,13 +1,10 @@
-import { z } from 'zod';
-
-// Deutsche Standard-Fehlermeldungen für alle zod-Schemas (Web und API)
-z.config(z.locales.de());
-
+// Deutsche zod-Fehlermeldungen: siehe schemas/zod.ts
 export * from './austria.js';
 export * from './billing.js';
 export * from './attributes/index.js';
 export * from './enums.js';
 export * from './format.js';
+export * from './limits.js';
 export * from './slug.js';
 export * from './types.js';
 export * from './schemas/auth.js';

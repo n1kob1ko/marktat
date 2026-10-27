@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 import { BILLING_MODES, BOOKING_STATUSES, PAID_MODE_CONFIRMATION, PRODUCT_CODES } from '../billing.js';
 import { CONTROL_CHARS } from './interactions.js';
 

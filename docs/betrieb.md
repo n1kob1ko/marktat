@@ -102,3 +102,32 @@ Bis zum offiziellen Start ist Indexierung gesperrt: `robots.txt` sperrt alles, j
 Freischalten: `ALLOW_INDEXING=true` **beim Build** der Web-App setzen (der Wert wird beim Build festgelegt).
 Konto, Admin, Nachrichten, Inserieren, Anmeldung usw. bleiben auch danach `noindex`. Die Sitemap
 (`/sitemap.xml`) enthält dann öffentliche Inserate, Händlerprofile mit aktiven Inseraten und Kategorien.
+
+## Leistung (Messung Phase 8)
+
+Produktionsbuild lokal (`next start`, API `node dist/main.js`), Chromium mit Pixel-7-Profil, Median aus 5–7
+Aufrufen, übertragene (komprimierte) Größen. Lokale Werte ohne Netzwerklatenz – für den Vergleich vorher/nachher,
+nicht als Aussage über echte Mobilnetze.
+
+| Seite | JS vorher | JS nachher | gesamt vorher | gesamt nachher | LCP vorher | LCP nachher |
+| --- | --- | --- | --- | --- | --- | --- |
+| Startseite | 244,1 KB | 164,7 KB | 393,9 KB | 314,6 KB | 184 ms | 148 ms |
+| Suche | 253,2 KB | 183,0 KB | 409,4 KB | 339,7 KB | 444 ms | 440–472 ms |
+| Suche mit Filtern und Umkreis | 253,2 KB | 183,0 KB | 423,1 KB | 354,3 KB | 492 ms | 440 ms |
+| Inseratsseite | 247,9 KB | 168,8 KB | 388,2 KB | 312,5 KB | 116 ms | 384–412 ms |
+| Anmelden | 248,7 KB | 169,4 KB | 391,4 KB | 313,4 KB | 80 ms | 104 ms |
+
+**Maßnahme:** `@marktat/shared` ist als nebenwirkungsfrei markiert (`"sideEffects": false`); die deutsche
+Sprache für zod hängt jetzt an `schemas/zod.ts` statt am Paketeinstieg. Dadurch lädt eine Seite die
+Validierungsbibliothek nur noch, wenn ein Formular sie wirklich braucht (vorher auf jeder Seite, ca. 82 KB
+komprimiert, wegen eines Datumsformats in der Inseratskarte). Konstanten wie `MESSAGE_MAX_LENGTH` liegen in
+`limits.ts`, damit das Kontaktformular zod nicht nachzieht.
+
+**LCP bei gestreamten Bereichen:** Inhalte, die nach dem ersten Bild per Streaming kommen (Suchergebnisse,
+Inseratsdetails), deckt React gebündelt auf – höchstens alle 300 ms, außer kurz vor der 2,5-s-Grenze. Ist ein
+kleiner Bereich (z. B. „Anmelden“ im Kopf) zuerst fertig, erscheint der Hauptinhalt bis zu 300 ms später. Daher
+schwanken diese Werte zwischen ~120 und ~470 ms; alle liegen deutlich unter 2,5 s („gut“ nach Core Web Vitals).
+Bewusst nicht umgangen, weil das Bündeln Layout-Sprünge vermeidet.
+
+Messskript: Playwright mit CDP (übertragene Bytes je Ressourcentyp, `largest-contentful-paint`); nicht Teil des
+Repositorys, weil die Werte nur auf derselben Maschine vergleichbar sind.

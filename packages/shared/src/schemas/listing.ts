@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 import { ITEM_CONDITIONS, PRICE_TYPES } from '../enums.js';
 
 /** Obergrenze: 1 Mrd. Euro in Cent – deckt auch Immobilien ab. */

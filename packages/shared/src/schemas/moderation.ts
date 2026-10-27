@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 import { CONTROL_CHARS, REPORT_REASONS } from './interactions.js';
 
 // ---------------------------------------------------------------------------

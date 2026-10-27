@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 
 /** Höchstens so viele Bilder je Inserat (inklusive laufender Uploads). */
 export const MAX_IMAGES_PER_LISTING = 10;

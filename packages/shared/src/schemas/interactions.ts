@@ -1,11 +1,5 @@
-import { z } from 'zod';
-
-/** Höchstlänge einer Nachricht (Zeichen). Gleicher Wert in der Datenbank (VARCHAR). */
-export const MESSAGE_MAX_LENGTH = 2000;
-/** Höchstzahl gespeicherter Suchen je Konto */
-export const MAX_SAVED_SEARCHES = 50;
-/** Höchstzahl gemerkter Inserate je Konto */
-export const MAX_FAVORITES = 500;
+import { MESSAGE_MAX_LENGTH } from '../limits.js';
+import { z } from './zod.js';
 
 // Steuerzeichen außer Zeilenumbruch und Tabulator, dazu unsichtbare Richtungszeichen (Spoofing)
 // eslint-disable-next-line no-control-regex
