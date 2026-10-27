@@ -7,6 +7,7 @@ import { Alert, Textarea } from '@marktat/ui';
 import { initialFormState } from '@/lib/form-state';
 import { startConversationAction } from '@/app/nachrichten/actions';
 import { SubmitButton } from '@/components/submit-button';
+import { ClientIdField } from '@/components/client-id-field';
 
 const SUGGESTIONS = ['Ist die Anzeige noch verfügbar?', 'Ist der Preis verhandelbar?', 'Wann könnte ich es mir ansehen?'];
 
@@ -25,6 +26,7 @@ export function ContactForm({ listingId, sellerName }: { listingId: string; sell
   return (
     <form action={action} className="mt-5 space-y-3" id="nachricht">
       <input type="hidden" name="listingId" value={listingId} />
+      <ClientIdField name="clientId" />
       {state.status === 'error' && state.message ? <Alert tone="danger">{state.message}</Alert> : null}
       <div className="space-y-1.5">
         <label htmlFor="contact-body" className="block text-sm font-semibold text-ink-900">

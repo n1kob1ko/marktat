@@ -209,6 +209,9 @@ export function ImageManager({
           ref={inputRef}
           id="bilder-auswahl"
           type="file"
+          // Bedient wird über den Button daneben; das Feld selbst ist kein zusätzlicher Tabulator-Halt
+          aria-label="Bilder auswählen"
+          tabIndex={-1}
           accept={IMAGE_ACCEPT}
           multiple
           className="sr-only"

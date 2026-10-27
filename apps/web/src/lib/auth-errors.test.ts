@@ -11,4 +11,9 @@ describe('authErrorMessage', () => {
   it('liefert eine allgemeine Meldung ohne technische Details', () => {
     expect(authErrorMessage({ code: 'unexpected_failure' })).toMatch(/nicht geklappt/);
   });
+  it('meldet einen nicht erreichbaren Anmeldedienst verständlich', () => {
+    expect(authErrorMessage({ status: 502 })).toMatch(/gerade nicht erreichbar/);
+    expect(authErrorMessage({ name: 'AuthRetryableFetchError', status: 0 })).toMatch(/gerade nicht erreichbar/);
+    expect(authErrorMessage({ code: 'invalid_credentials', status: 400 })).toMatch(/falsch/);
+  });
 });

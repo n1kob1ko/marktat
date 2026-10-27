@@ -30,6 +30,7 @@ import {
 } from '@marktat/shared';
 import { CurrentUser, Roles } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
+import { StepUp } from '../auth/mfa.guard.js';
 import { openApiSchema } from '../common/openapi.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AdminService } from './admin.service.js';
@@ -150,6 +151,7 @@ export class AdminController {
   }
 
   @Post('users/:id/decisions')
+  @StepUp()
   @Throttle(DECIDE_LIMIT)
   @ApiOperation({ summary: 'Konto sperren (Moderation: nur normale Konten) oder Sperre aufheben (nur Administratoren)' })
   @ApiBody({ schema: openApiSchema(userDecisionSchema) })
@@ -163,6 +165,7 @@ export class AdminController {
   }
 
   @Put('users/:id/role')
+  @StepUp()
   @Roles('ADMIN')
   @Throttle(DECIDE_LIMIT)
   @ApiOperation({ summary: 'Moderationsrechte vergeben oder entziehen (ADMIN nur per Kommandozeile)' })

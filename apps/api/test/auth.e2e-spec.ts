@@ -66,6 +66,15 @@ describe('Authentifizierung und Profil', () => {
     expect(audit).not.toBeNull();
   });
 
+  it('verkraftet gleichzeitige erste Aufrufe eines neuen Kontos (mehrere Anfragen beim ersten Seitenaufruf)', async () => {
+    for (let round = 0; round < 5; round++) {
+      const { auth, id } = await tokenFor();
+      const responses = await Promise.all(Array.from({ length: 6 }, () => request(app.getHttpServer()).get('/v1/me').set(auth)));
+      expect(responses.map((r) => r.status)).toEqual(Array(6).fill(200));
+      expect(await prisma.user.count({ where: { id } })).toBe(1);
+    }
+  });
+
   it('sperrt Zugriffe gesperrter Konten – außer Status, Entscheidungen, Export und Löschung', async () => {
     const user = await tokenFor();
     await request(app.getHttpServer()).get('/v1/me').set(user.auth).expect(200);

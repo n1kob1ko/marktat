@@ -12,6 +12,13 @@ import {
 } from '@marktat/shared';
 import { initialFormState, type FormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
+import { StepUpField } from '@/components/security/step-up-field';
+
+/** Bestätigungscode für kritische Änderungen (nur bei Sitzungen mit 2FA) */
+export interface StepUpOptions {
+  enabled: boolean;
+  maxAgeMinutes: number;
+}
 import { setBillingModeAction, updateBillingSettingsAction, updateProductAction } from '@/app/admin/monetarisierung/actions';
 
 function StateAlert({ state }: { state: FormState }) {
@@ -26,7 +33,7 @@ const startDay = (value: string | null) => (value ? viennaDay(value) : '');
 const endDay = (value: string | null) => (value ? viennaDay(lastIncludedDay(value)) : '');
 
 /** Preis, Laufzeit, Verfügbarkeit, Aktion und Limits einer Leistung */
-export function ProductForm({ product }: { product: ProductDto }) {
+export function ProductForm({ product, stepUp }: { product: ProductDto; stepUp: StepUpOptions }) {
   const [state, action] = useActionState(updateProductAction, initialFormState);
   const errors = state.fieldErrors ?? {};
   const v = (key: string, fallback: string) => state.values?.[key] ?? fallback;
@@ -131,13 +138,14 @@ export function ProductForm({ product }: { product: ProductDto }) {
         </fieldset>
       )}
       {errors.expectedUpdatedAt ? <p className="text-sm font-medium text-danger-600">{errors.expectedUpdatedAt[0]}</p> : null}
+      <StepUpField {...stepUp} error={errors.mfaCode} />
       <SubmitButton>{product.name} speichern</SubmitButton>
     </form>
   );
 }
 
 /** Einführungsaktion und allgemeine Buchungsgrenze */
-export function IntroSettingsForm({ settings }: { settings: BillingSettingsDto }) {
+export function IntroSettingsForm({ settings, stepUp }: { settings: BillingSettingsDto; stepUp: StepUpOptions }) {
   const [state, action] = useActionState(updateBillingSettingsAction, initialFormState);
   const errors = state.fieldErrors ?? {};
   const v = (key: string, fallback: string) => state.values?.[key] ?? fallback;
@@ -168,13 +176,14 @@ export function IntroSettingsForm({ settings }: { settings: BillingSettingsDto }
           <Input name="introEndsAt" type="date" defaultValue={v('introEndsAt', endDay(settings.introEndsAt))} />
         </Field>
       </div>
+      <StepUpField {...stepUp} error={errors.mfaCode} />
       <SubmitButton>Einführungsaktion speichern</SubmitButton>
     </form>
   );
 }
 
 /** Betriebsmodus umschalten: kostenpflichtig nur mit wörtlicher Bestätigung und ohne offene Hindernisse */
-export function BillingModeForm({ mode, blocked }: { mode: BillingMode; blocked: boolean }) {
+export function BillingModeForm({ mode, blocked, stepUp }: { mode: BillingMode; blocked: boolean; stepUp: StepUpOptions }) {
   const [state, action] = useActionState(setBillingModeAction, initialFormState);
   const errors = state.fieldErrors ?? {};
   if (mode === 'PAID') {
@@ -197,6 +206,7 @@ export function BillingModeForm({ mode, blocked }: { mode: BillingMode; blocked:
       >
         <Input name="confirmation" autoComplete="off" disabled={blocked} defaultValue="" />
       </Field>
+      {blocked ? null : <StepUpField {...stepUp} error={errors.mfaCode} />}
       <SubmitButton variant="danger" disabled={blocked}>
         Kostenpflichtigen Betrieb einschalten
       </SubmitButton>

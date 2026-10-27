@@ -15,4 +15,6 @@ export const RETENTION_DAYS = {
   decisions: 730,
   /** Anonymisierter Platzhalter eines gelöschten Kontos nach Abschluss der Löschung */
   deletedAccountPlaceholder: 730,
+  /** Technische Fehlerübersicht (ohne Personenbezug) – nach letztem Auftreten */
+  errorEvents: 30,
 } as const;

@@ -14,6 +14,7 @@ import {
 } from '@marktat/shared';
 import { CurrentUser, Roles } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
+import { assertStepUp, StepUp } from '../auth/mfa.guard.js';
 import { openApiSchema } from '../common/openapi.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { BillingAdminService } from './billing-admin.service.js';
@@ -45,6 +46,7 @@ export class AdminBillingController {
   }
 
   @Put('products/:code')
+  @StepUp()
   @Throttle(WRITE_LIMIT)
   @ApiOperation({ summary: 'Leistung bearbeiten (Preis, geplanter Preis, Laufzeit, Verfügbarkeit, Limits)' })
   @ApiBody({ schema: openApiSchema(updateProductSchema) })
@@ -58,6 +60,7 @@ export class AdminBillingController {
   }
 
   @Put('settings')
+  @StepUp()
   @Throttle(WRITE_LIMIT)
   @ApiOperation({ summary: 'Einführungsaktion und Schutzgrenzen' })
   @ApiBody({ schema: openApiSchema(updateBillingSettingsSchema) })
@@ -74,6 +77,8 @@ export class AdminBillingController {
   @ApiOperation({ summary: 'Betriebsmodus wechseln (kostenpflichtig nur mit Bestätigung und nutzbarem Stripe)' })
   @ApiBody({ schema: openApiSchema(billingModeSchema) })
   setMode(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(billingModeSchema)) body: BillingModeInput, @Req() req: Request) {
+    // Zurück zum kostenlosen Betrieb geht immer ohne weitere Hürde; nur das Einschalten ist kritisch
+    if (body.mode === 'PAID') assertStepUp(user);
     return this.admin.setMode(user, body, req.ip);
   }
 }

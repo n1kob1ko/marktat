@@ -8,9 +8,10 @@ import { UserMenu } from './user-menu';
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
-      <Container className="flex h-16 items-center gap-3 sm:gap-6">
+      <Container className="flex h-16 items-center gap-2 sm:gap-6">
         <Link href="/" className="shrink-0 rounded-lg" aria-label="MarktAT – zur Startseite">
-          <Logo />
+          {/* Sehr schmale Handys (320–400 px): nur das Bildzeichen, damit „Inserieren“ Platz hat */}
+          <Logo wordmarkClassName="max-[400px]:sr-only" />
         </Link>
 
         <form action="/suche" role="search" className="hidden flex-1 md:block">
@@ -29,7 +30,7 @@ export function SiteHeader() {
           </div>
         </form>
 
-        <nav aria-label="Konto" className="ml-auto flex items-center gap-2">
+        <nav aria-label="Konto" className="ml-auto flex items-center gap-1 sm:gap-2">
           <Suspense fallback={<Skeleton className="h-9 w-24" />}>
             <UserMenu />
           </Suspense>

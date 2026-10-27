@@ -1,4 +1,5 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
 import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
@@ -55,6 +56,30 @@ describe('Inserate', () => {
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.total).toBe(1);
     expect(list.body.items[0].id).toBe(res.body.id);
+  });
+
+  it('legt bei wiederholtem Abschicken desselben Formulars kein zweites Inserat an', async () => {
+    const seller = await tokenFor();
+    const clientRequestId = randomUUID();
+    const body = { ...complete(), clientRequestId };
+    // Doppelklick: beide Anfragen gleichzeitig, danach eine Wiederholung nach „Verbindungsabbruch“
+    const [a, b] = await Promise.all([
+      request(server()).post('/v1/listings').set(seller.auth).send(body),
+      request(server()).post('/v1/listings').set(seller.auth).send(body),
+    ]);
+    const retry = await request(server()).post('/v1/listings').set(seller.auth).send(body).expect(201);
+    expect([a.status, b.status], JSON.stringify([a.body, b.body])).toEqual([201, 201]);
+    expect(new Set([a.body.id, b.body.id, retry.body.id]).size).toBe(1);
+    expect(await prisma.listing.count({ where: { sellerId: seller.id } })).toBe(1);
+    // Auch die (kostenlose) Buchung gibt es nur einmal
+    expect(await prisma.booking.count({ where: { userId: seller.id } })).toBe(1);
+
+    // Neues Formular (neue Kennung) = neues Inserat; dieselbe Kennung bei einer anderen Person stört nicht
+    await request(server()).post('/v1/listings').set(seller.auth).send({ ...complete(), clientRequestId: randomUUID() }).expect(201);
+    const other = await tokenFor();
+    await request(server()).post('/v1/listings').set(other.auth).send(body).expect(201);
+    expect(await prisma.listing.count()).toBe(3);
+    await request(server()).post('/v1/listings').set(seller.auth).send({ ...complete(), clientRequestId: 'kein-uuid' }).expect(400);
   });
 
   it('meldet Feldfehler auf Deutsch', async () => {

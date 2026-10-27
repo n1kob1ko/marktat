@@ -26,14 +26,20 @@ export class ApiError extends Error {
 interface ApiOptions extends Omit<RequestInit, 'body'> {
   token?: string;
   body?: unknown;
+  /** Höchstens so lange auf die API warten (Standard 15 s) – sonst hinge die Seite bei einer hängenden API endlos */
+  timeoutMs?: number;
 }
 
+const DEFAULT_TIMEOUT_MS = 15_000;
+
 /** Serverseitiger Aufruf der MarktAT-API. Das Access-Token verlässt nie den Server. */
-export async function api<T>(path: string, { token, body, headers, ...init }: ApiOptions = {}): Promise<T> {
+export async function api<T>(path: string, { token, body, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init }: ApiOptions = {}): Promise<T> {
+  const timeout = AbortSignal.timeout(timeoutMs);
   let response: Response;
   try {
     response = await fetch(`${API_URL}/v1${path}`, {
       ...init,
+      signal: init.signal ? AbortSignal.any([init.signal, timeout]) : timeout,
       headers: {
         Accept: 'application/json',
         ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
@@ -43,6 +49,10 @@ export async function api<T>(path: string, { token, body, headers, ...init }: Ap
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   } catch {
+    if (timeout.aborted) {
+      // Bei Änderungen (Nachricht, Inserat) kann die API sie trotzdem gespeichert haben – erneutes Abschicken ist sicher
+      throw new ApiError(504, { statusCode: 504, message: 'Der Server antwortet gerade sehr langsam. Bitte versuche es gleich noch einmal.' });
+    }
     throw new ApiError(503, { statusCode: 503, message: 'Der Server ist gerade nicht erreichbar. Bitte versuche es gleich noch einmal.' });
   }
   if (response.status === 204) return undefined as T;

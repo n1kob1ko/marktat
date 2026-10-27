@@ -11,6 +11,7 @@
   }
 
   body {
+    overflow-wrap: break-word;
     background-color: var(--color-canvas);
     color: var(--color-ink-900);
     font-family: var(--font-sans);
@@ -23,6 +24,9 @@
     font-family: var(--font-display);
     letter-spacing: -0.02em;
     text-wrap: balance;
+    /* Lange deutsche Wörter („Nutzungsbedingungen“) brechen auf schmalen Handys um statt überzustehen */
+    hyphens: auto;
+    overflow-wrap: break-word;
   }
 
   :focus-visible {

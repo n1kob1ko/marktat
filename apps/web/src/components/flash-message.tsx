@@ -2,6 +2,9 @@ import { Alert } from '@marktat/ui';
 
 const MESSAGES: Record<string, { tone: 'success' | 'danger' | 'warning'; text: string }> = {
   veroeffentlicht: { tone: 'success', text: 'Deine Anzeige ist jetzt online.' },
+  '2fa-aktiv': { tone: 'success', text: 'Die Zwei-Faktor-Anmeldung ist aktiv. Ab der nächsten Anmeldung fragen wir nach dem Code.' },
+  '2fa-entfernt': { tone: 'success', text: 'Das Gerät wurde entfernt.' },
+  '2fa-zurueckgesetzt': { tone: 'success', text: 'Die Zwei-Faktor-Anmeldung ist zurückgesetzt. Die Person meldet sich mit Passwort an und richtet sie neu ein.' },
   entwurf: { tone: 'success', text: 'Dein Entwurf wurde gespeichert.' },
   gespeichert: { tone: 'success', text: 'Deine Änderungen wurden gespeichert.' },
   pausiert: { tone: 'success', text: 'Die Anzeige ist pausiert und für andere nicht mehr sichtbar.' },

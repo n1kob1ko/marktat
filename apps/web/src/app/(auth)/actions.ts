@@ -12,6 +12,7 @@ import { serverEnv } from '@/lib/env';
 import { authErrorMessage } from '@/lib/auth-errors';
 import { safeRedirectPath } from '@/lib/auth';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
+import { getAssurance, needsSecondFactor, verifyTotp } from '@/lib/mfa';
 
 /** Version der Nutzungsbedingungen, der beim Registrieren zugestimmt wird (siehe /agb). */
 const TERMS_VERSION = '2026-10-entwurf';
@@ -72,6 +73,16 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) return { status: 'error', message: authErrorMessage(error), values };
 
+  const target = safeRedirectPath(formData.get('weiter'));
+  // Mit eingerichteter Zwei-Faktor-Anmeldung ist die Anmeldung erst nach dem Code vollständig
+  if (needsSecondFactor(await getAssurance())) redirect(`/anmelden/zwei-faktor?weiter=${encodeURIComponent(target)}`);
+  redirect(target);
+}
+
+/** Zweiter Schritt der Anmeldung: Code aus der Authenticator-App */
+export async function verifySecondFactorAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const result = await verifyTotp(String(formData.get('code') ?? ''));
+  if ('error' in result) return { status: 'error', message: result.error, fieldErrors: { code: [result.error] } };
   redirect(safeRedirectPath(formData.get('weiter')));
 }
 

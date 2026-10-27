@@ -23,15 +23,30 @@ import { ListingGallery } from '@/components/listing-gallery';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
+import { JsonLd } from '@/components/json-ld';
+import { serverEnv } from '@/lib/env';
+import { listingJsonLd, metaDescription } from '@/lib/seo';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
-  const { id } = await params;
-  const listing = await api<ListingDetail>(`/listings/${id}`, { cache: 'no-store' }).catch(() => null);
+  const [{ id }, token] = await Promise.all([params, getAccessToken()]);
+  // Mit Sitzung, damit Eigentümer auch bei Entwürfen und abgelaufenen Inseraten den richtigen Titel sehen
+  const listing = await api<ListingDetail>(`/listings/${id}`, { token: token ?? undefined, cache: 'no-store' }).catch(() => null);
   if (!listing) return { title: 'Anzeige nicht gefunden', robots: { index: false } };
+  const description = metaDescription(listing.description, `${listing.title} – Kleinanzeige auf MarktAT`);
+  const image = listing.images[0];
   return {
     title: listing.title,
-    description: listing.description.slice(0, 155),
+    description,
     alternates: { canonical: `/anzeige/${listing.id}` },
+    // Nur öffentlich sichtbare Inserate gehören in Suchmaschinen
+    ...(listing.status === 'ACTIVE' ? {} : { robots: { index: false, follow: false } }),
+    openGraph: {
+      type: 'website',
+      title: listing.title,
+      description,
+      url: `/anzeige/${listing.id}`,
+      ...(image ? { images: [{ url: image.url, width: image.width, height: image.height, alt: listing.title }] } : {}),
+    },
   };
 }
 
@@ -64,6 +79,7 @@ async function ListingContent({
 
   return (
     <div className="space-y-6">
+      <JsonLd data={listingJsonLd(listing, serverEnv.webUrl)} />
       <FlashMessage hinweis={hinweis} fehler={fehler} />
       {listing.isOwner ? <OwnerBar listing={listing} /> : <ViewBeacon listingId={listing.id} />}
       {staff ? (
@@ -106,6 +122,12 @@ async function ListingContent({
               salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
               className="mt-3 text-3xl"
             />
+            {/* Am Handy steht der Kontakt erst unter der Beschreibung – Abkürzung direkt dorthin */}
+            {listing.isOwner || listing.status !== 'ACTIVE' ? null : (
+              <a href="#kontakt" className={buttonClasses({ size: 'lg', className: 'mt-4 w-full lg:hidden' })}>
+                <MessageCircle className="size-5" aria-hidden="true" /> Anbieter kontaktieren
+              </a>
+            )}
             <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-600">
               {listing.location ? (
                 <div className="flex items-center gap-1.5">
@@ -125,13 +147,13 @@ async function ListingContent({
             <ListingDetails items={describeListingAttributes(categoryAttributeSchema(listing.category.path), listing.attributes)} />
             <h2 className="mt-8 font-sans text-lg font-semibold tracking-normal">Beschreibung</h2>
             <div className="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-800">
-              {listing.description || <span className="text-ink-400">Keine Beschreibung.</span>}
+              {listing.description || <span className="text-ink-500">Keine Beschreibung.</span>}
             </div>
           </Card>
         </div>
 
         <aside className="space-y-4">
-          <Card className="p-5">
+          <Card className="scroll-mt-20 p-5" id="kontakt">
             <div className="flex items-center gap-3">
               {seller.accountType === 'BUSINESS' && seller.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)

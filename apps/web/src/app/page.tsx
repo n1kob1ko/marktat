@@ -199,10 +199,10 @@ async function MarketplaceCategories() {
         <li key={category.id}>
           <Link
             href={`/suche?kategorie=${category.path}`}
-            className="flex h-full items-center gap-3 rounded-xl border border-line bg-surface px-4 py-3.5 transition-colors hover:border-brand-300 hover:bg-brand-50"
+            className="flex h-full items-center gap-3 rounded-xl border border-line bg-surface px-3 py-3.5 sm:px-4 transition-colors hover:border-brand-300 hover:bg-brand-50"
           >
             <CategoryIcon name={category.icon} className="size-5 shrink-0 text-brand-700" />
-            <span className="text-sm font-semibold text-ink-900">{category.name}</span>
+            <span className="min-w-0 text-sm font-semibold break-words hyphens-auto text-ink-900">{category.name}</span>
           </Link>
         </li>
       ))}

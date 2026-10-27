@@ -25,7 +25,7 @@ import {
   type ListingSummary,
   type UpdateListingInput,
 } from '@marktat/shared';
-import type { Category, Listing, Prisma } from '../generated/prisma/client.js';
+import { Prisma, type Category, type Listing } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import { CategoriesService } from '../categories/categories.service.js';
@@ -107,7 +107,10 @@ export class ListingsService implements OnModuleInit {
   }
 
   async create(user: AuthUser, input: CreateListingInput, ip?: string) {
-    const { publish, ...fields } = input;
+    const { publish, clientRequestId, ...fields } = input;
+    // Formular erneut abgeschickt (Doppelklick, Verbindungsabbruch): das schon angelegte Inserat zurückgeben
+    const previous = await this.previousCreate(user, clientRequestId);
+    if (previous) return previous;
     const category = fields.categoryId ? await this.requireCategory(fields.categoryId, publish) : null;
     if (fields.locationId) await this.requireLocation(fields.locationId);
     const schema = categoryAttributeSchema(category?.path);
@@ -119,29 +122,40 @@ export class ListingsService implements OnModuleInit {
 
     const now = new Date();
     const expiresAt = terms ? expiryFrom(now, terms.durationDays) : null;
-    const listing = await this.prisma.$transaction(async (tx) => {
-      const created = await tx.listing.create({
-      data: {
-        sellerId: user.id,
-        title: fields.title,
-        slug: slugify(fields.title),
-        description: fields.description ?? '',
-        categoryId: category?.id ?? null,
-        vertical: category?.vertical ?? 'MARKETPLACE',
-        priceType: price.priceType,
-        priceCents: this.toBigInt(price.priceCents),
-        condition,
-        locationId: fields.locationId ?? null,
-        attributes,
-        status: publish ? 'ACTIVE' : 'DRAFT',
-        publishedAt: publish ? now : null,
-        expiresAt,
-      },
-      include: listingInclude,
+    let listing: Prisma.ListingGetPayload<{ include: typeof listingInclude }>;
+    try {
+      listing = await this.prisma.$transaction(async (tx) => {
+        const created = await tx.listing.create({
+          data: {
+            sellerId: user.id,
+            clientRequestId,
+            title: fields.title,
+            slug: slugify(fields.title),
+            description: fields.description ?? '',
+            categoryId: category?.id ?? null,
+            vertical: category?.vertical ?? 'MARKETPLACE',
+            priceType: price.priceType,
+            priceCents: this.toBigInt(price.priceCents),
+            condition,
+            locationId: fields.locationId ?? null,
+            attributes,
+            status: publish ? 'ACTIVE' : 'DRAFT',
+            publishedAt: publish ? now : null,
+            expiresAt,
+          },
+          include: listingInclude,
+        });
+        if (terms && expiresAt) await this.recordFreeListing(tx, user, created.id, terms, now, expiresAt);
+        return created;
       });
-      if (terms && expiresAt) await this.recordFreeListing(tx, user, created.id, terms, now, expiresAt);
-      return created;
-    });
+    } catch (error) {
+      // Gleichzeitig doppelt abgeschickt: Die andere Anfrage hat das Inserat schon angelegt
+      const raced = clientRequestId && error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002'
+        ? await this.previousCreate(user, clientRequestId)
+        : null;
+      if (raced) return raced;
+      throw error;
+    }
     this.audit.log({
       action: publish ? 'listing.published' : 'listing.created',
       actorId: user.id,
@@ -151,6 +165,15 @@ export class ListingsService implements OnModuleInit {
     });
     this.searchIndex.sync(listing.id);
     return toListingDetail(listing, this.urls, user.id);
+  }
+
+  private async previousCreate(user: AuthUser, clientRequestId?: string) {
+    if (!clientRequestId) return null;
+    const listing = await this.prisma.listing.findFirst({
+      where: { sellerId: user.id, clientRequestId, deletedAt: null },
+      include: listingInclude,
+    });
+    return listing ? toListingDetail(listing, this.urls, user.id) : null;
   }
 
   async update(user: AuthUser, id: string, input: UpdateListingInput) {

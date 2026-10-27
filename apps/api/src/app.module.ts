@@ -10,6 +10,7 @@ import { AuditModule } from './audit/audit.module.js';
 import { AuthModule } from './auth/auth.module.js';
 import { AuthGuard } from './auth/auth.guard.js';
 import { RolesGuard } from './auth/roles.guard.js';
+import { MfaGuard } from './auth/mfa.guard.js';
 import { UsersModule } from './users/users.module.js';
 import { GeoModule } from './geo/geo.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
@@ -28,7 +29,9 @@ import { PrivacyModule } from './privacy/privacy.module.js';
 import { BillingModule } from './billing/billing.module.js';
 import { StatsModule } from './stats/stats.module.js';
 import { DealersModule } from './dealers/dealers.module.js';
-import { HealthController } from './health/health.controller.js';
+import { SeoModule } from './seo/seo.module.js';
+import { SecurityModule } from './security/security.module.js';
+import { MonitoringModule } from './monitoring/monitoring.module.js';
 
 @Module({
   imports: [
@@ -62,13 +65,16 @@ import { HealthController } from './health/health.controller.js';
     BillingModule,
     StatsModule,
     DealersModule,
+    SeoModule,
+    SecurityModule,
+    MonitoringModule,
   ],
-  controllers: [HealthController],
   providers: [
-    // Reihenfolge: zuerst Anmeldung (Token prüfen), dann Rate-Limit je Konto bzw. IP, dann Rollen
+    // Reihenfolge: zuerst Anmeldung (Token prüfen), dann Rate-Limit je Konto bzw. IP, dann Rollen, dann 2FA
     { provide: APP_GUARD, useClass: AuthGuard },
     { provide: APP_GUARD, useClass: AccountThrottlerGuard },
     { provide: APP_GUARD, useClass: RolesGuard },
+    { provide: APP_GUARD, useClass: MfaGuard },
   ],
 })
 export class AppModule {}

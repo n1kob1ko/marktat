@@ -4,7 +4,7 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Alert, Badge, Select, Skeleton } from '@marktat/ui';
-import { formatDate, formatDateTime, REPORT_REASON_LABELS, type AdminUserDetail, type MeResponse } from '@marktat/shared';
+import { formatDate, formatDateTime, REPORT_REASON_LABELS, type AdminUserDetail, type MeResponse, type MfaFactorSummary } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { requireStaff } from '@/lib/auth';
 import { ENTITY_ID, param, UUID } from '@/lib/admin';
@@ -13,7 +13,8 @@ import { SubmitButton } from '@/components/submit-button';
 import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { DecisionList, ReportStatusBadge, RoleBadge, Section, UserStatusBadge } from '@/components/admin/admin-ui';
 import { ActionForm, DecisionForm, type DecisionOption } from '@/components/admin/forms';
-import { changeRoleAction, restrictReportingAction, retryDeletionAction } from '../../actions';
+import { StepUpField } from '@/components/security/step-up-field';
+import { changeRoleAction, resetMfaAction, restrictReportingAction, retryDeletionAction } from '../../actions';
 
 export const metadata: Metadata = { title: 'Konto' };
 
@@ -52,6 +53,12 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
   const self = account.id === viewer.id;
   const reportId = param(query, 'meldung');
   const options = accountOptions(viewer, account);
+  const stepUp = { enabled: viewer.security?.level === 'aal2', maxAgeMinutes: viewer.security?.stepUpMaxAgeMinutes ?? 10 };
+  // 2FA-Stand nur für Teamkonten (nur sie können 2FA einrichten); Fehler der Anmeldeverwaltung blenden den Abschnitt aus
+  const mfa =
+    isAdmin && !self && account.role !== 'USER' && account.status !== 'DELETED'
+      ? await api<{ factors: MfaFactorSummary[] }>(`/admin/users/${id}/mfa`, { token, cache: 'no-store' }).catch(() => null)
+      : null;
 
   return (
     <div className="space-y-6">
@@ -124,7 +131,7 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
             {self ? (
               <Alert tone="warning">Das eigene Konto kannst du nicht sperren.</Alert>
             ) : options.length ? (
-              <DecisionForm target="user" id={account.id} options={options} reportId={reportId && ENTITY_ID.test(reportId) ? reportId : undefined} />
+              <DecisionForm target="user" id={account.id} options={options} reportId={reportId && ENTITY_ID.test(reportId) ? reportId : undefined} stepUp={stepUp} />
             ) : (
               <p className="text-sm text-ink-500">
                 {account.status === 'SUSPENDED'
@@ -148,6 +155,7 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
                     <p className="text-sm text-ink-600">
                       {account.role === 'MODERATOR' ? 'Das Konto kann Meldungen bearbeiten und Inserate moderieren.' : 'Moderation: Meldungen bearbeiten, Inserate prüfen, normale Konten sperren.'}
                     </p>
+                    <StepUpField {...stepUp} />
                     <SubmitButton variant="outline" size="sm" disabled={account.status !== 'ACTIVE' && account.role === 'USER'}>
                       {account.role === 'MODERATOR' ? 'Moderationsrechte entziehen' : 'Moderationsrechte geben'}
                     </SubmitButton>
@@ -172,6 +180,34 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
                 </ActionForm>
               </Section>
             </>
+          ) : null}
+
+          {mfa ? (
+            <Section title="Zwei-Faktor-Anmeldung">
+              {mfa.factors.length ? (
+                <ActionForm action={resetMfaAction}>
+                  <input type="hidden" name="id" value={account.id} />
+                  <ul className="space-y-1 text-sm text-ink-700">
+                    {mfa.factors.map((f) => (
+                      <li key={f.createdAt}>
+                        {f.friendlyName ?? 'Authenticator-App'} · eingerichtet {formatDate(f.createdAt)}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="text-sm text-ink-600">
+                    Nur zurücksetzen, wenn die Person keinen Zugriff mehr auf ihre Geräte hat und du ihre Identität auf anderem Weg geprüft hast.
+                  </p>
+                  <label className="flex items-start gap-2 text-sm text-ink-800">
+                    <input type="checkbox" name="confirm" className="mt-0.5 size-4 accent-brand-700" />
+                    Identität geprüft – Zwei-Faktor-Anmeldung zurücksetzen
+                  </label>
+                  <StepUpField {...stepUp} />
+                  <SubmitButton variant="danger" size="sm">Zurücksetzen</SubmitButton>
+                </ActionForm>
+              ) : (
+                <p className="text-sm text-ink-600">Nicht eingerichtet.</p>
+              )}
+            </Section>
           ) : null}
 
           {isAdmin && account.deletion?.status === 'FAILED' ? (

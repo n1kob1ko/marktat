@@ -244,6 +244,8 @@ model Listing {
   /// Wurde die aktuelle Platzierung bezahlt? Dann wird sie als Werbung gekennzeichnet.
   highlightPaid    Boolean   @default(false) @map("highlight_paid")
   topPaid          Boolean   @default(false) @map("top_paid")
+  /// Kennung des Anlegeformulars: erneutes Abschicken liefert dasselbe Inserat statt eines zweiten
+  clientRequestId  String?   @map("client_request_id") @db.Uuid
 
   seller        User                 @relation(fields: [sellerId], references: [id])
   category      Category?            @relation(fields: [categoryId], references: [id])
@@ -256,6 +258,7 @@ model Listing {
   bookings      Booking[]
   viewDays      ListingViewDay[]
 
+  @@unique([sellerId, clientRequestId])
   @@index([status, publishedAt(sort: Desc)])
   @@index([topUntil])
   @@index([sellerId, status])
@@ -380,12 +383,15 @@ model Message {
   readAt         DateTime?    @map("read_at")
   /// Zeitpunkt der E-Mail an den Empfänger (bzw. der Entscheidung, keine zu senden)
   notifiedAt     DateTime?    @map("notified_at")
+  /// Vom Gerät erzeugte Kennung: erneutes Abschicken derselben Nachricht legt keine zweite an
+  clientId       String?      @map("client_id") @db.Uuid
   conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient      User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
   @@index([conversationId, createdAt])
   @@index([recipientId, readAt])
+  @@unique([senderId, clientId])
   @@index([senderId, createdAt])
   @@map("messages")
 }
@@ -864,4 +870,26 @@ model AuditLog {
   @@index([actorId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+/// Phase 8: Technische Fehler (unerwartete 5xx, endgültig fehlgeschlagene Hintergrundaufträge), zusammengefasst je Ursache.
+/// Datensparsam: keine Anfragedaten, keine IDs aus Pfaden, keine Personen – nur Quelle, Routenmuster, Fehlerart und gekürzte Meldung.
+model ErrorEvent {
+  id          BigInt   @id @default(autoincrement())
+  /// sha256(Quelle | Route | Fehlerart | normalisierte Meldung) – gleiche Ursache = eine Zeile
+  fingerprint String   @unique
+  /// http | job | web
+  source      String
+  /// z. B. "POST /v1/listings/:id/publish" oder Auftragsname
+  route       String
+  errorName   String   @map("error_name")
+  message     String
+  /// Erste Zeilen des Stacktraces (nur Dateipfade/Funktionen)
+  stack       String?
+  count       Int      @default(1)
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+
+  @@index([lastSeenAt])
+  @@map("error_events")
 }

@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from './zod.js';
 import { displayNameSchema } from './auth.js';
 
 const optionalText = (max: number) =>

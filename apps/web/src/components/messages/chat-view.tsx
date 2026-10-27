@@ -7,6 +7,7 @@ import { MESSAGE_MAX_LENGTH, formatPriceCents, type ChatMessage, type Conversati
 import { Button, Spinner, cn } from '@marktat/ui';
 import { dayKey, formatDayLabel, formatMessageTime } from '@/lib/chat-format';
 import { setUnread, useRealtime } from '@/lib/realtime';
+import { newClientId } from '@/lib/client-id';
 import { loadMessagesAction, markReadAction, sendMessageAction } from '@/app/nachrichten/actions';
 import { ChatMenu } from './chat-menu';
 
@@ -144,7 +145,8 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
 
   // --- Senden ------------------------------------------------------------------------------
   async function deliver(localId: string, body: string) {
-    const result = await sendMessageAction(id, body).catch(() => null);
+    // localId ist zugleich die clientId: Wiederholen nach einem Fehler legt keine zweite Nachricht an
+    const result = await sendMessageAction(id, body, localId).catch(() => null);
     setMessages((current) => {
       if (!result?.ok) {
         const error = result?.message ?? 'Nicht gesendet. Bitte prüfe deine Verbindung.';
@@ -160,11 +162,11 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
   }
 
   function send(body: string) {
-    const localId = `local-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const localId = newClientId();
     stickToBottom.current = true;
     setMessages((current) => [
       ...current,
-      { id: localId, localId, conversationId: id, body, mine: true, createdAt: new Date().toISOString(), readAt: null, status: 'sending' },
+      { id: `local-${localId}`, localId, conversationId: id, body, mine: true, createdAt: new Date().toISOString(), readAt: null, status: 'sending' },
     ]);
     void deliver(localId, body);
   }
@@ -310,7 +312,7 @@ function MessageBubble({
         <span className="sr-only">{mine ? 'Du' : 'Nachricht'}, {formatMessageTime(message.createdAt)}: </span>
         {message.body}
         <span
-          className={cn('ml-2 inline-flex translate-y-0.5 items-center gap-1 align-bottom text-[0.6875rem] whitespace-nowrap', mine && message.status !== 'failed' ? 'text-white/70' : 'text-ink-400')}
+          className={cn('ml-2 inline-flex translate-y-0.5 items-center gap-1 align-bottom text-[0.6875rem] whitespace-nowrap', mine && message.status !== 'failed' ? 'text-white/70' : 'text-ink-500')}
           aria-hidden="true"
           suppressHydrationWarning
         >

@@ -94,14 +94,62 @@
 | Thema | Plan |
 | --- | --- |
 | CSP mit Nonce | Aktuell `'unsafe-inline'` für Skripte, weil Next.js Inline-Skripte erzeugt. Umstellung auf Nonce über den Proxy, sobald die Seiten-Caching-Strategie feststeht. |
-| 2FA | Supabase unterstützt TOTP; für Admin- und Moderationskonten vor dem Livebetrieb dringend empfohlen (heute schützt nur das Passwort den Admin-Bereich). |
-| Monitoring und Alarmierung | Fehlgeschlagene Aufträge und Löschungen stehen im Admin-Dashboard; Sentry o. Ä. und Alarme (E-Mail/Chat) fehlen noch. |
+| 2FA | Umgesetzt in Phase 8 (siehe unten). Offen: Wiederherstellungscodes (Supabase bietet derzeit keine eigenen; Ersatz: zweites Gerät oder Zurücksetzen durch die Administration). |
+| Monitoring und Alarmierung | Phase 8: Healthchecks, Systemzustand und Fehlerübersicht im Admin-Bereich, JSON-Logs ([betrieb.md](betrieb.md)). Offen: externer Dienst (Sentry o. Ä.) und Alarme per E-Mail/Chat – brauchen Freigabe. |
 | Endgültige Löschung soft-gelöschter Inserate | Vom Anbieter gelöschte Inserate bleiben als `DELETED` erhalten; Frist und Löschauftrag festlegen (inkl. Bilder in R2). |
 | Bilder im Datenexport | Export enthält Bild-Metadaten, nicht die Dateien. |
 | Meldungen ohne Konto | Meldeformular nur angemeldet; ob das nach Art. 16 DSA reicht, rechtlich prüfen. |
 | Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)). Offen: automatische Inhaltsprüfung (z. B. bekannte Missbrauchsdarstellungen). |
 
+## Phase 8: Härtung vor dem Start
+
+**Zwei-Faktor-Anmeldung (TOTP)**
+- Über Supabase MFA; Einrichtung unter `/konto/sicherheit` (nur Team-Konten), bis zu 3 Geräte.
+- `STAFF_MFA_REQUIRED` (Standard in Produktion: an): Admin- und Moderationsrouten verlangen eine Sitzung mit
+  `aal2`. Die API prüft das selbst anhand des Tokens (`MfaGuard`), unabhängig von der Web-App.
+- Kritische Aktionen (Konto sperren/entsperren, Rolle ändern, 2FA zurücksetzen, Preise/Einstellungen, Umstellung
+  auf kostenpflichtig) verlangen zusätzlich einen frischen Code (`@StepUp`, höchstens `STEP_UP_MAX_AGE_MINUTES` alt).
+- Aussperren verhindert: Der letzte Faktor lässt sich bei 2FA-Pflicht nicht entfernen; Zurücksetzen durch eine
+  andere Administration oder per Kommandozeile ([betrieb.md](betrieb.md#notfälle)). Alles wird protokolliert.
+
+**Robustheit gegen doppeltes Abschicken**
+- Nachrichten tragen eine `clientId`, neue Inserate eine `clientRequestId` (eindeutig je Konto). Wiederholte
+  Anfragen – Doppelklick, Wiederholen nach Zeitüberschreitung – liefern den schon gespeicherten Eintrag.
+  Buchungen hatten bereits einen Idempotenzschlüssel (Phase 7).
+
+**Berechtigungsprüfung (automatisiert, `apps/api/test/authorization.e2e-spec.ts`)**
+- Alle Routen unter `/v1/admin` werden aus dem Router gelesen (derzeit 28) und als Gast (erwartet 401) und als
+  normales Konto (erwartet 403) aufgerufen – eine neue, versehentlich offene Admin-Route fällt damit sofort auf.
+- Alle persönlichen Routen (`/v1/me…`, `/v1/conversations…`, `/v1/bookings…`) verlangen eine Anmeldung.
+- Fremde Daten (IDOR): ein zweites Konto versucht Entwürfe zu lesen, fremde Inserate zu ändern, zu pausieren, zu
+  löschen, Bilder zu verwalten, Statistiken/Werbeoptionen zu lesen, Buchungen anzulegen, zu bestätigen oder zu
+  stornieren, fremde Unterhaltungen zu lesen/zu beschreiben/zu melden, fremde Suchaufträge zu ändern oder zu löschen
+  und fremde Moderationsentscheidungen zu lesen oder anzufechten → immer 403/404, Daten unverändert. Datenexport und
+  eigene Listen enthalten nur eigene Daten; das öffentliche Profil zeigt keine E-Mail-Adresse.
+- Ergebnis Phase 8: kein Befund.
+
+**Rate-Limits**: zusätzlich `GET /v1/seo/sitemap` (große Abfrage) auf 10 je Minute begrenzt. Übersicht der
+Grenzen: Standard `RATE_LIMIT_PER_MINUTE` je IP bzw. Konto, Meldungen 10/min, Einspruch 5/h, Bild-Uploads 30/min, Logo 10/min,
+Moderationsentscheidungen 30/min, 2FA-Ereignisse und -Zurücksetzen 10/min. Hinter einem Proxy
+`TRUST_PROXY` setzen, sonst zählen alle Anfragen auf die Proxy-Adresse.
+
+**Content-Security-Policy**: `img-src` erlaubt nicht mehr pauschal jede `https:`-Quelle, sondern nur die API und
+den R2-Endpoint (Pfad-Stil). Weiter offen: `'unsafe-inline'` für Skripte (siehe oben, Nonce-Umstellung).
+
+**Uploads**: Bilder und Logos werden mit `sharp` vollständig dekodiert und neu kodiert (WebP, Metadaten wie
+GPS entfernt, Pixelgrenze gegen „Dekompressionsbomben“), Größe und Typ sind in der Upload-Signatur festgelegt,
+ausgeliefert werden nur verarbeitete Varianten. Bestehende Tests: `images.e2e-spec.ts`, `image-processor.spec.ts`.
+
+**Abhängigkeiten**: `pnpm audit --prod --audit-level high` läuft in der CI (eigener Job); Stand 27.10.2026 ohne
+Befund nach Update von `nodemailer` und Festlegung `multer` 2.5.0.
+
+**Suchmaschinen**: bis zum Start vollständig `noindex`; private Bereiche immer (siehe [betrieb.md](betrieb.md#suchmaschinen)).
+Strukturierte Daten werden so serialisiert, dass Inseratstexte das `<script>`-Element nicht verlassen können.
+
 ## Backup-Konzept (für den Produktionsbetrieb)
+
+Lokale Routine und Probelauf: [betrieb.md](betrieb.md#sicherung-und-wiederherstellung).
+
 
 - Postgres: tägliche automatische Backups mit Point-in-Time-Recovery (bei verwalteten Anbietern Standard), Aufbewahrung 14–30 Tage, Speicherort in der EU.
 - Zusätzlich wöchentlicher `pg_dump` in einen getrennten Bucket mit anderer Zugangsberechtigung.

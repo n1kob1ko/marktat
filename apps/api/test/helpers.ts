@@ -17,12 +17,15 @@ let jobs: JobsService | undefined;
 
 /**
  * Test-App gegen die Testdatenbank und den Test-Suchindex.
- * `meiliUrl` überschreibt die Meilisearch-Adresse, z. B. eine nicht erreichbare für den Ausweichbetrieb.
+ * `meiliUrl` überschreibt die Meilisearch-Adresse, z. B. eine nicht erreichbare für den Ausweichbetrieb;
+ * `env` überschreibt weitere Umgebungsvariablen (z. B. REDIS_URL) nur für diese App.
  */
-export async function createTestApp(options: { meiliUrl?: string; stripe?: StripeGateway } = {}) {
-  const original = process.env.MEILI_URL;
-  if (options.meiliUrl !== undefined) {
-    process.env.MEILI_URL = options.meiliUrl;
+export async function createTestApp(options: { meiliUrl?: string; stripe?: StripeGateway; env?: Record<string, string> } = {}) {
+  const overrides = { ...options.env, ...(options.meiliUrl !== undefined ? { MEILI_URL: options.meiliUrl } : {}) };
+  const isolated = Object.keys(overrides).length > 0;
+  const original = Object.fromEntries(Object.keys(overrides).map((key) => [key, process.env[key]]));
+  if (isolated) {
+    Object.assign(process.env, overrides);
     resetEnvCache();
   }
   try {
@@ -34,14 +37,17 @@ export async function createTestApp(options: { meiliUrl?: string; stripe?: Strip
     await app.init();
     const index = app.get(SearchIndexService);
     await index.ensureReady();
-    if (options.meiliUrl === undefined) {
+    if (!isolated) {
       searchIndex = index;
       jobs = app.get(JobsService);
     }
     return { app, prisma: app.get(PrismaService), searchIndex: index };
   } finally {
-    if (options.meiliUrl !== undefined) {
-      process.env.MEILI_URL = original;
+    if (isolated) {
+      for (const [key, value] of Object.entries(original)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
       resetEnvCache();
     }
   }
@@ -49,7 +55,7 @@ export async function createTestApp(options: { meiliUrl?: string; stripe?: Strip
 
 /** Erzeugt ein Access-Token wie Supabase Auth es ausstellt (HS256, gleiche Claims). */
 export async function tokenFor(
-  user: { id?: string; email?: string; metadata?: Record<string, unknown> } = {},
+  user: { id?: string; email?: string; metadata?: Record<string, unknown>; claims?: Record<string, unknown> } = {},
 ) {
   const id = user.id ?? randomUUID();
   const email = user.email ?? `test-${id.slice(0, 8)}@example.at`;
@@ -57,6 +63,7 @@ export async function tokenFor(
     email,
     role: 'authenticated',
     user_metadata: user.metadata ?? { display_name: 'Testperson' },
+    ...user.claims,
   })
     .setProtectedHeader({ alg: 'HS256', typ: 'JWT' })
     .setSubject(id)
@@ -68,12 +75,22 @@ export async function tokenFor(
   return { id, email, token, auth: { Authorization: `Bearer ${token}` } };
 }
 
+/** Token derselben Person mit Sicherheitsniveau: aal2 mit TOTP-Bestätigung vor `mfaAgeSeconds` Sekunden */
+export function mfaToken(account: { id: string; email: string }, mfaAgeSeconds: number | null) {
+  const now = Math.floor(Date.now() / 1000);
+  const claims =
+    mfaAgeSeconds === null
+      ? { aal: 'aal1', amr: [{ method: 'password', timestamp: now }] }
+      : { aal: 'aal2', amr: [{ method: 'password', timestamp: now - mfaAgeSeconds }, { method: 'totp', timestamp: now - mfaAgeSeconds }] };
+  return tokenFor({ id: account.id, email: account.email, claims });
+}
+
 /** Löscht alle Bewegungsdaten und den Test-Suchindex, Stammdaten (Geo, Kategorien) bleiben erhalten. */
 export async function resetData(prisma: PrismaService) {
   await searchIndex?.flush();
   await jobs?.drain().catch(() => jobs?.clear());
   await prisma.$executeRawUnsafe(
-    'TRUNCATE audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listing_view_days, payments, bookings, stripe_events, listings, users CASCADE',
+    'TRUNCATE error_events, audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listing_view_days, payments, bookings, stripe_events, listings, users CASCADE',
   );
   await restoreBillingDefaults(prisma);
   await searchIndex?.clear();

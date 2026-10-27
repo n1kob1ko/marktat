@@ -95,6 +95,18 @@ const envSchema = z
       .transform((v) => v === 'true'),
     /** Basis-URL der Stripe-API (nur Tests überschreiben sie) */
     STRIPE_API_URL: z.url().default('https://api.stripe.com'),
+    /**
+     * Zwei-Faktor-Anmeldung (TOTP) für Moderation und Administration Pflicht. Leer = in Produktion an, sonst aus
+     * (lokal kann der Admin-Bereich dann ohne 2FA geöffnet werden; wer 2FA eingerichtet hat, braucht sie trotzdem).
+     */
+    STAFF_MFA_REQUIRED: z
+      .enum(['true', 'false'])
+      .optional()
+      .transform((v) => (v === undefined ? undefined : v === 'true')),
+    /** Kritische Admin-Aktionen verlangen einen 2FA-Code, der höchstens so alt ist (Minuten) */
+    STEP_UP_MAX_AGE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
+    /** Log-Format: pretty (lesbar, Standard lokal) oder json (eine Zeile je Eintrag, Standard in Produktion) */
+    LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',
@@ -113,6 +125,11 @@ export type Env = z.infer<typeof envSchema>;
 
 /** Nur für Entwicklung und Tests; in Produktion erzwingt das Schema einen eigenen Wert. */
 const DEV_SIGNING_SECRET = 'marktat-dev-signing-secret-not-for-production-0123';
+
+/** 2FA-Pflicht für Moderation und Administration (Standard: nur in Produktion) */
+export function staffMfaRequired(env: Env): boolean {
+  return env.STAFF_MFA_REQUIRED ?? env.NODE_ENV === 'production';
+}
 
 export function signingSecret(env: Env): string {
   return env.APP_SIGNING_SECRET ?? DEV_SIGNING_SECRET;

@@ -17,3 +17,6 @@ test-results/
 # Lokaler Speichertreiber (Bilder in Entwicklung/Tests)
 apps/api/.storage/
 apps/api/.storage-test/
+
+# Datenbanksicherungen (personenbezogene Daten – nie committen)
+backups/

@@ -68,7 +68,10 @@ async function Dashboard() {
           </section>
 
           <section aria-labelledby="system-heading" className="space-y-4">
-            <h3 id="system-heading" className="font-sans text-lg font-semibold tracking-normal text-ink-950">System</h3>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h3 id="system-heading" className="font-sans text-lg font-semibold tracking-normal text-ink-950">System</h3>
+              <Link href="/admin/system" className="text-sm font-semibold text-brand-700 hover:underline">Systemzustand und Fehlerübersicht</Link>
+            </div>
             {system.deletions.failed > 0 ? (
               <Alert tone="danger" title="Fehlgeschlagene Kontolöschungen">
                 {system.deletions.failed} Löschauftrag/-aufträge sind nach mehreren Versuchen gescheitert. Bitte im{' '}

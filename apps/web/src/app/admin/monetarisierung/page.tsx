@@ -29,6 +29,7 @@ export default function MonetizationPage() {
 
 async function Monetization() {
   const { user, token } = await requireStaff('/admin/monetarisierung');
+  const stepUp = { enabled: user.security?.level === 'aal2', maxAgeMinutes: user.security?.stepUpMaxAgeMinutes ?? 10 };
   if (user.role !== 'ADMIN') notFound();
   const overview = await api<BillingOverview>('/admin/billing', { token, cache: 'no-store' });
   const { settings, stripe, paidModeBlockers: blockers, counts } = overview;
@@ -80,7 +81,7 @@ async function Monetization() {
               </ul>
             </div>
           ) : null}
-          <BillingModeForm mode={settings.billingMode} blocked={blockers.length > 0} />
+          <BillingModeForm mode={settings.billingMode} blocked={blockers.length > 0} stepUp={stepUp} />
         </Card>
       </Block>
 
@@ -99,7 +100,7 @@ async function Monetization() {
             <Card key={product.code} className="p-5 sm:p-6">
               <ProductHeader product={product} />
               <div className="mt-5">
-                <ProductForm product={product} />
+                <ProductForm product={product} stepUp={stepUp} />
               </div>
             </Card>
           ))}
@@ -116,7 +117,7 @@ async function Monetization() {
           ) : (
             <p className="text-sm text-ink-600">Die Einführungsaktion wird derzeit nicht angezeigt (ausgeschaltet, unsichtbar, außerhalb des Zeitraums oder Inserieren kostet etwas).</p>
           )}
-          <IntroSettingsForm settings={settings} />
+          <IntroSettingsForm settings={settings} stepUp={stepUp} />
         </Card>
       </Block>
 

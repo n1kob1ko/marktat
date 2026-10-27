@@ -12,8 +12,8 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
 
   if (!current) {
     return (
-      <div className="flex aspect-[16/10] items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface">
-        <div className="text-center text-ink-400">
+      <div className="flex h-40 items-center justify-center rounded-[var(--radius-card)] border border-line bg-surface sm:h-56">
+        <div className="text-center text-ink-500">
           <ImageIcon className="mx-auto size-10" aria-hidden="true" />
           <p className="mt-2 text-sm">Keine Bilder vorhanden</p>
         </div>

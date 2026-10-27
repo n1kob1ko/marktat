@@ -13,6 +13,7 @@ import {
 import { api, ApiError } from '@/lib/api';
 import { requireStaff } from '@/lib/auth';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
+import { stepUpCodeError, stepUpFailure, stepUpToken } from '@/lib/mfa';
 
 /**
  * Preise, Einführungsaktion und Betriebsmodus. Die Web-App wandelt nur Eingaben um (Euro → Cent, Datum → Wiener
@@ -43,6 +44,8 @@ function day(value: string | undefined, end = false): string | null {
 }
 
 function failure(error: unknown, values: Record<string, string>): FormState {
+  const stepUp = stepUpFailure(error, values);
+  if (stepUp) return stepUp;
   if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values };
   throw error;
 }
@@ -94,9 +97,11 @@ export async function updateProductAction(_prev: FormState, formData: FormData):
     if (errors.plannedPriceCents) errors.plannedPrice = errors.plannedPriceCents;
     return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: errors, values };
   }
-  const { token } = await requireStaff('/admin/monetarisierung');
+  const session = await requireStaff('/admin/monetarisierung');
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, values);
   try {
-    await api(`/admin/billing/products/${code}`, { method: 'PUT', token, body: parsed.data });
+    await api(`/admin/billing/products/${code}`, { method: 'PUT', token: auth.token, body: parsed.data });
   } catch (error) {
     return failure(error, values);
   }
@@ -119,9 +124,11 @@ export async function updateBillingSettingsAction(_prev: FormState, formData: Fo
     maxBookingsPerHour: optionalInt(values.maxBookingsPerHour) ?? Number.NaN,
   });
   if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
-  const { token } = await requireStaff('/admin/monetarisierung');
+  const session = await requireStaff('/admin/monetarisierung');
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, values);
   try {
-    await api('/admin/billing/settings', { method: 'PUT', token, body: parsed.data });
+    await api('/admin/billing/settings', { method: 'PUT', token: auth.token, body: parsed.data });
   } catch (error) {
     return failure(error, values);
   }
@@ -134,9 +141,11 @@ export async function setBillingModeAction(_prev: FormState, formData: FormData)
   const values = raw(formData, ['mode', 'confirmation']);
   const parsed = billingModeSchema.safeParse({ mode: values.mode, ...(values.mode === 'PAID' ? { confirmation: values.confirmation ?? '' } : {}) });
   if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die Eingabe.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
-  const { token } = await requireStaff('/admin/monetarisierung');
+  const session = await requireStaff('/admin/monetarisierung');
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, values);
   try {
-    await api('/admin/billing/mode', { method: 'PUT', token, body: parsed.data });
+    await api('/admin/billing/mode', { method: 'PUT', token: auth.token, body: parsed.data });
   } catch (error) {
     return failure(error, values);
   }

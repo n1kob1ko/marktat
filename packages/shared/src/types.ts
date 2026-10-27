@@ -46,7 +46,17 @@ export interface ApiError {
   statusCode: number;
   message: string;
   errors?: { path: string; message: string }[];
+  /** Maschinenlesbarer Grund, z. B. MFA_REQUIRED oder STEP_UP_REQUIRED (siehe docs/sicherheit.md) */
+  code?: string;
 }
+
+/** Fehlercodes der Zwei-Faktor-Anmeldung */
+export const AUTH_ERROR_CODES = {
+  /** Admin-Bereich verlangt eine mit dem zweiten Faktor bestätigte Sitzung */
+  mfaRequired: 'MFA_REQUIRED',
+  /** Kritische Aktion: Code aus der Authenticator-App erneut eingeben */
+  stepUpRequired: 'STEP_UP_REQUIRED',
+} as const;
 
 export interface MeResponse {
   id: string;
@@ -74,6 +84,8 @@ export interface MeResponse {
   status: UserStatus;
   /** Aktuelle Sperre mit Begründung (nur bei status = SUSPENDED) */
   suspension: { decisionId: string | null; statement: string | null; since: string } | null;
+  /** Nur bei GET /me: Sicherheitsniveau der Sitzung und ob für das Konto 2FA Pflicht ist */
+  security?: { level: 'aal1' | 'aal2'; mfaRequired: boolean; stepUpMaxAgeMinutes: number };
   createdAt: string;
 }
 
@@ -667,6 +679,14 @@ export interface ListingStats {
   countingSince: string | null;
 }
 
+/** Öffentliche Adressen für die Sitemap (GET /v1/seo/sitemap) */
+export interface SitemapEntries {
+  listings: { id: string; updatedAt: string }[];
+  dealers: { id: string; updatedAt: string }[];
+  /** Kategoriepfade, z. B. "marktplatz/sport-freizeit/fahrraeder" */
+  categories: string[];
+}
+
 export interface DealerProfile {
   id: string;
   companyName: string;
@@ -697,4 +717,55 @@ export interface DealerDashboard {
   topListings: { id: string; title: string; views: number; favorites: number; inquiries: number }[];
   profileComplete: boolean;
   missingProfileFields: string[];
+}
+
+/** Bestätigter Faktor der Zwei-Faktor-Anmeldung (ohne Geheimnisse) */
+export interface MfaFactorSummary {
+  friendlyName: string | null;
+  createdAt: string;
+  type: string;
+}
+
+// ---------------------------------------------------------------------------
+// Systemzustand und Fehlerübersicht (Phase 8)
+// ---------------------------------------------------------------------------
+
+/** disabled = bewusst nicht konfiguriert (z. B. ohne Redis lokal) */
+export type HealthStatus = 'ok' | 'degraded' | 'down' | 'disabled';
+
+export interface HealthCheck {
+  status: HealthStatus;
+  latencyMs: number | null;
+  /** Ohne diese Komponente funktioniert die Plattform nicht (nur die Datenbank) */
+  critical: boolean;
+  detail?: string;
+}
+
+export interface ErrorEventEntry {
+  id: string;
+  source: string;
+  route: string;
+  errorName: string;
+  message: string;
+  stack: string | null;
+  count: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+export interface SystemHealth {
+  status: HealthStatus;
+  checkedAt: string;
+  checks: Record<string, HealthCheck>;
+  jobs: { backend: 'redis' | 'memory'; waiting: number; delayed: number; failed: number; recentFailures: JobFailure[] } | null;
+  errors: ErrorEventEntry[];
+  process: {
+    startedAt: string;
+    uptimeSeconds: number;
+    rssMb: number;
+    heapUsedMb: number;
+    node: string;
+    version: string | null;
+    environment: string;
+  };
 }

@@ -1,14 +1,16 @@
 #!/bin/sh
-# Legt beim ersten Start die Datenbanken für App, Tests und Supabase Auth an.
+# Legt beim ersten Start die Datenbanken für App, Tests, Migrationsprüfung und Supabase Auth an.
 # Läuft nach dem PostGIS-Init-Skript des Images (Dateien werden alphabetisch ausgeführt).
 set -e
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname postgres <<-SQL
   CREATE DATABASE marktat_test;
   CREATE DATABASE marktat_auth;
+  -- Leere Hilfsdatenbank für die Migrationsprüfung (db:check-migrations); bestehende Volumes: einmal per Hand anlegen
+  CREATE DATABASE marktat_shadow;
 SQL
 
-for db in marktat marktat_test; do
+for db in marktat marktat_test marktat_shadow; do
   psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$db" <<-SQL
     CREATE EXTENSION IF NOT EXISTS postgis;
     CREATE EXTENSION IF NOT EXISTS pg_trgm;

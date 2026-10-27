@@ -29,12 +29,38 @@ import { SortSelect } from '@/components/search/sort-select';
 import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 import { Pagination } from '@/components/pagination';
 
-export const metadata: Metadata = {
+type Params = Record<string, string | string[] | undefined>;
+
+const SEARCH_METADATA: Metadata = {
   title: 'Anzeigen suchen',
   description: 'Kleinanzeigen in ganz Österreich durchsuchen – nach Kategorie, Preis, Ort, Umkreis und Eigenschaften filtern.',
 };
 
-type Params = Record<string, string | string[] | undefined>;
+/**
+ * Kategorieseiten (nur ?kategorie=…) sind eigenständige Landingpages. Gefilterte Suchen ergeben unzählige
+ * Varianten derselben Inhalte – sie werden nicht indexiert, ihre Links aber verfolgt.
+ */
+export async function generateMetadata({ searchParams }: PageProps<'/suche'>): Promise<Metadata> {
+  const params = await searchParams;
+  const page = Number([params.seite].flat()[0]);
+  const pageSuffix = Number.isInteger(page) && page > 1 ? `&seite=${page}` : '';
+  const filters = Object.keys(params).filter((key) => params[key] !== undefined && key !== 'seite');
+  const rawCategory = [params.kategorie].flat()[0];
+  const category = rawCategory && isCategoryPath(rawCategory) ? findCategoryByPath(await getCategories(), rawCategory) : undefined;
+  if (category && filters.length === 1) {
+    return {
+      title: `${category.name} – Kleinanzeigen in Österreich`,
+      description: `${category.name}: aktuelle Kleinanzeigen aus ganz Österreich auf MarktAT. Kostenlos inserieren und in deiner Nähe finden.`,
+      alternates: { canonical: `/suche?kategorie=${category.path}${pageSuffix}` },
+    };
+  }
+  if (!filters.length) return { ...SEARCH_METADATA, alternates: { canonical: `/suche${pageSuffix ? `?${pageSuffix.slice(1)}` : ''}` } };
+  return {
+    ...SEARCH_METADATA,
+    robots: { index: false, follow: true },
+    alternates: { canonical: category ? `/suche?kategorie=${category.path}` : '/suche' },
+  };
+}
 
 export default function SearchPage({ searchParams }: PageProps<'/suche'>) {
   return (

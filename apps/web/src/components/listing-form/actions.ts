@@ -65,7 +65,8 @@ export async function createListingAction(_prev: FormState, formData: FormData):
   const { values, input, missing, fieldErrors } = await readForm(formData);
   if (fieldErrors) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors, values };
 
-  const parsed = createListingSchema.safeParse({ ...input, publish });
+  const clientRequestId = String(formData.get('clientRequestId') ?? '') || undefined;
+  const parsed = createListingSchema.safeParse({ ...input, publish, clientRequestId });
   if (!parsed.success) {
     const fieldErrors = zodFieldErrors([...parsed.error.issues, ...(publish ? missing : [])]);
     if (fieldErrors.priceCents) fieldErrors.price = fieldErrors.priceCents;
@@ -80,7 +81,8 @@ export async function createListingAction(_prev: FormState, formData: FormData):
   }
   updateTag('listings');
   // Nächster Schritt: Bilder hinzufügen (die Seite führt danach dorthin weiter, wo es sonst hinginge)
-  redirect(`/anzeige/${listing.id}/bilder?neu=${publish ? 'veroeffentlicht' : 'entwurf'}`);
+  // Nach einer Wiederholung kann das Inserat schon als Entwurf bestehen – daher nach dem gespeicherten Stand
+  redirect(`/anzeige/${listing.id}/bilder?neu=${listing.status === 'ACTIVE' ? 'veroeffentlicht' : 'entwurf'}`);
 }
 
 /** Bestehendes Inserat speichern und optional (erneut) veröffentlichen. */

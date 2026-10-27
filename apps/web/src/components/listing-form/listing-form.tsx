@@ -24,6 +24,7 @@ import {
   type Vertical,
 } from '@marktat/shared';
 import { PriceTag } from '@/components/price-tag';
+import { ClientIdField } from '@/components/client-id-field';
 import { initialFormState, type FormState } from '@/lib/form-state';
 import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
 
@@ -58,6 +59,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   // was bei kontrollierten Auswahllisten die sichtbare Auswahl verliert.
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (isPending) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const formData = new FormData(event.currentTarget, submitter);
     setIntent(formData.get('intent') === 'draft' ? 'draft' : 'publish');
@@ -126,7 +128,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
 
   return (
     <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_20rem]" noValidate>
-      {listing ? <input type="hidden" name="id" value={listing.id} /> : null}
+      {listing ? <input type="hidden" name="id" value={listing.id} /> : <ClientIdField name="clientRequestId" />}
       <div className="space-y-6">
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
 
@@ -280,7 +282,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
         <Card className="overflow-hidden">
           <div className="aspect-[4/3] bg-canvas" />
           <div className="space-y-2 p-4">
-            <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-400')}>{title || 'Dein Titel'}</p>
+            <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-500')}>{title || 'Dein Titel'}</p>
             {previewFacts.length ? <p className="text-sm text-ink-600">{previewFacts.join(' · ')}</p> : null}
             <PriceTag
               priceType={hasPrice ? priceType : 'ON_REQUEST'}

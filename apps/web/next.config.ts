@@ -23,6 +23,28 @@ function storageUploadOrigin(): string | null {
 const uploadOrigin = storageUploadOrigin();
 
 /**
+ * Suchmaschinen erst nach dem offiziellen Start zulassen: ALLOW_INDEXING=true beim Build setzen.
+ * Standard ist „nicht indexieren“ (robots.txt sperrt alles, jede Antwort trägt X-Robots-Tag: noindex).
+ */
+const allowIndexing = process.env.ALLOW_INDEXING === 'true';
+/** Persönliche und interne Bereiche: nie in Suchmaschinen, auch nach dem Start nicht */
+const PRIVATE_PATHS = [
+  '/konto/:path*',
+  '/konto-geloescht',
+  '/admin/:path*',
+  '/nachrichten/:path*',
+  '/inserieren',
+  '/anzeige/:id/bearbeiten',
+  '/anzeige/:id/bilder',
+  '/anmelden/:path*',
+  '/registrieren',
+  '/passwort-neu',
+  '/passwort-vergessen',
+  '/melden',
+  '/auth/:path*',
+];
+
+/**
  * Content-Security-Policy. 'unsafe-inline' für Skripte ist nötig, solange keine Nonces verwendet werden
  * (offene Aufgabe: nonce-basierte CSP über proxy.ts, siehe docs/sicherheit.md).
  */
@@ -30,8 +52,9 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  // Bilder kommen über die API (Weiterleitung auf R2); blob: für die Vorschau vor dem Upload
-  `img-src 'self' data: blob: https: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
+  // Bilder kommen über die API (Weiterleitung auf R2, Pfad-Stil – also genau der R2-Endpoint);
+  // blob: für die Vorschau vor dem Upload, data: für den QR-Code der 2FA-Einrichtung. Kein pauschales https:.
+  `img-src 'self' data: blob: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
   "font-src 'self' data:",
   `connect-src 'self' ${apiUrl} ${supabaseUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}${isDev ? ' ws:' : ''}`,
   "frame-ancestors 'none'",
@@ -50,6 +73,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? '',
     NEXT_PUBLIC_WEB_URL: process.env.WEB_URL ?? 'http://localhost:3000',
+    ALLOW_INDEXING: String(allowIndexing),
   },
   turbopack: {
     root: repoRoot,
@@ -71,8 +95,10 @@ const nextConfig: NextConfig = {
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
           ...(isDev ? [] : [{ key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' }]),
+          ...(allowIndexing ? [] : [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }]),
         ],
       },
+      ...PRIVATE_PATHS.map((source) => ({ source, headers: [{ key: 'X-Robots-Tag', value: 'noindex, nofollow' }] })),
     ];
   },
 };
