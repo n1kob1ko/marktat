@@ -1,6 +1,7 @@
 // Deutsche zod-Fehlermeldungen: siehe schemas/zod.ts
 export * from './austria.js';
 export * from './billing.js';
+export * from './deals/index.js';
 export * from './attributes/index.js';
 export * from './enums.js';
 export * from './format.js';
@@ -14,4 +15,5 @@ export * from './schemas/interactions.js';
 export * from './schemas/listing.js';
 export * from './schemas/moderation.js';
 export * from './schemas/profile.js';
+export * from './schemas/url.js';
 export * from './search/index.js';

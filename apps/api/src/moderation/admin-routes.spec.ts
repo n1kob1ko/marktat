@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { Reflector } from '@nestjs/core';
 import { ALLOW_SUSPENDED_KEY, IS_PUBLIC_KEY, ROLES_KEY } from '../auth/decorators.js';
+import { AdminDealsController } from '../deals/admin-deals.controller.js';
 import { PrivacyController } from '../privacy/privacy.controller.js';
 import { AdminController } from './admin.controller.js';
 import { ModerationController } from './moderation.controller.js';
@@ -27,6 +28,16 @@ describe('Admin-Routen', () => {
       expect(reflector.getAllAndOverride(IS_PUBLIC_KEY, [handler, AdminController]), name).toBeUndefined();
       expect(reflector.getAllAndOverride(ALLOW_SUSPENDED_KEY, [handler, AdminController]), name).toBeUndefined();
     }
+  });
+
+  it('schützt auch die Deal-Moderation; Zuordnung zu einem anderen Konto nur für Administratoren', () => {
+    for (const { name, handler } of handlers(AdminDealsController)) {
+      const roles = reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, [handler, AdminDealsController]);
+      expect(roles?.some((role) => role === 'MODERATOR' || role === 'ADMIN'), name).toBe(true);
+      expect(reflector.getAllAndOverride(IS_PUBLIC_KEY, [handler, AdminDealsController]), name).toBeUndefined();
+    }
+    const assign = (AdminDealsController.prototype as unknown as Record<string, () => unknown>).assignMerchant!;
+    expect(reflector.getAllAndOverride(ROLES_KEY, [assign, AdminDealsController])).toEqual(['ADMIN']);
   });
 
   it('beschränkt Kontoverwaltung, Rollen und Protokoll auf Administratoren', () => {

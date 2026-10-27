@@ -317,6 +317,8 @@ export interface ModerationDecisionView {
   statement: string;
   createdAt: string;
   listing: { id: string; title: string } | null;
+  /** Phase 10: Entscheidung zu einem Deal */
+  deal: { id: string; title: string } | null;
   appeal: AppealView | null;
   /** Einspruch ist noch möglich (einschränkende Maßnahme, Frist offen, noch kein Einspruch) */
   canAppeal: boolean;
@@ -366,6 +368,7 @@ export interface AdminReportSummary {
   details: string | null;
   createdAt: string;
   listing: { id: string; title: string; status: string } | null;
+  deal: { id: string; title: string; status: string } | null;
   conversationId: string | null;
   reported: (PersonRef & { status: UserStatus }) | null;
   reporter: PersonRef | null;

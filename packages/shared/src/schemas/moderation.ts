@@ -14,11 +14,12 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: 'Erledigt – kein Verstoß',
 };
 
-export const REPORT_TARGETS = ['LISTING', 'CONVERSATION'] as const;
+export const REPORT_TARGETS = ['LISTING', 'CONVERSATION', 'DEAL'] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
   LISTING: 'Inserat',
   CONVERSATION: 'Unterhaltung',
+  DEAL: 'Deal / Angebot',
 };
 
 export const REPORT_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
@@ -39,6 +40,11 @@ export const MODERATION_ACTIONS = [
   'LISTING_RESTORED',
   'ACCOUNT_SUSPENDED',
   'ACCOUNT_RESTORED',
+  'DEAL_REJECTED',
+  'DEAL_HIDDEN',
+  'DEAL_RESTORED',
+  'DEALS_BLOCKED',
+  'DEALS_UNBLOCKED',
 ] as const;
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
@@ -47,9 +53,14 @@ export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
   LISTING_RESTORED: 'Inserat freigegeben',
   ACCOUNT_SUSPENDED: 'Konto gesperrt',
   ACCOUNT_RESTORED: 'Sperre aufgehoben',
+  DEAL_REJECTED: 'Deal deaktiviert',
+  DEAL_HIDDEN: 'Deal bis zur Prüfung ausgeblendet',
+  DEAL_RESTORED: 'Deal freigegeben',
+  DEALS_BLOCKED: 'Für Deals gesperrt',
+  DEALS_UNBLOCKED: 'Deal-Sperre aufgehoben',
 };
 /** Einschränkende Maßnahmen: brauchen Grund, Rechtsgrundlage und Begründung (Art. 17 DSA) und erlauben Einspruch. */
-export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED'];
+export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'DEALS_BLOCKED'];
 
 export const DECISION_GROUNDS = ['TERMS', 'ILLEGAL'] as const;
 export type DecisionGround = (typeof DECISION_GROUNDS)[number];
@@ -76,6 +87,11 @@ export const NOTIFICATION_TYPES = [
   'ACCOUNT_RESTORED',
   'APPEAL_DECIDED',
   'REPORT_HANDLED',
+  'DEAL_REJECTED',
+  'DEAL_HIDDEN',
+  'DEAL_RESTORED',
+  'DEALS_BLOCKED',
+  'DEALS_UNBLOCKED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

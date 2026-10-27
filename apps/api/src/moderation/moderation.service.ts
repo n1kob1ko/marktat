@@ -1,18 +1,22 @@
 import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   MODERATION_ACTION_LABELS,
+  RESTRICTIVE_ACTIONS,
   REPORT_REASON_LABELS,
   type AppealDecisionInput,
   type AppealInput,
+  type DealModerationInfo,
+  type DealsBlockInput,
   type ListingDecisionInput,
   type ListingModerationInfo,
   type ModerationDecisionView,
   type UserDecisionInput,
 } from '@marktat/shared';
 import type { Prisma } from '../generated/prisma/client.js';
-import type { ListingStatus, ModerationAction, NotificationType } from '../generated/prisma/enums.js';
+import type { DealStatus, ListingStatus, ModerationAction, NotificationType } from '../generated/prisma/enums.js';
 import { AuditService, type AuditAction } from '../audit/audit.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
+import { DealSearchService } from '../deals/deal-search.service.js';
 import { ENTITY_ID } from '../listings/visibility.js';
 import { effectiveStatus } from '../listings/listings.mapper.js';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -34,13 +38,40 @@ const ALLOWED_FROM: Record<ListingDecisionInput['decision'], ListingStatus[]> = 
   RESTORE: ['REJECTED', 'PENDING_REVIEW'],
 };
 
+const DEAL_ACTIONS = {
+  REJECT: 'DEAL_REJECTED',
+  HIDE: 'DEAL_HIDDEN',
+  RESTORE: 'DEAL_RESTORED',
+} as const satisfies Record<ListingDecisionInput['decision'], ModerationAction>;
+
+/** Wie bei Inseraten; „abgelaufen“ ergibt sich aus dem Enddatum */
+const DEAL_ALLOWED_FROM: Record<ListingDecisionInput['decision'], DealStatus[]> = {
+  REJECT: ['ACTIVE', 'PAUSED', 'EXPIRED', 'PENDING_REVIEW'],
+  HIDE: ['ACTIVE', 'PAUSED', 'EXPIRED'],
+  RESTORE: ['REJECTED', 'PENDING_REVIEW'],
+};
+
+/** Grund der Prüfung, solange die Moderation einen Deal ausgeblendet hat (wird nicht automatisch aufgehoben) */
+export const MODERATION_REVIEW_REASON = 'Vom Team bis zum Abschluss einer Prüfung ausgeblendet.';
+
+const RESTRICTIVE_CONTENT_ACTIONS: ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'DEAL_REJECTED', 'DEAL_HIDDEN'];
+
 const AUDIT_ACTIONS: Record<ModerationAction, AuditAction> = {
   LISTING_REJECTED: 'moderation.listing_rejected',
   LISTING_HIDDEN: 'moderation.listing_hidden',
   LISTING_RESTORED: 'moderation.listing_restored',
   ACCOUNT_SUSPENDED: 'moderation.account_suspended',
   ACCOUNT_RESTORED: 'moderation.account_restored',
+  DEAL_REJECTED: 'moderation.deal_rejected',
+  DEAL_HIDDEN: 'moderation.deal_hidden',
+  DEAL_RESTORED: 'moderation.deal_restored',
+  DEALS_BLOCKED: 'admin.deals_blocked',
+  DEALS_UNBLOCKED: 'admin.deals_unblocked',
 };
+
+function dealBaseStatus(deal: { status: DealStatus; endsAt: Date }, now = new Date()): DealStatus {
+  return (deal.status === 'ACTIVE' || deal.status === 'PAUSED') && deal.endsAt <= now ? 'EXPIRED' : deal.status;
+}
 
 type Tx = Prisma.TransactionClient;
 
@@ -54,6 +85,7 @@ export class ModerationService {
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
     private readonly searchIndex: SearchIndexService,
+    private readonly dealSearch: DealSearchService,
     private readonly notifications: NotificationsService,
     private readonly reports: ReportsService,
   ) {}
@@ -118,7 +150,7 @@ export class ModerationService {
     if (!ENTITY_ID.test(listingId)) throw new NotFoundException('Dieses Inserat gibt es nicht.');
     const listing = await this.prisma.listing.findUnique({ where: { id: listingId } });
     if (!listing || listing.status === 'DELETED' || listing.sellerId !== user.id) throw new NotFoundException('Dieses Inserat gibt es nicht.');
-    const latest = await this.latestDecision(listingId);
+    const latest = await this.latestDecision({ listingId });
     if (listing.status !== 'REJECTED' || !latest || latest.action !== 'LISTING_REJECTED') {
       throw new ConflictException('Nur abgelehnte Anzeigen können erneut eingereicht werden.');
     }
@@ -134,7 +166,7 @@ export class ModerationService {
   /** Für die Detailseite (Eigentümer und Moderation): letzte Entscheidung bei ausgeblendeten Inseraten */
   async listingModerationInfo(listing: { id: string; status: ListingStatus; updatedAt: Date }): Promise<ListingModerationInfo | null> {
     if (listing.status !== 'REJECTED' && listing.status !== 'PENDING_REVIEW') return null;
-    const latest = await this.latestDecision(listing.id);
+    const latest = await this.latestDecision({ listingId: listing.id });
     if (!latest || latest.action === 'LISTING_RESTORED') return null;
     return {
       decisionId: latest.id,
@@ -145,6 +177,134 @@ export class ModerationService {
       appealStatus: latest.appeal?.status ?? null,
       canResubmit: listing.status === 'REJECTED' && latest.action === 'LISTING_REJECTED' && listing.updatedAt > latest.createdAt,
     };
+  }
+
+  // --- Deals --------------------------------------------------------------------
+
+  /**
+   * Deals: gleiche Regeln wie bei Inseraten. „Freigeben“ beendet auch die automatische Prüfung bei sehr hohem Rabatt
+   * (das Team hat den Vergleichspreis geprüft).
+   */
+  async decideDeal(moderator: AuthUser, dealId: string, input: ListingDecisionInput, ip?: string) {
+    if (!ENTITY_ID.test(dealId)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
+    const action = DEAL_ACTIONS[input.decision];
+    const { decision, closedReports } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM deals WHERE id = ${dealId} FOR UPDATE`;
+      const deal = await tx.deal.findUnique({ where: { id: dealId } });
+      if (!deal || deal.status === 'DELETED') throw new NotFoundException('Dieses Angebot gibt es nicht.');
+      if (deal.merchantId === moderator.id) throw new ForbiddenException('Eigene Angebote kannst du nicht moderieren.');
+      if (deal.updatedAt.toISOString() !== new Date(input.version).toISOString()) {
+        throw new ConflictException('Das Angebot wurde inzwischen geändert oder bereits moderiert. Bitte lade die Seite neu und prüfe den aktuellen Stand.');
+      }
+      const current = dealBaseStatus(deal);
+      if (!DEAL_ALLOWED_FROM[input.decision].includes(current)) {
+        throw new ConflictException(`Diese Maßnahme ist für ein Angebot mit Status „${current}“ nicht möglich.`);
+      }
+      const previous = await this.latestRestrictive(tx, { dealId });
+      const nextStatus: DealStatus =
+        input.decision === 'REJECT' ? 'REJECTED' : input.decision === 'HIDE' ? 'PENDING_REVIEW' : this.restoredDealStatus(deal, previous?.snapshot);
+      await tx.deal.update({
+        where: { id: dealId },
+        data: {
+          status: nextStatus,
+          reviewReason: input.decision === 'HIDE' ? MODERATION_REVIEW_REASON : null,
+          ...(input.decision === 'RESTORE' && !deal.publishedAt && { publishedAt: new Date() }),
+        },
+      });
+      const decision = await tx.moderationDecision.create({
+        data: {
+          action,
+          userId: deal.merchantId,
+          dealId,
+          moderatorId: moderator.id,
+          reason: input.decision === 'RESTORE' ? null : input.reason,
+          ground: input.decision === 'RESTORE' ? null : input.ground,
+          statement: input.statement,
+          internalNote: input.internalNote,
+          reversesId: input.decision === 'RESTORE' ? previous?.id : undefined,
+          snapshot: {
+            title: deal.title,
+            description: deal.description,
+            priceCents: deal.priceCents,
+            referencePriceCents: deal.referencePriceCents,
+            referencePriceType: deal.referencePriceType,
+            referencePriceSource: deal.referencePriceSource,
+            discountPercent: deal.discountPercent,
+            url: deal.url,
+            reviewReason: deal.reviewReason,
+            statusBefore: deal.status,
+            version: deal.updatedAt.toISOString(),
+          },
+        },
+      });
+      const reportStatus = input.decision === 'REJECT' ? 'RESOLVED' : input.decision === 'HIDE' ? 'IN_REVIEW' : 'DISMISSED';
+      const closedReports = await this.reports.closeWithDecision(tx, { dealId }, decision.id, moderator.id, reportStatus);
+      return { decision, closedReports };
+    });
+
+    this.dealSearch.index.sync(dealId);
+    this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'deal', entityId: dealId, ip, metadata: { decisionId: decision.id, reason: decision.reason } });
+    await this.notifyDecision(decision.id);
+    if (closedReports.length) await this.reports.notifyReporters(closedReports, input.decision === 'REJECT' ? 'RESOLVED' : 'DISMISSED');
+    return this.adminDecision(decision.id);
+  }
+
+  /** Für Händler und Team: letzte Entscheidung bei ausgeblendeten Deals */
+  async dealModerationInfo(deal: { id: string; status: DealStatus; updatedAt: Date }): Promise<DealModerationInfo | null> {
+    if (deal.status !== 'REJECTED' && deal.status !== 'PENDING_REVIEW') return null;
+    const latest = await this.latestDecision({ dealId: deal.id });
+    if (!latest || latest.action === 'DEAL_RESTORED') return null;
+    return {
+      decisionId: latest.id,
+      action: latest.action,
+      reason: latest.reason,
+      statement: latest.statement,
+      createdAt: latest.createdAt.toISOString(),
+      appealStatus: latest.appeal?.status ?? null,
+      canResubmit: deal.status === 'REJECTED' && latest.action === 'DEAL_REJECTED' && deal.updatedAt > latest.createdAt,
+    };
+  }
+
+  /**
+   * Händlerkonto für Deals sperren: alle Deals verschwinden sofort aus der Öffentlichkeit, das Konto bleibt sonst
+   * nutzbar. Wie eine Kontosperre begründet und anfechtbar; aufheben nur Administratoren (oder per Einspruch).
+   */
+  async decideDealsBlock(actor: AuthUser, userId: string, input: DealsBlockInput, ip?: string) {
+    if (userId === actor.id) throw new ForbiddenException('Du kannst dein eigenes Konto nicht sperren oder entsperren.');
+    if (input.decision === 'UNBLOCK' && actor.role !== 'ADMIN') {
+      throw new ForbiddenException('Sperren aufheben dürfen nur Administratoren (oder über einen Einspruch).');
+    }
+    const action: ModerationAction = input.decision === 'BLOCK' ? 'DEALS_BLOCKED' : 'DEALS_UNBLOCKED';
+    const decision = await this.prisma.$transaction(async (tx) => {
+      await this.lockAccount(tx, actor, userId);
+      const target = await tx.user.findUniqueOrThrow({ where: { id: userId }, select: { dealsBlockedAt: true, accountType: true } });
+      if (input.decision === 'BLOCK' && target.dealsBlockedAt) throw new ConflictException('Das Konto ist für Deals bereits gesperrt.');
+      if (input.decision === 'BLOCK' && target.accountType !== 'BUSINESS') throw new ConflictException('Nur gewerbliche Konten können Deals veröffentlichen.');
+      if (input.decision === 'UNBLOCK' && !target.dealsBlockedAt) throw new ConflictException('Das Konto ist für Deals nicht gesperrt.');
+      const previous = input.decision === 'UNBLOCK' ? await this.latestRestrictive(tx, { userId, action: 'DEALS_BLOCKED' }) : null;
+      return this.applyDealsBlock(tx, actor.id, userId, action, {
+        reason: input.reason ?? null,
+        ground: input.ground ?? null,
+        statement: input.statement,
+        internalNote: input.internalNote ?? null,
+        reversesId: previous?.id ?? null,
+      });
+    });
+    this.dealSearch.syncMerchant(userId);
+    this.audit.log({ action: AUDIT_ACTIONS[action], actorId: actor.id, entityType: 'user', entityId: userId, ip, metadata: { decisionId: decision.id, reason: decision.reason } });
+    await this.notifyDecision(decision.id);
+    return this.adminDecision(decision.id);
+  }
+
+  private async applyDealsBlock(
+    tx: Tx,
+    moderatorId: string,
+    userId: string,
+    action: 'DEALS_BLOCKED' | 'DEALS_UNBLOCKED',
+    fields: Pick<Prisma.ModerationDecisionUncheckedCreateInput, 'reason' | 'ground' | 'statement' | 'internalNote' | 'reversesId'>,
+  ) {
+    await tx.user.update({ where: { id: userId }, data: { dealsBlockedAt: action === 'DEALS_BLOCKED' ? new Date() : null } });
+    return tx.moderationDecision.create({ data: { action, userId, moderatorId, ...fields } });
   }
 
   // --- Konten ------------------------------------------------------------------
@@ -275,13 +435,16 @@ export class ModerationService {
     });
 
     this.audit.log({ action: 'appeal.decided', actorId: reviewer.id, entityType: 'appeal', entityId: appealId, ip, metadata: { outcome: input.outcome, decisionId, sameReviewer } });
-    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, select: { userId: true, action: true, listing: { select: { title: true } } } });
+    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, select: { userId: true, action: true, listing: { select: { title: true } }, deal: { select: { title: true } } } });
     if (reversal) {
       if (reversal.listingId) this.searchIndex.sync(reversal.listingId);
+      else if (reversal.dealId) this.dealSearch.index.sync(reversal.dealId);
+      else if (reversal.action === 'DEALS_UNBLOCKED') this.dealSearch.syncMerchant(decision.userId);
       else this.searchIndex.syncSeller(decision.userId);
-      this.audit.log({ action: AUDIT_ACTIONS[reversal.action], actorId: reviewer.id, entityType: reversal.listingId ? 'listing' : 'user', entityId: reversal.listingId ?? decision.userId, ip, metadata: { decisionId: reversal.id, appealId } });
+      const entityType = reversal.listingId ? 'listing' : reversal.dealId ? 'deal' : 'user';
+      this.audit.log({ action: AUDIT_ACTIONS[reversal.action], actorId: reviewer.id, entityType, entityId: reversal.listingId ?? reversal.dealId ?? decision.userId, ip, metadata: { decisionId: reversal.id, appealId } });
     }
-    const what = decision.listing ? `zur Anzeige „${decision.listing.title}“` : 'zu deinem Konto';
+    const what = decision.listing ? `zur Anzeige „${decision.listing.title}“` : decision.deal ? `zum Angebot „${decision.deal.title}“` : 'zu deinem Konto';
     await this.notifications.notify({
       userId: decision.userId,
       type: 'APPEAL_DECIDED',
@@ -309,7 +472,7 @@ export class ModerationService {
   private async reverse(
     tx: Tx,
     reviewer: AuthUser,
-    original: { id: string; action: ModerationAction; userId: string; listingId: string | null; snapshot: Prisma.JsonValue },
+    original: { id: string; action: ModerationAction; userId: string; listingId: string | null; dealId: string | null; snapshot: Prisma.JsonValue },
     response: string,
   ) {
     const statement = `Nach Prüfung deines Einspruchs aufgehoben: ${response}`.slice(0, 2000);
@@ -324,6 +487,24 @@ export class ModerationService {
       });
       await this.reports.closeWithDecision(tx, { listingId: listing.id }, decision.id, reviewer.id, 'DISMISSED');
       return decision;
+    }
+    if (original.dealId && (original.action === 'DEAL_REJECTED' || original.action === 'DEAL_HIDDEN')) {
+      await tx.$queryRaw`SELECT id FROM deals WHERE id = ${original.dealId} FOR UPDATE`;
+      const deal = await tx.deal.findUnique({ where: { id: original.dealId } });
+      const latest = await this.latestRestrictive(tx, { dealId: original.dealId });
+      if (!deal || !['REJECTED', 'PENDING_REVIEW'].includes(deal.status) || latest?.id !== original.id) return null;
+      await tx.deal.update({ where: { id: deal.id }, data: { status: this.restoredDealStatus(deal, original.snapshot), reviewReason: null } });
+      const decision = await tx.moderationDecision.create({
+        data: { action: 'DEAL_RESTORED', userId: original.userId, dealId: deal.id, moderatorId: reviewer.id, statement, reversesId: original.id },
+      });
+      await this.reports.closeWithDecision(tx, { dealId: deal.id }, decision.id, reviewer.id, 'DISMISSED');
+      return decision;
+    }
+    if (original.action === 'DEALS_BLOCKED') {
+      const user = await tx.user.findUnique({ where: { id: original.userId }, select: { dealsBlockedAt: true } });
+      const latest = await this.latestRestrictive(tx, { userId: original.userId, action: 'DEALS_BLOCKED' });
+      if (!user?.dealsBlockedAt || latest?.id !== original.id) return null;
+      return this.applyDealsBlock(tx, reviewer.id, original.userId, 'DEALS_UNBLOCKED', { statement, reversesId: original.id, reason: null, ground: null, internalNote: null });
     }
     if (original.action === 'ACCOUNT_SUSPENDED') {
       const user = await tx.user.findUnique({ where: { id: original.userId }, select: { status: true } });
@@ -353,21 +534,29 @@ export class ModerationService {
     return listing.expiresAt && listing.expiresAt > new Date() ? 'ACTIVE' : 'EXPIRED';
   }
 
-  private latestDecision(listingId: string) {
+  /** Freigabe eines Deals: vorheriger Zustand (pausiert bleibt pausiert, Entwurf bleibt Entwurf), sonst nach Enddatum */
+  private restoredDealStatus(deal: { endsAt: Date }, snapshot: Prisma.JsonValue | undefined): DealStatus {
+    const before = (snapshot as { statusBefore?: DealStatus } | null)?.statusBefore;
+    if (before === 'PAUSED' || before === 'DRAFT') return before;
+    return deal.endsAt > new Date() ? 'ACTIVE' : 'EXPIRED';
+  }
+
+  private latestDecision(where: { listingId: string } | { dealId: string }) {
     return this.prisma.moderationDecision.findFirst({
-      where: { listingId },
+      where,
       orderBy: { createdAt: 'desc' },
       include: { appeal: { select: { status: true } } },
     });
   }
 
   /** Letzte einschränkende Entscheidung, die noch nicht aufgehoben wurde */
-  private latestRestrictive(tx: Tx, where: { listingId?: string; userId?: string; action?: ModerationAction }) {
+  private latestRestrictive(tx: Tx, where: { listingId?: string; dealId?: string; userId?: string; action?: ModerationAction }) {
     return tx.moderationDecision.findFirst({
       where: {
         ...(where.listingId ? { listingId: where.listingId } : {}),
-        ...(where.userId ? { userId: where.userId, listingId: null } : {}),
-        action: where.action ?? { in: ['LISTING_REJECTED', 'LISTING_HIDDEN'] },
+        ...(where.dealId ? { dealId: where.dealId } : {}),
+        ...(where.userId ? { userId: where.userId, listingId: null, dealId: null } : {}),
+        action: where.action ?? { in: RESTRICTIVE_CONTENT_ACTIONS },
         reversedBy: { none: {} },
       },
       orderBy: { createdAt: 'desc' },
@@ -384,17 +573,26 @@ export class ModerationService {
 
   /** Begründung an die betroffene Person (Mitteilung im Konto und E-Mail) */
   private async notifyDecision(decisionId: string) {
-    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, include: { listing: { select: { title: true } } } });
-    const title = decision.listing?.title;
+    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, include: { listing: { select: { title: true } }, deal: { select: { title: true } } } });
+    const title = decision.listing?.title ?? decision.deal?.title;
     const texts: Record<ModerationAction, { type: NotificationType; title: string; intro: string }> = {
       LISTING_REJECTED: { type: 'LISTING_REJECTED', title: 'Deine Anzeige wurde deaktiviert', intro: `Wir haben deine Anzeige „${title}“ wegen eines Verstoßes deaktiviert. Sie ist nicht mehr öffentlich sichtbar.` },
       LISTING_HIDDEN: { type: 'LISTING_HIDDEN', title: 'Deine Anzeige wird geprüft', intro: `Deine Anzeige „${title}“ ist bis zum Abschluss einer Prüfung vorübergehend nicht öffentlich sichtbar.` },
       LISTING_RESTORED: { type: 'LISTING_RESTORED', title: 'Deine Anzeige ist wieder freigegeben', intro: `Wir haben deine Anzeige „${title}“ geprüft und wieder freigegeben.` },
       ACCOUNT_SUSPENDED: { type: 'ACCOUNT_SUSPENDED', title: 'Dein Konto wurde gesperrt', intro: 'Wir haben dein MarktAT-Konto gesperrt. Deine Anzeigen sind nicht mehr sichtbar und du kannst keine Nachrichten senden.' },
       ACCOUNT_RESTORED: { type: 'ACCOUNT_RESTORED', title: 'Die Sperre deines Kontos ist aufgehoben', intro: 'Dein MarktAT-Konto ist wieder freigeschaltet. Du kannst alle Funktionen wieder nutzen.' },
+      DEAL_REJECTED: { type: 'DEAL_REJECTED', title: 'Dein Angebot wurde deaktiviert', intro: `Wir haben dein Angebot „${title}“ wegen eines Verstoßes deaktiviert. Es ist nicht mehr öffentlich sichtbar.` },
+      DEAL_HIDDEN: { type: 'DEAL_HIDDEN', title: 'Dein Angebot wird geprüft', intro: `Dein Angebot „${title}“ ist bis zum Abschluss einer Prüfung vorübergehend nicht öffentlich sichtbar.` },
+      DEAL_RESTORED: { type: 'DEAL_RESTORED', title: 'Dein Angebot ist freigegeben', intro: `Wir haben dein Angebot „${title}“ geprüft und freigegeben.` },
+      DEALS_BLOCKED: {
+        type: 'DEALS_BLOCKED',
+        title: 'Dein Konto wurde für Deals gesperrt',
+        intro: 'Du kannst vorerst keine Deals veröffentlichen; deine bestehenden Deals sind nicht mehr öffentlich sichtbar. Inserate, Nachrichten und dein Konto kannst du weiter nutzen.',
+      },
+      DEALS_UNBLOCKED: { type: 'DEALS_UNBLOCKED', title: 'Du kannst wieder Deals veröffentlichen', intro: 'Die Sperre für Deals ist aufgehoben. Bitte bestätige deine laufenden Angebote, damit sie wieder erscheinen.' },
     };
     const text = texts[decision.action];
-    const restrictive = decision.action === 'LISTING_REJECTED' || decision.action === 'LISTING_HIDDEN' || decision.action === 'ACCOUNT_SUSPENDED';
+    const restrictive = RESTRICTIVE_ACTIONS.includes(decision.action);
     const body = [
       text.intro,
       decision.reason ? `Grund: ${REPORT_REASON_LABELS[decision.reason]}` : '',

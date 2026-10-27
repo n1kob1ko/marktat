@@ -100,6 +100,9 @@ model User {
   website               String?     @db.VarChar(200)
   showPhone             Boolean     @default(false) @map("show_phone")
   logoKey               String?     @map("logo_key")
+  /// Deals (Phase 10): Bestätigung gewerblicher Anbieter nach Art. 30 DSA und Sperre durch das Team
+  dealerCertifiedAt     DateTime?   @map("dealer_certified_at")
+  dealsBlockedAt        DateTime?   @map("deals_blocked_at")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
   deletedAt             DateTime?   @map("deleted_at")
@@ -127,6 +130,8 @@ model User {
   deletion            AccountDeletion?
   bookings            Booking[]
   payments            Payment[]
+  deals               Deal[]
+  dealerStores        DealerStore[]
 
   @@index([status])
   @@index([accountType, status])
@@ -178,6 +183,7 @@ model Location {
   geom         Unsupported("geography(Point, 4326)")?
   district     District                               @relation(fields: [districtId], references: [id])
   listings     Listing[]
+  dealerStores DealerStore[]
 
   @@unique([postalCode, place])
   @@index([postalCode])
@@ -432,6 +438,8 @@ enum ReportStatus {
 enum ReportTarget {
   LISTING
   CONVERSATION
+  /// Deal bzw. Angebot eines Händlers (Phase 10)
+  DEAL
 }
 
 enum ReportPriority {
@@ -456,6 +464,7 @@ model Report {
   reportedId     String?             @map("reported_id") @db.Uuid
   listingId      String?             @map("listing_id")
   conversationId String?             @map("conversation_id")
+  dealId         String?             @map("deal_id")
   reason         ReportReason
   details        String?             @db.VarChar(1000)
   status         ReportStatus        @default(OPEN)
@@ -477,6 +486,7 @@ model Report {
   handledBy      User?               @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
   listing        Listing?            @relation(fields: [listingId], references: [id], onDelete: SetNull)
   conversation   Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  deal           Deal?               @relation(fields: [dealId], references: [id], onDelete: SetNull)
   decision       ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
   events         ReportEvent[]
 
@@ -486,6 +496,7 @@ model Report {
   @@index([listingId, status])
   @@index([reporterId, createdAt])
   @@index([conversationId])
+  @@index([dealId, status])
   @@map("reports")
 }
 
@@ -525,6 +536,15 @@ enum ModerationAction {
   LISTING_RESTORED
   ACCOUNT_SUSPENDED
   ACCOUNT_RESTORED
+  /// Deal wegen eines Verstoßes deaktiviert (Status REJECTED), z. B. irreführender Rabatt
+  DEAL_REJECTED
+  /// Deal bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  DEAL_HIDDEN
+  /// Deal nach Prüfung freigegeben
+  DEAL_RESTORED
+  /// Händlerkonto darf keine Deals mehr veröffentlichen (alle Deals ausgeblendet; Konto sonst nutzbar)
+  DEALS_BLOCKED
+  DEALS_UNBLOCKED
 }
 
 /// Rechtsgrundlage einer Maßnahme (Art. 17 Abs. 3 lit. d/e DSA)
@@ -542,6 +562,7 @@ model ModerationDecision {
   /// Betroffene Person
   userId        String               @map("user_id") @db.Uuid
   listingId     String?              @map("listing_id")
+  dealId        String?              @map("deal_id")
   moderatorId   String?              @map("moderator_id") @db.Uuid
   /// Art des Verstoßes (bei Freigaben leer)
   reason        ReportReason?
@@ -557,6 +578,7 @@ model ModerationDecision {
   user          User                 @relation("DecisionSubject", fields: [userId], references: [id], onDelete: Cascade)
   moderator     User?                @relation("DecisionModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
   listing       Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  deal          Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
   reverses      ModerationDecision?  @relation("DecisionReversal", fields: [reversesId], references: [id], onDelete: SetNull)
   reversedBy    ModerationDecision[] @relation("DecisionReversal")
   appeal        Appeal?
@@ -565,6 +587,7 @@ model ModerationDecision {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([listingId, createdAt(sort: Desc)])
+  @@index([dealId, createdAt(sort: Desc)])
   @@index([createdAt])
   @@map("moderation_decisions")
 }
@@ -606,6 +629,11 @@ enum NotificationType {
   ACCOUNT_RESTORED
   APPEAL_DECIDED
   REPORT_HANDLED
+  DEAL_REJECTED
+  DEAL_HIDDEN
+  DEAL_RESTORED
+  DEALS_BLOCKED
+  DEALS_UNBLOCKED
 }
 
 /// Mitteilung im Konto (zusätzlich per E-Mail). Für Entscheidungen der Moderation, Einsprüche und Meldungen.
@@ -848,6 +876,202 @@ model ListingViewDay {
 
   @@id([listingId, day])
   @@map("listing_view_days")
+}
+
+// ---------------------------------------------------------------------------
+// Deals & Angebote (Phase 10) – Angebote gewerblicher Händler, getrennt von Kleinanzeigen.
+// Preis-, Link- und Ablaufregeln: docs/deals.md
+// ---------------------------------------------------------------------------
+
+enum DealStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  /// Ausgeblendet bis zur Prüfung (auffälliger Rabatt oder Entscheidung der Moderation)
+  PENDING_REVIEW
+  REJECTED
+  DELETED
+}
+
+enum DealChannel {
+  ONLINE
+  LOCAL
+  BOTH
+}
+
+/// Grundlage des Vergleichspreises. Ohne Grundlage gibt es keinen Rabatt.
+enum ReferencePriceType {
+  /// Niedrigster Preis des Händlers in den 30 Tagen vor der Ermäßigung (Angabe des Händlers)
+  LOWEST_30_DAYS
+  /// Unverbindliche Preisempfehlung des Herstellers (Angabe des Händlers mit Quelle)
+  RRP
+  /// Vom Team geprüfter Marktvergleich – vorbereitet, derzeit nicht vergeben
+  MARKET_CHECK
+}
+
+enum DealAvailability {
+  UNKNOWN
+  IN_STOCK
+  LIMITED
+  SOLD_OUT
+}
+
+enum DealImageRights {
+  OWN
+  MANUFACTURER
+  LICENSED
+}
+
+enum DealSource {
+  MANUAL
+  CSV
+  FEED
+}
+
+enum DealLinkStatus {
+  UNCHECKED
+  OK
+  BROKEN
+}
+
+/// Kategorien der Deals (Seed aus DEAL_CATEGORIES in @marktat/shared)
+model DealCategory {
+  id                  String  @id @default(cuid())
+  slug                String  @unique
+  name                String  @unique
+  icon                String?
+  sortOrder           Int     @default(0) @map("sort_order")
+  isActive            Boolean @default(true) @map("is_active")
+  /// Verwandte Kategorie der Kleinanzeigen (Pfad), z. B. für „Ähnliche Kleinanzeigen“
+  relatedCategoryPath String? @map("related_category_path")
+  deals               Deal[]
+
+  @@map("deal_categories")
+}
+
+/// Angebot eines gewerblichen Händlers. Bewusst kein Inserat: Preis, Vergleichspreis, Link, Laufzeit und Prüfung
+/// folgen eigenen Regeln.
+model Deal {
+  id                        String              @id @default(cuid())
+  slug                      String
+  merchantId                String              @map("merchant_id") @db.Uuid
+  categoryId                String              @map("category_id")
+  title                     String              @db.VarChar(120)
+  description               String              @default("") @db.VarChar(3000)
+  brand                     String?             @db.VarChar(60)
+  /// GTIN/EAN (vorbereitet für einen späteren Preisvergleich)
+  gtin                      String?             @db.VarChar(14)
+  /// Stabile Angebots-/Artikelnummer des Händlers: Importe aktualisieren darüber statt Doppelte anzulegen
+  externalId                String?             @map("external_id") @db.VarChar(100)
+  channel                   DealChannel
+  url                       String?             @db.VarChar(500)
+  isAffiliateLink           Boolean             @default(false) @map("is_affiliate_link")
+  /// Aktueller Angebotspreis in Cent (inkl. USt.)
+  priceCents                Int                 @map("price_cents")
+  currency                  String              @default("EUR") @db.Char(3)
+  unitPriceText             String?             @map("unit_price_text") @db.VarChar(40)
+  shippingNote              String?             @map("shipping_note") @db.VarChar(120)
+  /// Vergleichspreis des Händlers samt Grundlage und Quelle
+  referencePriceCents       Int?                @map("reference_price_cents")
+  referencePriceType        ReferencePriceType? @map("reference_price_type")
+  referencePriceSource      String?             @map("reference_price_source") @db.VarChar(200)
+  referencePriceEvidenceUrl String?             @map("reference_price_evidence_url") @db.VarChar(500)
+  /// Zeitpunkt, zu dem der Händler die Richtigkeit des Vergleichspreises bestätigt hat
+  referenceConfirmedAt      DateTime?           @map("reference_confirmed_at")
+  /// Abgeleitet (nie aus der Eingabe): ganze Prozent, abgerundet, nur mit Grundlage
+  discountPercent           Int?                @map("discount_percent")
+  availability              DealAvailability    @default(UNKNOWN)
+  startsAt                  DateTime            @map("starts_at")
+  endsAt                    DateTime            @map("ends_at")
+  status                    DealStatus          @default(DRAFT)
+  publishedAt               DateTime?           @map("published_at")
+  /// „Zuletzt geprüft“: Bestätigung durch Händler, Import oder Feed. Ohne Bestätigung kein „aktuell“.
+  lastVerifiedAt            DateTime?           @map("last_verified_at")
+  /// Warum der Deal vor der Veröffentlichung geprüft wird (z. B. sehr hoher Rabatt)
+  reviewReason              String?             @map("review_reason") @db.VarChar(200)
+  /// Präfix der Bildvarianten, z. B. "deals/<id>/<uuid>" (+ "/large.webp", "/thumb.webp")
+  imageKey                  String?             @map("image_key")
+  imageWidth                Int?                @map("image_width")
+  imageHeight               Int?                @map("image_height")
+  imageRights               DealImageRights?    @map("image_rights")
+  imageCredit               String?             @map("image_credit") @db.VarChar(120)
+  source                    DealSource          @default(MANUAL)
+  /// Prüfsumme der importierten Werte (unveränderte Zeilen werden übersprungen)
+  contentHash               String?             @map("content_hash") @db.VarChar(64)
+  linkStatus                DealLinkStatus      @default(UNCHECKED) @map("link_status")
+  linkCheckedAt             DateTime?           @map("link_checked_at")
+  linkFailures              Int                 @default(0) @map("link_failures")
+  viewCount                 Int                 @default(0) @map("view_count")
+  clickCount                Int                 @default(0) @map("click_count")
+  clientRequestId           String?             @map("client_request_id") @db.Uuid
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  deletedAt                 DateTime?           @map("deleted_at")
+
+  merchant     User                 @relation(fields: [merchantId], references: [id])
+  category     DealCategory         @relation(fields: [categoryId], references: [id])
+  stores       DealStore[]
+  priceRecords DealPriceRecord[]
+  reports      Report[]
+  decisions    ModerationDecision[]
+
+  @@unique([merchantId, externalId])
+  @@unique([merchantId, clientRequestId])
+  @@index([status, endsAt])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([merchantId, status])
+  @@index([categoryId, status])
+  @@index([lastVerifiedAt])
+  @@index([linkCheckedAt])
+  @@map("deals")
+}
+
+/// Filiale bzw. Geschäft eines Händlers. Der Standort für die Umkreissuche kommt aus dem Ort (PLZ).
+model DealerStore {
+  id           String      @id @default(cuid())
+  merchantId   String      @map("merchant_id") @db.Uuid
+  name         String      @db.VarChar(120)
+  street       String      @db.VarChar(200)
+  locationId   Int         @map("location_id")
+  openingHours String?     @map("opening_hours") @db.VarChar(300)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  deletedAt    DateTime?   @map("deleted_at")
+  merchant     User        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  location     Location    @relation(fields: [locationId], references: [id])
+  deals        DealStore[]
+
+  @@index([merchantId])
+  @@index([locationId])
+  @@map("dealer_stores")
+}
+
+/// In welchen Filialen ein lokales Angebot gilt
+model DealStore {
+  dealId  String      @map("deal_id")
+  storeId String      @map("store_id")
+  deal    Deal        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  store   DealerStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, storeId])
+  @@index([storeId])
+  @@map("deal_stores")
+}
+
+/// Eigene Aufzeichnung der Preise (bei jeder Änderung) – Grundlage für „niedrigster erfasster Preis“ und einen
+/// späteren Preisvergleich. Nie geschätzt oder nachträglich erzeugt.
+model DealPriceRecord {
+  id                  BigInt     @id @default(autoincrement())
+  dealId              String     @map("deal_id")
+  priceCents          Int        @map("price_cents")
+  referencePriceCents Int?       @map("reference_price_cents")
+  source              DealSource
+  recordedAt          DateTime   @default(now()) @map("recorded_at")
+  deal                Deal       @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, recordedAt(sort: Desc)])
+  @@map("deal_price_records")
 }
 
 // ---------------------------------------------------------------------------

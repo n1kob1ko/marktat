@@ -23,4 +23,6 @@ export function applyTestEnv() {
   process.env.MESSAGE_EMAIL_DELAY_SECONDS = '0';
   // 2FA-Pflicht für das Team schalten einzelne Tests gezielt ein (security.e2e-spec.ts)
   process.env.STAFF_MFA_REQUIRED = 'false';
+  // Linkprüfung und Feeds gegen lokale Testserver (deals.e2e-spec.ts)
+  process.env.OUTBOUND_ALLOW_PRIVATE = 'true';
 }

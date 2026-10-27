@@ -15,6 +15,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import type { ReportPriority, ReportReason, ReportStatus } from '../generated/prisma/enums.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
+import { publicDealWhere } from '../deals/deals.mapper.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { decisionInclude, personSelect, reportSummaryInclude, toAdminDecision, toPerson, toReportSummary, type ReportWithRelations } from './moderation.mapper.js';
@@ -62,6 +63,17 @@ export class ReportsService {
     return { id: report.id };
   }
 
+  /** Meldung eines Deals (z. B. irreführender Rabatt, falsche Händlerangaben, verbotener Artikel) */
+  async reportDeal(user: AuthUser, dealId: string, input: ReportListingInput, ip?: string): Promise<{ id: string }> {
+    if (!ENTITY_ID.test(dealId)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
+    const deal = await this.prisma.deal.findFirst({ where: { id: dealId, ...publicDealWhere() }, select: { id: true, merchantId: true } });
+    if (!deal) throw new NotFoundException('Dieses Angebot gibt es nicht (mehr).');
+    if (deal.merchantId === user.id) throw new ForbiddenException('Dein eigenes Angebot kannst du nicht melden.');
+    const report = await this.create(user, { targetType: 'DEAL', dealId: deal.id, reportedId: deal.merchantId, reason: input.reason, details: input.details });
+    this.audit.log({ action: 'deal.reported', actorId: user.id, entityType: 'deal', entityId: deal.id, ip, metadata: { reportId: report.id, reason: input.reason } });
+    return { id: report.id };
+  }
+
   async reportConversation(user: AuthUser, conversation: { id: string; reportedId: string }, input: ReportUserInput, ip?: string) {
     const report = await this.create(user, {
       targetType: 'CONVERSATION',
@@ -80,7 +92,7 @@ export class ReportsService {
    */
   private async create(
     user: AuthUser,
-    data: { targetType: 'LISTING' | 'CONVERSATION'; listingId?: string; conversationId?: string; reportedId: string; reason: ReportReason; details?: string },
+    data: { targetType: 'LISTING' | 'CONVERSATION' | 'DEAL'; listingId?: string; dealId?: string; conversationId?: string; reportedId: string; reason: ReportReason; details?: string },
   ) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`report:${user.id}`}))`;
@@ -98,7 +110,7 @@ export class ReportsService {
         where: {
           reporterId: user.id,
           status: { in: OPEN_STATUSES },
-          ...(data.listingId ? { listingId: data.listingId } : { conversationId: data.conversationId }),
+          ...(data.listingId ? { listingId: data.listingId } : data.dealId ? { dealId: data.dealId } : { conversationId: data.conversationId }),
         },
         select: { id: true },
       });
@@ -106,7 +118,9 @@ export class ReportsService {
         throw new ConflictException(
           data.listingId
             ? 'Du hast diese Anzeige bereits gemeldet. Wir sehen sie uns an und melden uns.'
-            : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
+            : data.dealId
+              ? 'Du hast dieses Angebot bereits gemeldet. Wir sehen es uns an.'
+              : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
         );
       }
       const report = await tx.report.create({
@@ -146,18 +160,27 @@ export class ReportsService {
   async summaries(rows: ReportWithRelations[]): Promise<AdminReportSummary[]> {
     const listingIds = [...new Set(rows.flatMap((r) => (r.listingId ? [r.listingId] : [])))];
     const conversationIds = [...new Set(rows.flatMap((r) => (r.targetType === 'CONVERSATION' && r.conversationId ? [r.conversationId] : [])))];
-    const [byListing, byConversation] = await Promise.all([
+    const dealIds = [...new Set(rows.flatMap((r) => (r.dealId ? [r.dealId] : [])))];
+    const [byListing, byConversation, byDeal] = await Promise.all([
       listingIds.length
         ? this.prisma.report.groupBy({ by: ['listingId'], where: { listingId: { in: listingIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
       conversationIds.length
         ? this.prisma.report.groupBy({ by: ['conversationId'], where: { conversationId: { in: conversationIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
+      dealIds.length ? this.prisma.report.groupBy({ by: ['dealId'], where: { dealId: { in: dealIds }, status: { in: OPEN_STATUSES } }, _count: true }) : [],
     ]);
     const listingCounts = new Map(byListing.map((g) => [g.listingId, g._count]));
     const conversationCounts = new Map(byConversation.map((g) => [g.conversationId, g._count]));
+    const dealCounts = new Map(byDeal.map((g) => [g.dealId, g._count]));
     return rows.map((row) => {
-      const open = row.listingId ? (listingCounts.get(row.listingId) ?? 0) : row.conversationId ? (conversationCounts.get(row.conversationId) ?? 0) : 0;
+      const open = row.listingId
+        ? (listingCounts.get(row.listingId) ?? 0)
+        : row.dealId
+          ? (dealCounts.get(row.dealId) ?? 0)
+          : row.conversationId
+            ? (conversationCounts.get(row.conversationId) ?? 0)
+            : 0;
       const self = OPEN_STATUSES.includes(row.status) ? 1 : 0;
       return toReportSummary(row, Math.max(0, open - self));
     });
@@ -167,7 +190,9 @@ export class ReportsService {
     const report = await this.requireReport(id);
     const relatedWhere: Prisma.ReportWhereInput | null = report.listingId
       ? { listingId: report.listingId }
-      : report.conversationId
+      : report.dealId
+        ? { dealId: report.dealId }
+        : report.conversationId
         ? { conversationId: report.conversationId }
         : null;
     const [events, decision, relatedRows, reporterStats, reporterUser] = await Promise.all([
@@ -304,7 +329,7 @@ export class ReportsService {
     actorId: string,
     status: 'RESOLVED' | 'DISMISSED' | 'IN_REVIEW',
   ) {
-    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, conversationId: true, reason: true } });
+    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, conversationId: true, reason: true } });
     if (!open.length) return [];
     const final = status !== 'IN_REVIEW';
     await tx.report.updateMany({
@@ -319,7 +344,7 @@ export class ReportsService {
 
   /** Meldende Personen erfahren das Ergebnis (Art. 16 Abs. 5 DSA) – ohne Details zur betroffenen Person. */
   async notifyReporters(
-    reports: { reporterId: string | null; listingId: string | null; conversationId: string | null; reason: ReportReason }[],
+    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; conversationId: string | null; reason: ReportReason }[],
     outcome: 'RESOLVED' | 'DISMISSED',
   ) {
     const titles = new Map<string, string>();
@@ -327,13 +352,21 @@ export class ReportsService {
     if (listingIds.length) {
       for (const l of await this.prisma.listing.findMany({ where: { id: { in: listingIds } }, select: { id: true, title: true } })) titles.set(l.id, l.title);
     }
+    const dealIds = [...new Set(reports.flatMap((r) => (r.dealId ? [r.dealId] : [])))];
+    if (dealIds.length) {
+      for (const d of await this.prisma.deal.findMany({ where: { id: { in: dealIds } }, select: { id: true, title: true } })) titles.set(d.id, d.title);
+    }
     const seen = new Set<string>();
     for (const report of reports) {
       if (!report.reporterId) continue;
-      const key = `${report.reporterId}:${report.listingId ?? report.conversationId}`;
+      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.conversationId}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      const subject = report.listingId ? `die Anzeige „${titles.get(report.listingId) ?? 'Anzeige'}“` : 'eine Unterhaltung';
+      const subject = report.listingId
+        ? `die Anzeige „${titles.get(report.listingId) ?? 'Anzeige'}“`
+        : report.dealId
+          ? `das Angebot „${titles.get(report.dealId) ?? 'Angebot'}“`
+          : 'eine Unterhaltung';
       const result =
         outcome === 'RESOLVED'
           ? 'Wir haben einen Verstoß festgestellt und Maßnahmen ergriffen.'

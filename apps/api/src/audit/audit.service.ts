@@ -58,7 +58,31 @@ export type AuditAction =
   // Phase 8: Zwei-Faktor-Anmeldung
   | 'security.mfa_enrolled'
   | 'security.mfa_removed'
-  | 'admin.mfa_reset';
+  | 'admin.mfa_reset'
+  // Phase 10: Deals, Filialen, Importe
+  | 'dealer.certified'
+  | 'dealer.store_created'
+  | 'dealer.store_updated'
+  | 'dealer.store_deleted'
+  | 'deal.created'
+  | 'deal.published'
+  | 'deal.updated'
+  | 'deal.paused'
+  | 'deal.resumed'
+  | 'deal.verified'
+  | 'deal.extended'
+  | 'deal.deleted'
+  | 'deal.resubmitted'
+  | 'deal.image_updated'
+  | 'deal.reported'
+  | 'deal.expired'
+  | 'deal.link_broken'
+  | 'moderation.deal_rejected'
+  | 'moderation.deal_hidden'
+  | 'moderation.deal_restored'
+  | 'admin.deal_merchant_changed'
+  | 'admin.deals_blocked'
+  | 'admin.deals_unblocked';
 
 /** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
 export const IMPORTANT_AUDIT_PREFIXES = [
