@@ -10,6 +10,7 @@ import type { Request, Response } from 'express';
 import { S3ServiceException } from '@aws-sdk/client-s3';
 import { Prisma } from '../generated/prisma/client.js';
 import { StorageNotConfiguredError } from '../storage/storage.types.js';
+import type { ErrorReporter } from '../monitoring/error-reporter.js';
 
 /**
  * Einheitliches Fehlerformat: { statusCode, message, errors? }.
@@ -18,6 +19,8 @@ import { StorageNotConfiguredError } from '../storage/storage.types.js';
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   private readonly logger = new Logger('HttpExceptionFilter');
+
+  constructor(private readonly reporter?: ErrorReporter) {}
 
   catch(exception: unknown, host: ArgumentsHost) {
     const ctx = host.switchToHttp();
@@ -69,14 +72,25 @@ export class HttpExceptionFilter implements ExceptionFilter {
       });
     }
 
-    // Nur Methode und Pfad ohne Query-String loggen – Query kann personenbezogene Daten enthalten.
-    this.logger.error(
-      `${request.method} ${request.path} fehlgeschlagen`,
-      exception instanceof Error ? exception.stack : String(exception),
-    );
+    // Nur Methode und Routenmuster loggen – Pfad-IDs und Query können personenbezogene Daten enthalten.
+    const route = `${request.method} ${routePattern(request)}`;
+    const requestId = response.getHeader('x-request-id') as string | undefined;
+    if (this.reporter) {
+      this.reporter.capture(exception, { source: 'http', route, requestId });
+    } else {
+      this.logger.error(`${route} fehlgeschlagen`, exception instanceof Error ? exception.stack : String(exception));
+    }
     return response.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
       statusCode: 500,
       message: 'Ein unerwarteter Fehler ist aufgetreten. Bitte versuche es später erneut.',
+      ...(requestId ? { requestId } : {}),
     });
   }
+}
+
+/** Routenmuster wie „/v1/listings/:id“ statt des konkreten Pfads; unbekannte Routen ohne IDs */
+export function routePattern(request: Request): string {
+  const route = (request.route as { path?: string } | undefined)?.path;
+  if (route) return `${request.baseUrl ?? ''}${route}`;
+  return request.path.replace(/\/[^/]*\d[^/]*/g, '/:param').slice(0, 120);
 }

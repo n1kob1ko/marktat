@@ -13,6 +13,7 @@ export interface RetentionResult {
   reports: number;
   decisions: number;
   placeholders: number;
+  errorEvents: number;
 }
 
 /** Löscht täglich Daten, deren Frist abgelaufen ist (siehe retention.ts). */
@@ -53,12 +54,14 @@ export class RetentionService implements OnModuleInit {
     const placeholders = await this.prisma.user.deleteMany({
       where: { status: 'DELETED', deletion: { status: 'COMPLETED', completedAt: { lt: before(RETENTION_DAYS.deletedAccountPlaceholder) } } },
     });
+    const errorEvents = await this.prisma.errorEvent.deleteMany({ where: { lastSeenAt: { lt: before(RETENTION_DAYS.errorEvents) } } });
     const result = {
       notifications: notifications.count,
       auditLogs: auditLogs.count,
       reports: reports.count,
       decisions: decisions.count,
       placeholders: placeholders.count,
+      errorEvents: errorEvents.count,
     };
     if (Object.values(result).some(Boolean)) this.audit.log({ action: 'retention.cleanup', metadata: { ...result } });
     return result;

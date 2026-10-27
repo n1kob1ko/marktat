@@ -1,6 +1,10 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown, Optional } from '@nestjs/common';
 import { Queue, Worker, type Job } from 'bullmq';
 import { loadEnv } from '../config/env.js';
+import { ErrorReporter } from '../monitoring/error-reporter.js';
+import { redact } from '../common/redact.js';
+
+export { redact };
 
 type Handler = (data: Record<string, unknown>) => Promise<void>;
 
@@ -44,6 +48,8 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
   private counter = 0;
   private readonly memoryFailures: JobStats['recentFailures'] = [];
 
+  constructor(@Optional() private readonly reporter?: ErrorReporter) {}
+
   get usesRedis() {
     return Boolean(this.env.REDIS_URL);
   }
@@ -78,7 +84,11 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
           prefix: this.env.QUEUE_PREFIX,
           concurrency: 4,
         });
-        this.worker.on('failed', (job, error) => this.logger.warn(`Auftrag ${job?.name} fehlgeschlagen: ${error.message}`));
+        this.worker.on('failed', (job, error) => {
+          this.logger.warn(`Auftrag ${job?.name} fehlgeschlagen: ${redact(error.message)}`);
+          // Erst nach dem letzten Versuch in die Fehlerübersicht (Wiederholungen sind normal)
+          if (job && job.attemptsMade >= (job.opts.attempts ?? 1)) this.reporter?.capture(error, { source: 'job', route: job.name });
+        });
         this.worker.on('error', (error) => this.logger.warn(`Worker: ${error.message}`));
       }
     }
@@ -109,7 +119,8 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
         this.timers.delete(timer);
         this.run(name, data)
           .catch((error: Error) => {
-            this.logger.warn(`Auftrag ${name} fehlgeschlagen: ${error.message}`);
+            this.logger.warn(`Auftrag ${name} fehlgeschlagen: ${redact(error.message)}`);
+            this.reporter?.capture(error, { source: 'job', route: name });
             this.memoryFailures.unshift({ name, reason: redact(error.message), attempts: 1, failedAt: new Date().toISOString() });
             this.memoryFailures.length = Math.min(this.memoryFailures.length, MAX_REMEMBERED_FAILURES);
           })
@@ -194,9 +205,4 @@ export class JobsService implements OnApplicationBootstrap, OnApplicationShutdow
     await this.worker?.close();
     await this.queue?.close();
   }
-}
-
-/** Fehlermeldungen können E-Mail-Adressen enthalten (z. B. vom SMTP-Server) – vor der Anzeige entfernen. */
-export function redact(message: string): string {
-  return message.replace(/[^\s<>@"']+@[^\s<>@"']+/g, '[E-Mail]').slice(0, 300);
 }

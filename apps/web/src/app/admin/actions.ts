@@ -226,3 +226,18 @@ export async function resetMfaAction(_prev: FormState, formData: FormData): Prom
   // Der Abschnitt zeigt danach „Nicht eingerichtet“ – die Bestätigung kommt als Hinweis über der Seite
   redirect(`/admin/nutzer/${id}?hinweis=2fa-zurueckgesetzt`);
 }
+
+// --- Systemzustand ----------------------------------------------------------------
+
+export async function resolveErrorAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!/^\d{1,18}$/.test(id)) return invalid;
+  const { token } = await requireStaff('/admin/system');
+  try {
+    await api(`/admin/system/errors/${id}`, { method: 'DELETE', token });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath('/admin/system');
+  return { status: 'success' };
+}

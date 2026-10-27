@@ -717,3 +717,47 @@ export interface MfaFactorSummary {
   createdAt: string;
   type: string;
 }
+
+// ---------------------------------------------------------------------------
+// Systemzustand und Fehlerübersicht (Phase 8)
+// ---------------------------------------------------------------------------
+
+/** disabled = bewusst nicht konfiguriert (z. B. ohne Redis lokal) */
+export type HealthStatus = 'ok' | 'degraded' | 'down' | 'disabled';
+
+export interface HealthCheck {
+  status: HealthStatus;
+  latencyMs: number | null;
+  /** Ohne diese Komponente funktioniert die Plattform nicht (nur die Datenbank) */
+  critical: boolean;
+  detail?: string;
+}
+
+export interface ErrorEventEntry {
+  id: string;
+  source: string;
+  route: string;
+  errorName: string;
+  message: string;
+  stack: string | null;
+  count: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+export interface SystemHealth {
+  status: HealthStatus;
+  checkedAt: string;
+  checks: Record<string, HealthCheck>;
+  jobs: { backend: 'redis' | 'memory'; waiting: number; delayed: number; failed: number; recentFailures: JobFailure[] } | null;
+  errors: ErrorEventEntry[];
+  process: {
+    startedAt: string;
+    uptimeSeconds: number;
+    rssMb: number;
+    heapUsedMb: number;
+    node: string;
+    version: string | null;
+    environment: string;
+  };
+}

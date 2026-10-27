@@ -6,6 +6,8 @@ import helmet from 'helmet';
 import { MAX_IMAGE_BYTES } from '@marktat/shared';
 import { loadEnv } from './config/env.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
+import { requestContext } from './common/request-context.js';
+import { ErrorReporter } from './monitoring/error-reporter.js';
 
 export const API_PREFIX = 'v1';
 
@@ -13,6 +15,8 @@ export const API_PREFIX = 'v1';
 export function setupApp(app: NestExpressApplication): INestApplication {
   const env = loadEnv();
   app.setGlobalPrefix(API_PREFIX);
+  // Anfrage-ID (für Support und Logs) und strukturierte Zugriffslogs ohne Query-Strings und IPs
+  app.use(requestContext(env.LOG_FORMAT ?? (env.NODE_ENV === 'production' ? 'json' : 'pretty')));
   app.use(helmet());
   app.disable('x-powered-by');
   // Hinter einem Load-Balancer: echte Client-IP für Rate-Limits und das (gekürzte) Audit-Log
@@ -21,7 +25,8 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   app.enableCors({
     origin: [env.WEB_URL],
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-    allowedHeaders: ['Authorization', 'Content-Type'],
+    allowedHeaders: ['Authorization', 'Content-Type', 'X-Request-Id'],
+    exposedHeaders: ['X-Request-Id'],
     maxAge: 600,
   });
   // Nur der lokale Speichertreiber nimmt Dateien direkt an (in Produktion lädt der Browser direkt zu R2).
@@ -33,7 +38,7 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   // Händlerlogo: Bilddatei als Rohdaten (Prüfung und Umwandlung in der API)
   app.use(`/${API_PREFIX}/me/logo`, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: 5 * 1024 * 1024 }));
   app.useBodyParser('json', { limit: '100kb' });
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new HttpExceptionFilter(app.get(ErrorReporter)));
   app.enableShutdownHooks();
   return app;
 }

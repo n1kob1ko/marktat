@@ -105,8 +105,6 @@ const envSchema = z
       .transform((v) => (v === undefined ? undefined : v === 'true')),
     /** Kritische Admin-Aktionen verlangen einen 2FA-Code, der höchstens so alt ist (Minuten) */
     STEP_UP_MAX_AGE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
-    /** Optional: Fehler zusätzlich an einen Monitoring-Dienst melden (Sentry-kompatibler DSN). Leer = nur intern. */
-    ERROR_REPORTING_DSN: optional.pipe(z.url().optional()),
     /** Log-Format: pretty (lesbar, Standard lokal) oder json (eine Zeile je Eintrag, Standard in Produktion) */
     LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
   })

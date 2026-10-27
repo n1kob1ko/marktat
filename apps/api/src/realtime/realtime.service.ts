@@ -23,6 +23,13 @@ export class RealtimeService implements OnModuleDestroy {
   private readonly publisher: Redis | null;
   private readonly subscriber: Redis | null;
 
+  /** Für den Systemzustand: null = ohne Redis betrieben */
+  async ping(timeoutMs = 2000): Promise<boolean | null> {
+    if (!this.publisher) return null;
+    const timeout = new Promise<false>((resolve) => setTimeout(() => resolve(false), timeoutMs).unref());
+    return Promise.race([this.publisher.ping().then((r) => r === 'PONG').catch(() => false), timeout]);
+  }
+
   constructor() {
     if (!this.env.REDIS_URL) {
       this.publisher = this.subscriber = null;

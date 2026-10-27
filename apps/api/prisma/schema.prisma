@@ -865,3 +865,25 @@ model AuditLog {
   @@index([action, createdAt])
   @@map("audit_logs")
 }
+
+/// Phase 8: Technische Fehler (unerwartete 5xx, endgültig fehlgeschlagene Hintergrundaufträge), zusammengefasst je Ursache.
+/// Datensparsam: keine Anfragedaten, keine IDs aus Pfaden, keine Personen – nur Quelle, Routenmuster, Fehlerart und gekürzte Meldung.
+model ErrorEvent {
+  id          BigInt   @id @default(autoincrement())
+  /// sha256(Quelle | Route | Fehlerart | normalisierte Meldung) – gleiche Ursache = eine Zeile
+  fingerprint String   @unique
+  /// http | job | web
+  source      String
+  /// z. B. "POST /v1/listings/:id/publish" oder Auftragsname
+  route       String
+  errorName   String   @map("error_name")
+  message     String
+  /// Erste Zeilen des Stacktraces (nur Dateipfade/Funktionen)
+  stack       String?
+  count       Int      @default(1)
+  firstSeenAt DateTime @default(now()) @map("first_seen_at")
+  lastSeenAt  DateTime @default(now()) @map("last_seen_at")
+
+  @@index([lastSeenAt])
+  @@map("error_events")
+}

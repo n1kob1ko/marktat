@@ -15,5 +15,7 @@ export default defineConfig({
   datasource: {
     // Platzhalter erlaubt `prisma generate` ohne Datenbank (z. B. in CI vor dem Build).
     url: process.env.DATABASE_URL ?? 'postgresql://invalid:invalid@localhost:5432/invalid',
+    // Nur für `db:check-migrations`: eigene, leere Datenbank (Prisma setzt sie bei jeder Prüfung zurück)
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
   },
 });

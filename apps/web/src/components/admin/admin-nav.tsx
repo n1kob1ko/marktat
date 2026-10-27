@@ -12,9 +12,10 @@ const NAV = [
   { href: '/admin/nutzer', label: 'Konten', adminOnly: true },
   { href: '/admin/monetarisierung', label: 'Monetarisierung', adminOnly: true },
   { href: '/admin/protokoll', label: 'Protokoll', adminOnly: true },
+  { href: '/admin/system', label: 'System', adminOnly: true },
 ];
 
-/** Reiter im Admin-Bereich. Konten, Monetarisierung und das Protokoll sehen nur Administratoren. */
+/** Reiter im Admin-Bereich. Konten, Monetarisierung, Protokoll und Systemzustand sehen nur Administratoren. */
 export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
   return (

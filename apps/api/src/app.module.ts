@@ -30,7 +30,7 @@ import { BillingModule } from './billing/billing.module.js';
 import { StatsModule } from './stats/stats.module.js';
 import { DealersModule } from './dealers/dealers.module.js';
 import { SecurityModule } from './security/security.module.js';
-import { HealthController } from './health/health.controller.js';
+import { MonitoringModule } from './monitoring/monitoring.module.js';
 
 @Module({
   imports: [
@@ -65,8 +65,8 @@ import { HealthController } from './health/health.controller.js';
     StatsModule,
     DealersModule,
     SecurityModule,
+    MonitoringModule,
   ],
-  controllers: [HealthController],
   providers: [
     // Reihenfolge: zuerst Anmeldung (Token prüfen), dann Rate-Limit je Konto bzw. IP, dann Rollen, dann 2FA
     { provide: APP_GUARD, useClass: AuthGuard },
