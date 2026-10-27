@@ -24,6 +24,18 @@ interface BaseField {
   requiredWith?: string;
   /** Erscheint als Kurzinfo auf Inseratskarten (max. drei je Kategorie sinnvoll). */
   highlight?: boolean;
+  /**
+   * Als Suchfilter anbieten. `param` ist der Name in der Such-URL (z. B. `kraftstoff=diesel`).
+   * Die Filterart folgt aus dem Feldtyp: Auswahl → eine der Optionen, Mehrfachauswahl → alle gewählten,
+   * Zahl/Jahr → von–bis, Text → enthält alle Wörter, Ja/Nein → nur mit „ja“.
+   */
+  filter?: AttributeFilterConfig;
+}
+
+export interface AttributeFilterConfig {
+  param: string;
+  /** Abweichende Beschriftung in der Filterleiste, z. B. „Leistung (kW)“ */
+  label?: string;
 }
 
 export interface TextField extends BaseField {
