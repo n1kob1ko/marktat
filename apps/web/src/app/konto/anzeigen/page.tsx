@@ -58,7 +58,13 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
                     {listing.title}
                   </Link>
                   <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-500">
-                    <PriceTag priceType={listing.priceType} priceCents={listing.priceCents} className="text-base" />
+                    <PriceTag
+                      priceType={listing.priceType}
+                      priceCents={listing.priceCents}
+                      suffix={listing.priceSuffix}
+                      salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
+                      className="text-base"
+                    />
                     {listing.location ? (
                       <span className="flex items-center gap-1"><MapPin className="size-3.5" aria-hidden="true" /> {listing.location.postalCode} {listing.location.place}</span>
                     ) : null}

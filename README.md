@@ -3,7 +3,7 @@
 Kleinanzeigenplattform für Österreich (Arbeitstitel) mit den Bereichen Marktplatz, Auto & Motor, Immobilien und Jobs.
 Monorepo mit Next.js-Frontend, NestJS-API, PostgreSQL/PostGIS und Supabase Auth.
 
-**Stand: Phase 2 (Bild-Upload über Cloudflare R2).** Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
+**Stand: Phase 3 (kategorieabhängige Inseratsfelder).** Was genau umgesetzt ist und was nicht, steht unten unter „Stand und Grenzen“.
 
 ## Voraussetzungen
 
@@ -80,6 +80,7 @@ docs             Architektur, Datenmodell, Geodaten, Sicherheit, Rechtliches
 - [Architektur](docs/architektur.md)
 - [Bilder / Cloudflare R2](docs/bilder.md)
 - [Datenmodell](docs/datenmodell.md)
+- [Kategorie-Felder (Auto, Immobilien, Jobs, Marktplatz)](docs/kategorie-felder.md)
 - [Geodaten / PLZ-Import](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
 - [Rechtliches – Checkliste](docs/rechtliches.md) (⚠️ muss anwaltlich geprüft werden)
@@ -93,9 +94,10 @@ Umgesetzt:
 - Startseite, Suche mit Filtern (Text, Bereich, Kategorie, Bundesland), Detailseite, „Meine Anzeigen“
 - Kategoriebaum (84 Kategorien) für alle vier Bereiche, Bundesländer und Bezirke vollständig
 - Bilder (Phase 2): bis zu 10 pro Inserat über Cloudflare R2, serverseitige Prüfung, EXIF-Entfernung, WebP-Varianten, Hauptbild, Reihenfolge, Löschen
+- Kategorieabhängige Felder (Phase 3): Fahrzeugdaten, Wohnfläche/Zimmer/Ausstattung, Gehalt/Arbeitszeit u. v. m. je Unterkategorie, mit Pflichtfeldern, Prüfung in der API und Anzeige auf Detailseite und Karten
 
 Bewusst noch nicht umgesetzt:
 - **Vollständiges PLZ-Verzeichnis**: lokal nur 140 Entwicklungsorte, Import-Skript siehe [Geodaten](docs/geodaten.md)
 - Meilisearch-Suche, Umkreissuche, Favoriten, Nachrichten, Meldungen, Moderation, Zahlungen
-- Bereichsspezifische Felder (Kilometerstand, Wohnfläche, Gehalt …)
+- Filter nach Zusatzangaben in der Suche (z. B. Kilometerstand bis, Zimmer ab)
 - Rechtstexte sind Platzhalter

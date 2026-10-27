@@ -4,7 +4,14 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
 import { Badge, Button, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
-import { ATTRIBUTE_FIELDS, formatDate, ITEM_CONDITION_LABELS, type ListingDetail } from '@marktat/shared';
+import {
+  categoryAttributeSchema,
+  describeListingAttributes,
+  formatDate,
+  ITEM_CONDITION_LABELS,
+  type AttributeDisplayItem,
+  type ListingDetail,
+} from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { getAccessToken } from '@/lib/auth';
 import { PriceTag } from '@/components/price-tag';
@@ -73,7 +80,13 @@ async function ListingContent({
               {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
             </div>
             <h1 className="mt-3 text-2xl leading-tight font-bold text-ink-950 sm:text-3xl">{listing.title}</h1>
-            <PriceTag priceType={listing.priceType} priceCents={listing.priceCents} className="mt-3 text-3xl" />
+            <PriceTag
+              priceType={listing.priceType}
+              priceCents={listing.priceCents}
+              suffix={listing.priceSuffix}
+              salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
+              className="mt-3 text-3xl"
+            />
             <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-600">
               {listing.location ? (
                 <div className="flex items-center gap-1.5">
@@ -90,25 +103,7 @@ async function ListingContent({
                 </div>
               ) : null}
             </dl>
-            {Object.entries(listing.attributes).length ? (
-              <section className="mt-8">
-                <h2 className="font-sans text-lg font-semibold tracking-normal">Weitere Angaben</h2>
-                <dl className="mt-3 grid gap-3 sm:grid-cols-2">
-                  {Object.entries(listing.attributes).map(([key, value]) => {
-                    const field = Object.values(ATTRIBUTE_FIELDS).flat().find((item) => item.key === key);
-                    if (!field) return null;
-                    return (
-                      <div key={key} className="rounded-lg bg-canvas p-3">
-                        <dt className="text-xs text-ink-500">{field.label}</dt>
-                        <dd className="mt-1 font-semibold text-ink-900">
-                          {typeof value === 'number' ? value.toLocaleString('de-AT') : String(value)}{field.unit ? ` ${field.unit}` : ''}
-                        </dd>
-                      </div>
-                    );
-                  })}
-                </dl>
-              </section>
-            ) : null}
+            <ListingDetails items={describeListingAttributes(categoryAttributeSchema(listing.category.path), listing.attributes)} />
             <h2 className="mt-8 font-sans text-lg font-semibold tracking-normal">Beschreibung</h2>
             <div className="mt-3 text-[0.9375rem] leading-relaxed whitespace-pre-line text-ink-800">
               {listing.description || <span className="text-ink-400">Keine Beschreibung.</span>}
@@ -145,6 +140,42 @@ async function ListingContent({
         </aside>
       </div>
     </div>
+  );
+}
+
+/** Kategorieabhängige Angaben (Kilometerstand, Wohnfläche, Gehalt …) als übersichtliche Liste. */
+function ListingDetails({ items }: { items: AttributeDisplayItem[] }) {
+  if (!items.length) return null;
+  const single = items.filter((item) => !item.values);
+  const lists = items.filter((item) => item.values);
+  return (
+    <section className="mt-8" aria-labelledby="details-heading">
+      <h2 id="details-heading" className="font-sans text-lg font-semibold tracking-normal">
+        Details
+      </h2>
+      {single.length ? (
+        <dl className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {single.map((item) => (
+            <div key={item.key} className="min-w-0 rounded-lg bg-canvas px-3 py-2.5">
+              <dt className="text-xs text-ink-500">{item.label}</dt>
+              <dd className="mt-0.5 font-semibold break-words text-ink-900">{item.value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+      {lists.map((item) => (
+        <div key={item.key} className="mt-4">
+          <h3 className="text-sm font-semibold text-ink-700">{item.label}</h3>
+          <ul className="mt-2 flex flex-wrap gap-2">
+            {item.values!.map((value) => (
+              <li key={value}>
+                <Badge tone="neutral">{value}</Badge>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </section>
   );
 }
 

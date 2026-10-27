@@ -29,7 +29,14 @@ export function ListingCard({ listing }: { listing: ListingSummary }) {
             {listing.title}
           </Link>
         </h3>
-        <PriceTag priceType={listing.priceType} priceCents={listing.priceCents} className="text-lg" />
+        {listing.facts.length ? <p className="line-clamp-1 text-xs text-ink-600">{listing.facts.join(' · ')}</p> : null}
+        <PriceTag
+          priceType={listing.priceType}
+          priceCents={listing.priceCents}
+          suffix={listing.priceSuffix}
+          salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
+          className="text-lg"
+        />
         <div className="mt-auto flex flex-col gap-1 pt-1 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           {listing.location ? (
             <span className="flex min-w-0 items-center gap-1">

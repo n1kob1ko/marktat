@@ -6,6 +6,7 @@ import type {
   UserRole,
   Vertical,
 } from './enums.js';
+import type { ListingAttributes } from './attributes/types.js';
 
 /** Antwort-Typen der REST-API. Datumsfelder werden als ISO-8601-Strings übertragen. */
 
@@ -50,6 +51,8 @@ export interface PublicSeller {
 export interface CategoryNode {
   id: string;
   slug: string;
+  /** Eindeutiger Pfad, z. B. „auto-motor/gebrauchtwagen“; bestimmt die Zusatzfelder */
+  path: string;
   name: string;
   vertical: Vertical;
   icon: string | null;
@@ -73,11 +76,18 @@ export interface ListingSummary {
   priceType: PriceType | null;
   priceCents: number | null;
   status: ListingStatus;
-  category: { id: string; name: string; slug: string };
+  vertical: Vertical;
+  category: { id: string; name: string; slug: string; path: string };
   location: LocationSummary | null;
   /** Vorschaubild (Hauptbild, 480 × 360) oder null */
   imageUrl: string | null;
   isBusiness: boolean;
+  /** Kurzinfos aus den Zusatzangaben, z. B. [„03/2019“, „85.000 km“, „Diesel“] */
+  facts: string[];
+  /** Zusatz zum Preis, z. B. „pro Monat“ bei Miete */
+  priceSuffix: string | null;
+  /** Nur Jobs: Gehaltsangabe statt Preis */
+  salary: string | null;
   publishedAt: string | null;
   createdAt: string;
 }
@@ -108,7 +118,8 @@ export interface ListingDetail extends ListingSummary {
   description: string;
   images: ListingImage[];
   condition: ItemCondition | null;
-  attributes: Record<string, string | number | boolean>;
+  /** Gespeicherte Zusatzangaben; Anzeige über `describeListingAttributes` */
+  attributes: ListingAttributes;
   expiresAt: string | null;
   updatedAt: string;
   seller: PublicSeller;

@@ -4,11 +4,16 @@ import { useActionState, useEffect, useMemo, useState, useTransition, type FormE
 import { Eye, MapPin } from 'lucide-react';
 import { Alert, Button, Card, cn, Field, Input, Select, Textarea } from '@marktat/ui';
 import {
-  ATTRIBUTE_FIELDS,
+  categoryAttributeSchema,
   ITEM_CONDITION_LABELS,
   ITEM_CONDITIONS,
   isAustrianPostalCode,
+  formatSalary,
+  listingFacts,
   parseEuroInputToCents,
+  priceFieldLabel,
+  priceSuffix,
+  readAttributeForm,
   PRICE_TYPE_LABELS,
   PRICE_TYPES,
   VERTICAL_LABELS,
@@ -16,9 +21,11 @@ import {
   type ListingDetail,
   type LocationSummary,
   type PriceType,
+  type Vertical,
 } from '@marktat/shared';
 import { PriceTag } from '@/components/price-tag';
 import { initialFormState, type FormState } from '@/lib/form-state';
+import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -27,6 +34,13 @@ interface ListingFormProps {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   listing?: ListingDetail;
 }
+
+const DESCRIPTION_HINTS: Record<Vertical, string> = {
+  MARKETPLACE: 'Zustand, Maße, Zubehör, Abholung oder Versand.',
+  VEHICLES: 'Ausstattung, Service, Pickerl, Vorschäden.',
+  REAL_ESTATE: 'Lage, Raumaufteilung, Verfügbarkeit, Provision und Kaution.',
+  JOBS: 'Aufgaben, Anforderungen und was du bietest.',
+};
 
 function centsToInput(cents: number | null | undefined) {
   if (cents === null || cents === undefined) return '';
@@ -65,6 +79,8 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
   const [locations, setLocations] = useState<LocationSummary[]>(listing?.location ? [listing.location] : []);
   const [locationId, setLocationId] = useState(v?.locationId ?? (listing?.location ? String(listing.location.id) : ''));
   const [condition, setCondition] = useState(v?.condition ?? listing?.condition ?? '');
+  // Zusatzangaben aller bisher gewählten Kategorien; abgeschickt werden nur die der aktuellen.
+  const [attributeValues, setAttributeValues] = useState<AttributeInputValues>(() => attributesToInput(listing?.attributes));
   // Für welche PLZ die Ortssuche zuletzt abgeschlossen wurde; „lädt“ wird daraus abgeleitet.
   const [lookupResult, setLookupResult] = useState<{ postalCode: string; status: 'idle' | 'empty' | 'error' }>({
     postalCode: listing?.location?.postalCode ?? '',
@@ -72,9 +88,14 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
   });
 
   const main = categories.find((c) => c.id === mainId);
-  const attributeFields = main ? ATTRIBUTE_FIELDS[main.vertical] : [];
-  const needsPrice = priceType === 'FIXED' || priceType === 'NEGOTIABLE';
-  const isMarketplace = (main?.vertical ?? 'MARKETPLACE') === 'MARKETPLACE';
+  const selectedCategory = main?.children.find((c) => c.id === categoryId) ?? main;
+  const schema = useMemo(() => categoryAttributeSchema(selectedCategory?.path), [selectedCategory?.path]);
+  const typedAttributes = useMemo(
+    () => readAttributeForm(schema, (name) => [attributeValues[name.slice('attr.'.length)] ?? []].flat()).attributes,
+    [schema, attributeValues],
+  );
+  const hasPrice = schema.price !== 'none';
+  const needsPrice = hasPrice && (priceType === 'FIXED' || priceType === 'NEGOTIABLE');
 
   // PLZ → Orte nachschlagen (öffentlicher Endpunkt der API)
   useEffect(() => {
@@ -97,6 +118,8 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
     isAustrianPostalCode(postalCode) && lookupResult.postalCode !== postalCode ? 'loading' : lookupResult.status;
   const selectedLocation = locations.find((l) => String(l.id) === locationId);
   const previewCents = needsPrice ? parseEuroInputToCents(price) : null;
+  const previewFacts = listingFacts(schema, typedAttributes);
+  const previewSalary = formatSalary(typedAttributes, true);
   const errors = state.fieldErrors ?? {};
 
   return (
@@ -151,11 +174,11 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
             <Input name="title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={90} />
           </Field>
 
-          <Field label="Beschreibung" hint="Zustand, Maße, Zubehör, Abholung oder Versand. Mindestens 20 Zeichen." error={errors.description} required>
+          <Field label="Beschreibung" hint={`${DESCRIPTION_HINTS[main?.vertical ?? 'MARKETPLACE']} Mindestens 20 Zeichen.`} error={errors.description} required>
             <Textarea name="description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={5000} rows={7} />
           </Field>
 
-          {isMarketplace ? (
+          {schema.itemCondition ? (
             <Field label="Zustand" error={errors.condition}>
               <Select name="condition" value={condition} onChange={(e) => setCondition(e.target.value)}>
                 <option value="">Keine Angabe</option>
@@ -167,56 +190,47 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
               </Select>
             </Field>
           ) : null}
-          {attributeFields.length > 0 ? (
-            <div className="space-y-4 border-t border-line pt-5">
-              <h3 className="font-semibold text-ink-900">Weitere Angaben</h3>
-              <div className="grid gap-4 sm:grid-cols-2">
-                {attributeFields.map((field) => (
-                  <Field key={field.key} label={field.label + (field.unit ? ` (${field.unit})` : '')} error={errors[`attributes.${field.key}`]}>
-                    <Input
-                      key={mainId + ':' + field.key}
-                      name={`attr_${field.key}`}
-                      type={field.kind === 'number' ? 'number' : 'text'}
-                      min={field.min}
-                      max={field.max}
-                      step={field.kind === 'number' ? 'any' : undefined}
-                      defaultValue={v?.[`attributes.${field.key}`] ?? listing?.attributes?.[field.key]?.toString() ?? ''}
-                    />
-                  </Field>
+          <AttributeFields
+            schema={schema}
+            values={attributeValues}
+            onChange={(key, value) => setAttributeValues((current) => ({ ...current, [key]: value }))}
+            errors={errors}
+          />
+        </Card>
+
+        {hasPrice ? (
+          <Card className="space-y-5 p-5 sm:p-7">
+            <h2 className="font-sans text-lg font-semibold tracking-normal">Preis</h2>
+            <fieldset>
+              <legend className="sr-only">Preisart</legend>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {PRICE_TYPES.map((type) => (
+                  <label
+                    key={type}
+                    className={cn(
+                      'flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition-colors has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
+                      priceType === type ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line-strong text-ink-700 hover:border-ink-400',
+                    )}
+                  >
+                    <input type="radio" name="priceType" value={type} checked={priceType === type} onChange={() => setPriceType(type)} className="sr-only" />
+                    {PRICE_TYPE_LABELS[type]}
+                  </label>
                 ))}
               </div>
-            </div>
-          ) : null}
-        </Card>
+            </fieldset>
+            {needsPrice ? (
+              <Field label={priceFieldLabel(schema, typedAttributes)} hint="z. B. 49 oder 1.299,90" error={errors.price ?? errors.priceCents} required>
+                <Input name="price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className="max-w-48" />
+              </Field>
+            ) : null}
+          </Card>
+        ) : (
+          // Jobs: kein Preis, das Gehalt steht in den Details
+          <input type="hidden" name="priceType" value="ON_REQUEST" />
+        )}
 
         <Card className="space-y-5 p-5 sm:p-7">
-          <h2 className="font-sans text-lg font-semibold tracking-normal">Preis</h2>
-          <fieldset>
-            <legend className="sr-only">Preisart</legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {PRICE_TYPES.map((type) => (
-                <label
-                  key={type}
-                  className={cn(
-                    'flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-center text-sm font-semibold transition-colors has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
-                    priceType === type ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line-strong text-ink-700 hover:border-ink-400',
-                  )}
-                >
-                  <input type="radio" name="priceType" value={type} checked={priceType === type} onChange={() => setPriceType(type)} className="sr-only" />
-                  {PRICE_TYPE_LABELS[type]}
-                </label>
-              ))}
-            </div>
-          </fieldset>
-          {needsPrice ? (
-            <Field label="Preis in Euro" hint="z. B. 49 oder 1.299,90" error={errors.price ?? errors.priceCents} required>
-              <Input name="price" inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} className="max-w-48" />
-            </Field>
-          ) : null}
-        </Card>
-
-        <Card className="space-y-5 p-5 sm:p-7">
-          <h2 className="font-sans text-lg font-semibold tracking-normal">Standort</h2>
+          <h2 className="font-sans text-lg font-semibold tracking-normal">{schema.locationLabel}</h2>
           <div className="grid gap-5 sm:grid-cols-[10rem_1fr]">
             <Field label="Postleitzahl" error={errors.postalCode} required>
               <Input
@@ -265,7 +279,14 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
           <div className="aspect-[4/3] bg-canvas" />
           <div className="space-y-2 p-4">
             <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-400')}>{title || 'Dein Titel'}</p>
-            <PriceTag priceType={priceType} priceCents={previewCents} className="text-lg" />
+            {previewFacts.length ? <p className="text-sm text-ink-600">{previewFacts.join(' · ')}</p> : null}
+            <PriceTag
+              priceType={hasPrice ? priceType : 'ON_REQUEST'}
+              priceCents={previewCents}
+              suffix={priceSuffix(schema, typedAttributes)}
+              salary={hasPrice ? undefined : previewSalary}
+              className="text-lg"
+            />
             <p className="flex items-center gap-1 text-xs text-ink-500">
               <MapPin className="size-3.5" aria-hidden="true" />
               {selectedLocation ? `${selectedLocation.postalCode} ${selectedLocation.place}` : 'PLZ und Ort'}

@@ -64,6 +64,7 @@ export class CategoriesService {
     const build = (c: Category): CategoryNode => ({
       id: c.id,
       slug: c.slug,
+      path: c.path,
       name: c.name,
       vertical: c.vertical,
       icon: c.icon,
