@@ -5,31 +5,35 @@ import { api } from './api';
 
 /**
  * Öffentliche, für alle Besucher gleiche Daten – serverseitig zwischengespeichert.
- * Fehler werden bewusst nicht im Cache abgefangen: Ein leeres Ergebnis während einer kurzen API-Störung
- * bliebe sonst stundenlang gespeichert (z. B. keine Kategorien im Inserat-Formular). Fehler speichert
- * „use cache“ nicht – der nächste Aufruf versucht es erneut.
+ * Bei einer API-Störung gibt es einen leeren Ersatzwert, der nur Sekunden gilt (`cacheLife('seconds')`):
+ * Mit der normalen Dauer bliebe er sonst stundenlang stehen (z. B. keine Kategorien im Inserat-Formular).
+ * Werfen ist keine Lösung – ein Fehler beim Vorrendern bricht den Build ab, wenn die API dann nicht läuft.
  */
 
-async function cachedCategories(): Promise<CategoryNode[]> {
-  'use cache';
-  cacheLife('hours');
-  cacheTag('categories');
-  return api<CategoryNode[]>('/categories');
-}
-
 export async function getCategories(): Promise<CategoryNode[]> {
-  return cachedCategories().catch(() => []);
-}
-
-async function cachedLatestListings(pageSize: number): Promise<ListingSummary[]> {
   'use cache';
-  cacheLife('minutes');
-  cacheTag('listings');
-  return (await api<Paginated<ListingSummary>>(`/listings?pageSize=${pageSize}`)).items;
+  cacheTag('categories');
+  try {
+    const categories = await api<CategoryNode[]>('/categories');
+    cacheLife('hours');
+    return categories;
+  } catch {
+    cacheLife('seconds');
+    return [];
+  }
 }
 
 export async function getLatestListings(pageSize = 12): Promise<ListingSummary[]> {
-  return cachedLatestListings(pageSize).catch(() => []);
+  'use cache';
+  cacheTag('listings');
+  try {
+    const page = await api<Paginated<ListingSummary>>(`/listings?pageSize=${pageSize}`);
+    cacheLife('minutes');
+    return page.items;
+  } catch {
+    cacheLife('seconds');
+    return [];
+  }
 }
 
 export function findCategory(tree: CategoryNode[], id: string): CategoryNode | undefined {
