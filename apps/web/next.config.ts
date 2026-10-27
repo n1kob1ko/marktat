@@ -52,8 +52,9 @@ const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
   "style-src 'self' 'unsafe-inline'",
-  // Bilder kommen über die API (Weiterleitung auf R2); blob: für die Vorschau vor dem Upload
-  `img-src 'self' data: blob: https: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
+  // Bilder kommen über die API (Weiterleitung auf R2, Pfad-Stil – also genau der R2-Endpoint);
+  // blob: für die Vorschau vor dem Upload, data: für den QR-Code der 2FA-Einrichtung. Kein pauschales https:.
+  `img-src 'self' data: blob: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
   "font-src 'self' data:",
   `connect-src 'self' ${apiUrl} ${supabaseUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}${isDev ? ' ws:' : ''}`,
   "frame-ancestors 'none'",
