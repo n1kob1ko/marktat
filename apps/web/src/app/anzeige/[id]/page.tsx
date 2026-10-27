@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { BadgeCheck, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, Store, UserRound } from 'lucide-react';
-import { Badge, Button, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
+import { Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
 import {
   categoryAttributeSchema,
   describeListingAttributes,
@@ -19,6 +19,8 @@ import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { FlashMessage } from '@/components/flash-message';
 import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
+import { FavoriteButton } from '@/components/favorites/favorite-button';
+import { ContactForm } from '@/components/messages/contact-form';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
   const { id } = await params;
@@ -75,9 +77,16 @@ async function ListingContent({
           <ListingGallery images={listing.images} title={listing.title} />
 
           <Card className="p-5 sm:p-7">
-            <div className="flex flex-wrap items-center gap-2">
-              {listing.isBusiness ? <Badge tone="brand">Gewerblicher Anbieter</Badge> : <Badge>Privat</Badge>}
-              {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 pt-2">
+                {listing.isBusiness ? <Badge tone="brand">Gewerblicher Anbieter</Badge> : <Badge>Privat</Badge>}
+                {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
+              </div>
+              {listing.isOwner ? null : (
+                <div className="shrink-0">
+                  <FavoriteButton listingId={listing.id} title={listing.title} initial={token ? listing.isFavorite : false} variant="detail" returnTo={`/anzeige/${listing.id}`} />
+                </div>
+              )}
             </div>
             <h1 className="mt-3 text-2xl leading-tight font-bold text-ink-950 sm:text-3xl">{listing.title}</h1>
             <PriceTag
@@ -129,10 +138,7 @@ async function ListingContent({
             ) : (
               <p className="mt-3 text-sm text-ink-500">Privatverkauf – Gewährleistung kann ausgeschlossen sein.</p>
             )}
-            <Button className="mt-5 w-full" size="lg" disabled title="Der Chat folgt in Phase 3">
-              <MessageCircle className="size-5" aria-hidden="true" /> Nachricht schreiben
-            </Button>
-            <p className="mt-2 text-center text-xs text-ink-500">Nachrichten sind bald verfügbar.</p>
+            <ContactArea listing={listing} signedIn={Boolean(token)} />
           </Card>
           <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
             <Flag className="size-4" aria-hidden="true" /> Anzeige melden
@@ -141,6 +147,42 @@ async function ListingContent({
       </div>
     </div>
   );
+}
+
+/** Kontakt: eigene Anzeige → Postfach, bestehende Unterhaltung → Chat, angemeldet → Formular, sonst Anmeldung */
+function ContactArea({ listing, signedIn }: { listing: ListingDetail; signedIn: boolean }) {
+  const sellerName = listing.seller.companyName ?? listing.seller.displayName;
+  if (listing.isOwner) {
+    return (
+      <Link href="/nachrichten?filter=verkaufen" className={buttonClasses({ variant: 'outline', size: 'lg', className: 'mt-5 w-full' })}>
+        <MessageCircle className="size-5" aria-hidden="true" /> Anfragen zu deinen Anzeigen
+      </Link>
+    );
+  }
+  if (listing.conversationId) {
+    return (
+      <>
+        <Link href={`/nachrichten/${listing.conversationId}`} className={buttonClasses({ size: 'lg', className: 'mt-5 w-full' })}>
+          <MessageCircle className="size-5" aria-hidden="true" /> Zur Unterhaltung
+        </Link>
+        <p className="mt-2 text-center text-xs text-ink-500">Du hast {sellerName} zu dieser Anzeige schon geschrieben.</p>
+      </>
+    );
+  }
+  if (!signedIn) {
+    return (
+      <>
+        <Link
+          href={`/anmelden?weiter=${encodeURIComponent(`/anzeige/${listing.id}`)}&hinweis=nachricht`}
+          className={buttonClasses({ size: 'lg', className: 'mt-5 w-full' })}
+        >
+          <MessageCircle className="size-5" aria-hidden="true" /> Nachricht schreiben
+        </Link>
+        <p className="mt-2 text-center text-xs text-ink-500">Zum Schreiben bitte anmelden – kostenlos und schnell.</p>
+      </>
+    );
+  }
+  return <ContactForm listingId={listing.id} sellerName={sellerName} />;
 }
 
 /** Kategorieabhängige Angaben (Kilometerstand, Wohnfläche, Gehalt …) als übersichtliche Liste. */

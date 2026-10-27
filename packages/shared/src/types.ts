@@ -46,6 +46,10 @@ export interface MeResponse {
   companyRegisterNumber: string | null;
   vatId: string | null;
   companyAddress: string | null;
+  /** E-Mail bei neuen Nachrichten */
+  notifyMessagesByEmail: boolean;
+  /** E-Mail bei neuen Treffern gespeicherter Suchen (je Suche einzeln aktivierbar) */
+  notifySearchesByEmail: boolean;
   createdAt: string;
 }
 
@@ -138,4 +142,101 @@ export interface ListingDetail extends ListingSummary {
   updatedAt: string;
   seller: PublicSeller;
   isOwner: boolean;
+  /** Nur für angemeldete Personen: ob das Inserat gemerkt ist */
+  isFavorite: boolean;
+  /** Nur für angemeldete Interessenten: bestehende Unterhaltung zu diesem Inserat */
+  conversationId: string | null;
 }
+
+// ---------------------------------------------------------------------------
+// Merkliste und gespeicherte Suchen
+// ---------------------------------------------------------------------------
+
+export interface FavoriteItem {
+  /** Bei nicht mehr verfügbaren Inseraten ohne Bild */
+  listing: ListingSummary;
+  /** false = pausiert, abgelaufen, gelöscht oder Verkäufer nicht mehr aktiv */
+  available: boolean;
+  savedAt: string;
+}
+
+export interface SavedSearch {
+  id: string;
+  name: string;
+  /** Parameter der Such-URL (`/suche?…`) */
+  params: Record<string, string>;
+  /** Lesbare Filter, z. B. [„Gebrauchtwagen“, „Preis bis € 20.000“] */
+  labels: string[];
+  notify: boolean;
+  createdAt: string;
+  lastNotifiedAt: string | null;
+}
+
+// ---------------------------------------------------------------------------
+// Nachrichten
+// ---------------------------------------------------------------------------
+
+export interface ChatMessage {
+  id: string;
+  conversationId: string;
+  body: string;
+  /** Von der angemeldeten Person geschrieben */
+  mine: boolean;
+  createdAt: string;
+  /** Vom Empfänger gelesen */
+  readAt: string | null;
+}
+
+export interface ConversationPartner {
+  id: string;
+  displayName: string;
+  /** Konto gelöscht oder gesperrt */
+  inactive: boolean;
+}
+
+export interface ConversationSummary {
+  id: string;
+  /** Rolle der angemeldeten Person: Interessent (buyer) oder Anbieter (seller) */
+  role: 'buyer' | 'seller';
+  partner: ConversationPartner;
+  listing: {
+    id: string;
+    title: string;
+    imageUrl: string | null;
+    priceType: ListingSummary['priceType'];
+    priceCents: number | null;
+    /** false = nicht mehr öffentlich (pausiert, abgelaufen, gelöscht) */
+    available: boolean;
+  };
+  lastMessage: { body: string; mine: boolean; createdAt: string } | null;
+  lastMessageAt: string;
+  unreadCount: number;
+}
+
+export interface ConversationDetail extends ConversationSummary {
+  /** Ob die angemeldete Person die andere blockiert hat */
+  blockedByMe: boolean;
+  /** null = Senden möglich, sonst der Grund (für die Anzeige) */
+  sendBlockedReason: string | null;
+}
+
+export interface MessagePage {
+  items: ChatMessage[];
+  /** Es gibt ältere Nachrichten (`before` = id der ältesten geladenen) */
+  hasMore: boolean;
+}
+
+export interface UnreadSummary {
+  /** Ungelesene Nachrichten insgesamt */
+  messages: number;
+  /** Unterhaltungen mit ungelesenen Nachrichten */
+  conversations: number;
+}
+
+/** Ereignisse über `GET /v1/me/events` (Server-Sent Events) */
+export type RealtimeEvent =
+  | { type: 'ready'; unread: UnreadSummary }
+  | { type: 'message'; message: ChatMessage; unread: UnreadSummary }
+  /** byMe: in einem anderen Fenster selbst gelesen; sonst hat die andere Person meine Nachrichten gelesen */
+  | { type: 'read'; conversationId: string; readAt: string; byMe: boolean; unread: UnreadSummary }
+  | { type: 'ping' };

@@ -11,6 +11,10 @@ export interface ResolvedSearch {
   categoryPath: string | null;
   /** Ort für Umkreis bzw. PLZ-Filter */
   center: { latitude: number; longitude: number; postalCode: string } | null;
+  /** Nur Inserate, die danach veröffentlicht wurden (Benachrichtigungen gespeicherter Suchen) */
+  publishedAfter?: Date;
+  /** … und spätestens dann (Zeitfenster der Benachrichtigung) */
+  publishedUntil?: Date;
 }
 
 const quote = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
@@ -23,6 +27,8 @@ const num = (value: number) => {
 export function meiliFilters(search: ResolvedSearch, now = new Date()): string[] {
   const { query, center } = search;
   const filters = [`expiresAt > ${Math.floor(now.getTime() / 1000)}`];
+  if (search.publishedAfter) filters.push(`publishedAt > ${num(search.publishedAfter.getTime())}`);
+  if (search.publishedUntil) filters.push(`publishedAt <= ${num(search.publishedUntil.getTime())}`);
   if (search.categoryPath) filters.push(`categoryPaths = ${quote(search.categoryPath)}`);
   else if (query.vertical) filters.push(`vertical = ${quote(query.vertical)}`);
   if (query.state) filters.push(`stateSlug = ${quote(query.state)}`);
@@ -96,6 +102,8 @@ export function sqlConditions(search: ResolvedSearch): Prisma.Sql[] {
     Prisma.sql`u.status = 'ACTIVE'`,
     Prisma.sql`u.deleted_at IS NULL`,
   ];
+  if (search.publishedAfter) conditions.push(Prisma.sql`l.published_at > ${search.publishedAfter}`);
+  if (search.publishedUntil) conditions.push(Prisma.sql`l.published_at <= ${search.publishedUntil}`);
   if (query.q) {
     for (const word of query.q.split(' ').slice(0, 10)) {
       const pattern = `%${escapeLike(word)}%`;

@@ -27,8 +27,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Nur Entwicklungswerte aus .env.example – CI braucht keine echten Zugangsdaten.
       - run: cp .env.example .env
-      - name: Datenbank und Suche starten (PostGIS, Meilisearch)
-        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db meilisearch
+      - name: Datenbank, Suche, Redis und Mailpit starten
+        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db meilisearch redis mailpit
       - run: pnpm build
       - run: pnpm lint
       - run: pnpm typecheck
@@ -43,6 +43,8 @@ jobs:
     env:
       # Bilder im lokalen Dateisystem statt R2 – die CI hat (und braucht) keine Cloudflare-Zugangsdaten.
       STORAGE_DRIVER: local
+      # E-Mails zu Nachrichten sofort, damit der Zwei-Konten-Test sie in Mailpit prüfen kann
+      MESSAGE_EMAIL_DELAY_SECONDS: '0'
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

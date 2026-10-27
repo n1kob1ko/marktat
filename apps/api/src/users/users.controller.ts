@@ -1,7 +1,12 @@
 import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
-import { updateProfileSchema, type UpdateProfileInput } from '@marktat/shared';
+import {
+  notificationSettingsSchema,
+  updateProfileSchema,
+  type NotificationSettingsInput,
+  type UpdateProfileInput,
+} from '@marktat/shared';
 import { CurrentUser, Public } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
@@ -30,6 +35,17 @@ export class UsersController {
     @Req() req: Request,
   ) {
     return this.users.updateMe(user, body, req.ip);
+  }
+
+  @Patch('me/notifications')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'E-Mail-Benachrichtigungen ein- oder ausschalten' })
+  @ApiBody({ schema: openApiSchema(notificationSettingsSchema) })
+  updateNotifications(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(notificationSettingsSchema)) body: NotificationSettingsInput,
+  ) {
+    return this.users.updateNotifications(user, body);
   }
 
   @Public()

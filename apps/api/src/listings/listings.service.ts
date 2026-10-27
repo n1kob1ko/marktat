@@ -218,10 +218,20 @@ export class ListingsService {
     if (effectiveStatus(listing) !== 'ACTIVE' && !isOwner && !isStaff) {
       throw new NotFoundException('Dieses Inserat ist nicht mehr verfügbar.');
     }
-    return toListingDetail(listing, this.urls, viewer?.id);
+    return toListingDetail(listing, this.urls, viewer?.id, await this.viewerState(listing.id, viewer));
   }
 
   // --- Hilfsfunktionen -------------------------------------------------------
+
+  /** Merkliste und bestehende Unterhaltung der angemeldeten Person zu diesem Inserat */
+  private async viewerState(listingId: string, viewer?: AuthUser) {
+    if (!viewer) return undefined;
+    const [favorite, conversation] = await Promise.all([
+      this.prisma.favorite.findUnique({ where: { userId_listingId: { userId: viewer.id, listingId } }, select: { listingId: true } }),
+      this.prisma.conversation.findUnique({ where: { listingId_buyerId: { listingId, buyerId: viewer.id } }, select: { id: true } }),
+    ]);
+    return { isFavorite: Boolean(favorite), conversationId: conversation?.id ?? null };
+  }
 
   private async setStatus(user: AuthUser, id: string, status: ListingStatus, action: 'listing.paused' | 'listing.resumed', ip?: string) {
     const updated = await this.prisma.listing.update({ where: { id }, data: { status }, include: listingInclude });

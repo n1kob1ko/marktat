@@ -31,8 +31,16 @@
 - Rate-Limit global (`RATE_LIMIT_PER_MINUTE`, Standard 120/min je IP) und 20/min für schreibende Inserat-Endpunkte.
 - GoTrue hat eigene Limits für Anmeldung und E-Mail-Versand (lokal hoch gesetzt, in Produktion Supabase-Standard).
 
+**Nachrichten (Phase 5)**
+- Unterhaltungen nur für die beiden Beteiligten; fremde oder manipulierte IDs ergeben 404, Absender/Empfänger setzt der Server.
+- Rate-Limits je Konto in der Datenbank (wirken auch hinter dem Next.js-Server und über mehrere Instanzen): 10 Nachrichten/Minute, 100/Stunde, 10 neue Unterhaltungen/Stunde, 30/Tag, 10 Meldungen/Tag.
+- Klartext ohne HTML-Interpretation, Steuer- und Richtungszeichen werden entfernt, 2.000 Zeichen Höchstlänge (auch als Spaltenlänge).
+- Blockieren in beide Richtungen, Meldungen in `user_reports`, beides im Audit-Log.
+- E-Mails enthalten keinen Nachrichtentext. Private Nachrichten kommen nie in den Suchindex.
+- Die Echtzeit-Verbindung läuft über die eigene Herkunft (`/api/ereignisse`); das Access-Token bleibt auf dem Server.
+
 **Protokollierung**
-- `audit_logs` für Profilanlage und -änderung sowie Anlegen, Veröffentlichen, Verlängern, Pausieren, Fortsetzen und Löschen von Inseraten. IPs werden gekürzt gespeichert (IPv4 /24, IPv6 /48), keine Tokens oder Passwörter.
+- `audit_logs` für Profilanlage und -änderung, Anlegen, Veröffentlichen, Verlängern, Pausieren, Fortsetzen und Löschen von Inseraten sowie neue Unterhaltungen, Blockieren und Melden. IPs werden gekürzt gespeichert (IPv4 /24, IPv6 /48), keine Tokens oder Passwörter.
 - Fehlerantworten enthalten keine Stacktraces oder SQL-Details.
 
 **Geheimnisse**

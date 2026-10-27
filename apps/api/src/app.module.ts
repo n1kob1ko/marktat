@@ -14,6 +14,12 @@ import { ListingsModule } from './listings/listings.module.js';
 import { ImagesModule } from './images/images.module.js';
 import { StorageModule } from './storage/storage.module.js';
 import { SearchModule } from './search/search.module.js';
+import { MailModule } from './mail/mail.module.js';
+import { JobsModule } from './jobs/jobs.module.js';
+import { RealtimeModule } from './realtime/realtime.module.js';
+import { FavoritesModule } from './favorites/favorites.module.js';
+import { SavedSearchesModule } from './saved-searches/saved-searches.module.js';
+import { MessagesModule } from './messages/messages.module.js';
 import { HealthController } from './health/health.controller.js';
 
 @Module({
@@ -30,6 +36,12 @@ import { HealthController } from './health/health.controller.js';
     SearchModule,
     ListingsModule,
     ImagesModule,
+    MailModule,
+    JobsModule,
+    RealtimeModule,
+    FavoritesModule,
+    SavedSearchesModule,
+    MessagesModule,
   ],
   controllers: [HealthController],
   providers: [

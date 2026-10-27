@@ -15,6 +15,8 @@ export function toMe(user: User): MeResponse {
     companyRegisterNumber: user.companyRegisterNumber,
     vatId: user.vatId,
     companyAddress: user.companyAddress,
+    notifyMessagesByEmail: user.notifyMessagesByEmail,
+    notifySearchesByEmail: user.notifySearchesByEmail,
     createdAt: user.createdAt.toISOString(),
   };
 }

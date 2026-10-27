@@ -88,12 +88,26 @@ model User {
   termsAcceptedAt       DateTime?   @map("terms_accepted_at")
   termsVersion          String?     @map("terms_version")
   lastSeenAt            DateTime?   @map("last_seen_at")
+  /// E-Mail bei neuen Nachrichten (höchstens eine je Unterhaltung, bis wieder gelesen wurde)
+  notifyMessagesByEmail Boolean     @default(true) @map("notify_messages_by_email")
+  /// E-Mail bei neuen Treffern gespeicherter Suchen (nur Suchen mit aktivierter Benachrichtigung)
+  notifySearchesByEmail Boolean     @default(true) @map("notify_searches_by_email")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
   deletedAt             DateTime?   @map("deleted_at")
 
-  listings  Listing[]
-  auditLogs AuditLog[]
+  listings            Listing[]
+  auditLogs           AuditLog[]
+  favorites           Favorite[]
+  savedSearches       SavedSearch[]
+  buyerConversations  Conversation[] @relation("ConversationBuyer")
+  sellerConversations Conversation[] @relation("ConversationSeller")
+  sentMessages        Message[]      @relation("MessageSender")
+  receivedMessages    Message[]      @relation("MessageRecipient")
+  blocks              UserBlock[]    @relation("BlockBy")
+  blockedBy           UserBlock[]    @relation("BlockOf")
+  reportsMade         UserReport[]   @relation("ReportBy")
+  reportsReceived     UserReport[]   @relation("ReportOf")
 
   @@index([status])
   @@map("users")
@@ -202,10 +216,12 @@ model Listing {
   updatedAt   DateTime       @updatedAt @map("updated_at")
   deletedAt   DateTime?      @map("deleted_at")
 
-  seller   User           @relation(fields: [sellerId], references: [id])
-  category Category?      @relation(fields: [categoryId], references: [id])
-  location Location?      @relation(fields: [locationId], references: [id])
-  images   ListingImage[]
+  seller        User           @relation(fields: [sellerId], references: [id])
+  category      Category?      @relation(fields: [categoryId], references: [id])
+  location      Location?      @relation(fields: [locationId], references: [id])
+  images        ListingImage[]
+  favorites     Favorite[]
+  conversations Conversation[]
 
   @@index([status, publishedAt(sort: Desc)])
   @@index([sellerId, status])
@@ -251,6 +267,138 @@ model ListingImage {
   @@index([listingId, status, sortOrder])
   @@index([status, createdAt])
   @@map("listing_images")
+}
+
+// ---------------------------------------------------------------------------
+// Merkliste, gespeicherte Suchen, Nachrichten (Phase 5)
+// ---------------------------------------------------------------------------
+
+/// Gemerktes Inserat. Der zusammengesetzte Schlüssel verhindert doppelte Einträge.
+model Favorite {
+  userId    String   @map("user_id") @db.Uuid
+  listingId String   @map("listing_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([userId, listingId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([listingId])
+  @@map("favorites")
+}
+
+/// Gespeicherte Suche: dieselben Parameter wie in der Such-URL (siehe docs/suche.md).
+model SavedSearch {
+  id             String    @id @default(cuid())
+  userId         String    @map("user_id") @db.Uuid
+  name           String    @db.VarChar(80)
+  /// Kanonische Suchparameter (`toSearchParams`), ohne Seite
+  params         Json
+  /// Sortierter Query-String der Parameter: dieselbe Suche kann nicht doppelt gespeichert werden
+  queryKey       String    @map("query_key") @db.VarChar(2000)
+  /// Lesbare Filter zur Anzeige im Konto, z. B. „Preis bis € 500“
+  labels         String[]  @default([])
+  /// E-Mail bei neuen Treffern
+  notify         Boolean   @default(false)
+  /// Neue Treffer werden ab diesem Zeitpunkt gesucht
+  lastCheckedAt  DateTime  @default(now()) @map("last_checked_at")
+  lastNotifiedAt DateTime? @map("last_notified_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, queryKey])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([notify, lastCheckedAt])
+  @@map("saved_searches")
+}
+
+/// Unterhaltung zwischen Interessent und Verkäufer zu genau einem Inserat.
+model Conversation {
+  id            String       @id @default(cuid())
+  listingId     String       @map("listing_id")
+  buyerId       String       @map("buyer_id") @db.Uuid
+  sellerId      String       @map("seller_id") @db.Uuid
+  lastMessageAt DateTime     @default(now()) @map("last_message_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  listing       Listing      @relation(fields: [listingId], references: [id])
+  buyer         User         @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller        User         @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages      Message[]
+  reports       UserReport[]
+
+  /// Je Inserat und Interessent genau eine Unterhaltung
+  @@unique([listingId, buyerId])
+  @@index([buyerId, lastMessageAt(sort: Desc)])
+  @@index([sellerId, lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+/// Private Nachricht. Wird nie in Suchindizes übernommen und nur den beiden Beteiligten ausgeliefert.
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  senderId       String       @map("sender_id") @db.Uuid
+  recipientId    String       @map("recipient_id") @db.Uuid
+  /// Klartext, max. 2000 Zeichen. Wird nie als HTML ausgegeben.
+  body           String       @db.VarChar(2000)
+  createdAt      DateTime     @default(now()) @map("created_at")
+  readAt         DateTime?    @map("read_at")
+  /// Zeitpunkt der E-Mail an den Empfänger (bzw. der Entscheidung, keine zu senden)
+  notifiedAt     DateTime?    @map("notified_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient      User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId, createdAt])
+  @@index([recipientId, readAt])
+  @@index([senderId, createdAt])
+  @@map("messages")
+}
+
+/// Blockierte Person kann der blockierenden keine Nachrichten mehr senden (und umgekehrt).
+model UserBlock {
+  blockerId String   @map("blocker_id") @db.Uuid
+  blockedId String   @map("blocked_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at")
+  blocker   User     @relation("BlockBy", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("BlockOf", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@id([blockerId, blockedId])
+  @@index([blockedId])
+  @@map("user_blocks")
+}
+
+enum ReportReason {
+  SPAM
+  FRAUD
+  HARASSMENT
+  OTHER
+}
+
+enum ReportStatus {
+  OPEN
+  RESOLVED
+  DISMISSED
+}
+
+/// Meldung einer Person (z. B. aus einer Unterhaltung). Bearbeitung durch die Moderation folgt später.
+model UserReport {
+  id             String        @id @default(cuid())
+  reporterId     String        @map("reporter_id") @db.Uuid
+  reportedId     String        @map("reported_id") @db.Uuid
+  conversationId String?       @map("conversation_id")
+  reason         ReportReason
+  details        String?       @db.VarChar(1000)
+  status         ReportStatus  @default(OPEN)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  reporter       User          @relation("ReportBy", fields: [reporterId], references: [id], onDelete: Cascade)
+  reported       User          @relation("ReportOf", fields: [reportedId], references: [id], onDelete: Cascade)
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt])
+  @@index([reportedId])
+  @@map("user_reports")
 }
 
 // ---------------------------------------------------------------------------

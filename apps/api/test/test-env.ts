@@ -18,4 +18,7 @@ export function applyTestEnv() {
   process.env.API_URL = 'http://localhost:4000';
   // Eigener Suchindex, damit Tests die Entwicklungsdaten nicht berühren
   process.env.MEILI_INDEX = 'listings_test';
+  // Eigene Warteschlangen; E-Mails zu Nachrichten sofort statt nach der Wartezeit (Mailpit aus pnpm infra:up)
+  process.env.QUEUE_PREFIX = 'marktat_test';
+  process.env.MESSAGE_EMAIL_DELAY_SECONDS = '0';
 }

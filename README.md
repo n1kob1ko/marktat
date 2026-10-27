@@ -47,7 +47,8 @@ pnpm lint
 pnpm typecheck
 pnpm test                                   # Unit-Tests (shared, ui, api, web)
 pnpm --filter @marktat/api test:e2e         # API-Integrationstests gegen marktat_test und den Meilisearch-Index listings_test
-pnpm --filter @marktat/web test:e2e         # Playwright, Desktop + Mobil; braucht laufende Umgebung mit Demodaten (pnpm build && pnpm start)
+pnpm --filter @marktat/web test:e2e         # Playwright, Desktop + Mobil; braucht laufende Umgebung mit Demodaten (pnpm build && pnpm start),
+                                            # für die Nachrichten-Tests die API mit MESSAGE_EMAIL_DELAY_SECONDS=0
 pnpm --filter @marktat/api r2:check         # echte Cloudflare-R2-Verbindung prüfen (Werte aus der lokalen .env)
 ```
 
@@ -66,7 +67,8 @@ Für spätere Phasen bzw. den Produktionsbetrieb fehlen noch (in `.env.example` 
 | `STRIPE_SECRET_KEY`, `STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Zahlungen (Testmodus) | Phase 4 |
 | `OPENAI_API_KEY` (+ `AI_ENABLED=true`) | optionale KI-Funktionen | Phase 6 |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` | echtes Supabase-Projekt (EU-Region) | Produktion |
-| `SMTP_*` | E-Mail-Versand (in Supabase Auth konfigurieren) | Produktion |
+| `SMTP_*`, `MAIL_FROM` | E-Mail-Versand: in Supabase Auth (Kontomails) und in der API (Nachrichten, Suchaufträge); lokal Mailpit | Produktion |
+| `REDIS_URL` | Hintergrundaufträge (BullMQ) und Echtzeit über mehrere Instanzen; lokal gesetzt | Produktion |
 
 ## Projektstruktur
 
@@ -86,6 +88,7 @@ docs             Architektur, Datenmodell, Suche, Geodaten, Sicherheit, Rechtlic
 - [Datenmodell](docs/datenmodell.md)
 - [Kategorie-Felder (Auto, Immobilien, Jobs, Marktplatz)](docs/kategorie-felder.md)
 - [Suche und Filter](docs/suche.md)
+- [Merkliste, gespeicherte Suchen, Nachrichten](docs/nachrichten.md)
 - [Geodaten / PLZ-Verzeichnis](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
 - [Rechtliches – Checkliste](docs/rechtliches.md) (⚠️ muss anwaltlich geprüft werden)
@@ -101,8 +104,9 @@ Umgesetzt:
 - Bilder (Phase 2): bis zu 10 pro Inserat über Cloudflare R2, serverseitige Prüfung, EXIF-Entfernung, WebP-Varianten, Hauptbild, Reihenfolge, Löschen
 - Kategorieabhängige Felder (Phase 3): Fahrzeugdaten, Wohnfläche/Zimmer/Ausstattung, Gehalt/Arbeitszeit u. v. m. je Unterkategorie, mit Pflichtfeldern, Prüfung in der API und Anzeige auf Detailseite und Karten
 - Suche (Phase 4): Meilisearch mit Tippfehlertoleranz und Sortierung nach Relevanz, Datum, Preis und Entfernung; Filter nach Kategorie, Bundesland, PLZ/Ort mit Umkreis, Preis, Anbieter, Zustand und den Eigenschaften je Bereich (Auto, Immobilien, Jobs, Marktplatz); teilbare Such-URLs, Filter-Chips, mobiles Filtermenü; Fallback auf PostgreSQL/PostGIS. Siehe [Suche](docs/suche.md)
+- Merkliste, gespeicherte Suchen und Nachrichten (Phase 5): Herz auf Karten und Detailseite, Merkliste im Konto; Suchen mit allen Filtern speichern, umbenennen, erneut ausführen, löschen, optional E-Mail bei neuen Treffern; Nachrichten je Anzeige mit Postfach (Filter, Suche, ungelesen), Chat in Echtzeit (Server-Sent Events), Lesebestätigung, Ungelesen-Zähler im Header, E-Mail bei neuen Nachrichten (Mailpit), Blockieren und Melden. Siehe [Nachrichten](docs/nachrichten.md)
 - Vollständiges PLZ-Verzeichnis (20.877 Orte, 2.461 PLZ, GeoNames CC BY 4.0) mit Bezirk und Bundesland
 
 Bewusst noch nicht umgesetzt:
-- Favoriten, gespeicherte Suchen, Nachrichten, Meldungen, Moderation, Zahlungen
+- Moderationsoberfläche (Meldungen werden gespeichert, aber noch nicht bearbeitet), Bilder in Nachrichten, Push-Benachrichtigungen, Zahlungen
 - Rechtstexte sind Platzhalter

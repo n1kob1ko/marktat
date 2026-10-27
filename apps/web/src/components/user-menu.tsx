@@ -1,7 +1,10 @@
 import Link from 'next/link';
 import { CircleUserRound } from 'lucide-react';
 import { buttonClasses } from '@marktat/ui';
-import { getCurrentUser } from '@/lib/auth';
+import type { UnreadSummary } from '@marktat/shared';
+import { api } from '@/lib/api';
+import { getAccessToken, getCurrentUser } from '@/lib/auth';
+import { HeaderInbox, SessionSync } from './header-inbox';
 import { logoutAction } from '@/app/(auth)/actions';
 
 /** Liest die Sitzung – steht deshalb im Header hinter einer Suspense-Grenze. */
@@ -9,13 +12,22 @@ export async function UserMenu() {
   const user = await getCurrentUser();
   if (!user) {
     return (
-      <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
-        Anmelden
-      </Link>
+      <>
+        <SessionSync userId={null} />
+        <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+          Anmelden
+        </Link>
+      </>
     );
   }
+  const token = await getAccessToken();
+  const unread = await api<UnreadSummary>('/me/unread', { token: token ?? undefined, cache: 'no-store' }).catch(
+    (): UnreadSummary => ({ messages: 0, conversations: 0 }),
+  );
   return (
     <div className="flex items-center gap-1">
+      <SessionSync userId={user.id} />
+      <HeaderInbox initialUnread={unread} />
       <Link href="/konto" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'max-w-44' })}>
         <CircleUserRound className="size-5 shrink-0" aria-hidden="true" />
         <span className="hidden truncate lg:inline">{user.displayName}</span>

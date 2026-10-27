@@ -7,6 +7,13 @@ import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Anmelden', robots: { index: false } };
 
+/** Warum die Anmeldung nötig ist (?hinweis=…), wenn eine Aktion dorthin geführt hat */
+const HINTS: Record<string, string> = {
+  merken: 'Melde dich an, um Anzeigen auf deiner Merkliste zu speichern. Danach geht es direkt zurück.',
+  nachricht: 'Melde dich an, um dem Anbieter eine Nachricht zu schreiben. Danach geht es direkt zurück zur Anzeige.',
+  suche: 'Melde dich an, um diese Suche zu speichern. Danach geht es direkt zurück zu deinen Ergebnissen.',
+};
+
 export default function LoginPage({ searchParams }: PageProps<'/anmelden'>) {
   return (
     <AuthShell
@@ -36,7 +43,9 @@ async function LoginContent({ searchParams }: Pick<PageProps<'/anmelden'>, 'sear
       {params.fehler === 'link' ? (
         <Alert tone="warning">Der Link ist ungültig oder abgelaufen. Bitte melde dich an oder fordere einen neuen Link an.</Alert>
       ) : null}
-      {next ? <Alert tone="info">Bitte melde dich an, um fortzufahren.</Alert> : null}
+      {next ? (
+        <Alert tone="info">{(typeof params.hinweis === 'string' && HINTS[params.hinweis]) || 'Bitte melde dich an, um fortzufahren.'}</Alert>
+      ) : null}
       <LoginForm next={next} />
     </div>
   );

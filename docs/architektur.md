@@ -45,6 +45,7 @@ Werkzeuge: pnpm-Workspaces, Turborepo (`build`, `dev`, `lint`, `typecheck`, `tes
 - **Caching im Frontend:** Öffentliche Daten (Kategorien, neueste Inserate) mit `'use cache'` + `cacheTag`, nach Änderungen `updateTag('listings')`. Nutzerabhängige Teile liegen in `Suspense`-Grenzen.
 - **Suche (Phase 4):** Meilisearch findet die IDs (Tippfehler, Relevanz, Umkreis), PostgreSQL lädt die Inserate und prüft die Sichtbarkeit erneut. Fällt Meilisearch aus, sucht die API mit denselben Filtern direkt in PostgreSQL/PostGIS. Filter kommen aus den Kategorie-Feldern, die Such-URL ist teilbar. Siehe [suche.md](suche.md).
 - **Geodaten:** Bundesland → Bezirk → Ort (PLZ) mit PostGIS-Punkt, vollständiges PLZ-Verzeichnis aus GeoNames. Siehe [geodaten.md](geodaten.md).
+- **Merkliste, gespeicherte Suchen, Nachrichten (Phase 5):** Echtzeit per Server-Sent Events, durchgereicht über die Next.js-Route `/api/ereignisse` (Token bleibt auf dem Server), verteilt über Redis Pub/Sub. E-Mails und wiederkehrende Prüfungen als BullMQ-Aufträge, E-Mail-Versand per SMTP (lokal Mailpit). Siehe [nachrichten.md](nachrichten.md).
 - **Bilder:** Upload direkt vom Browser nach R2 über kurzlebige Presigned-URLs, danach Prüfung und Optimierung in der API (sharp), Auslieferung über stabile API-URLs mit Weiterleitung auf signierte R2-URLs. Austauschbarer Speicher (`ObjectStorage`): R2 oder lokales Dateisystem für Tests. Siehe [bilder.md](bilder.md).
 
 ## API-Endpunkte (Phase 1)
@@ -63,19 +64,27 @@ Werkzeuge: pnpm-Workspaces, Turborepo (`build`, `dev`, `lint`, `typecheck`, `tes
 | DELETE | `/v1/listings/:id` | angemeldet, nur eigene (Soft-Delete) |
 | GET/POST/PUT/DELETE | `/v1/listings/:id/images…` | angemeldet, nur eigene (siehe [bilder.md](bilder.md)) |
 | GET | `/v1/images/:imageId/:variante` | öffentlich für aktive Inserate, sonst nur mit Signatur |
+| GET/PUT/DELETE | `/v1/me/favorites…` | angemeldet (Phase 5) |
+| GET/POST/PATCH/DELETE | `/v1/me/searches…` | angemeldet (Phase 5) |
+| POST | `/v1/listings/:id/conversations` | angemeldet, nicht für eigene Inserate |
+| GET/POST | `/v1/conversations…` | angemeldet, nur die beiden Beteiligten |
+| GET | `/v1/me/unread` · `/v1/me/events` (SSE) · `/v1/me/blocks` | angemeldet |
+| PATCH | `/v1/me/notifications` | angemeldet |
+| POST/DELETE | `/v1/users/:id/block` | angemeldet |
 
 Vollständige Schemas: `http://localhost:4000/docs` (Swagger UI).
 
 ## Web-Seiten (Phase 1)
 
-`/` Startseite · `/suche` · `/anzeige/[id]` · `/inserieren` · `/anzeige/[id]/bearbeiten` · `/anzeige/[id]/bilder` · `/registrieren` · `/anmelden` · `/passwort-vergessen` · `/passwort-neu` · `/auth/confirm` · `/konto` · `/konto/anzeigen` · `/impressum` · `/datenschutz` · `/agb` · `/melden`
+`/` Startseite · `/suche` · `/anzeige/[id]` · `/inserieren` · `/anzeige/[id]/bearbeiten` · `/anzeige/[id]/bilder` · `/registrieren` · `/anmelden` · `/passwort-vergessen` · `/passwort-neu` · `/auth/confirm` · `/konto` · `/konto/anzeigen` · `/konto/merkliste` · `/konto/suchen` · `/konto/benachrichtigungen` · `/nachrichten` · `/nachrichten/[id]` · `/impressum` · `/datenschutz` · `/agb` · `/melden`
 
 ## Phasenplan
 
 1. **Fundament:** Monorepo, Docker, Datenmodell, Auth, Inserate ohne Bilder, Basis-Suche, Tests, CI – umgesetzt.
 2. Bild-Upload (R2) – umgesetzt.
 3. Kategorieabhängige Felder – umgesetzt ([kategorie-felder.md](kategorie-felder.md)).
-4. Suche mit Meilisearch, Filtern je Bereich, vollständigem PLZ-Verzeichnis und Umkreissuche – umgesetzt ([suche.md](suche.md)). Offen: Favoriten, gespeicherte Suchen.
+4. Suche mit Meilisearch, Filtern je Bereich, vollständigem PLZ-Verzeichnis und Umkreissuche – umgesetzt ([suche.md](suche.md)).
+5. Merkliste, gespeicherte Suchen mit E-Mail-Benachrichtigung, Nachrichten in Echtzeit, Blockieren und Melden – umgesetzt ([nachrichten.md](nachrichten.md)).
 
 Weitere Vorhaben (Reihenfolge offen):
 

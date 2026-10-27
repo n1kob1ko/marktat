@@ -6,6 +6,7 @@ import {
   peekFilterScope,
   searchFiltersFor,
   type RawSearchParams,
+  type SearchFilter,
   type SearchQuery,
   type SearchResult,
 } from '@marktat/shared';
@@ -44,6 +45,15 @@ export class ListingSearchService {
 
   /** Prüft die Parameter (400 bei ungültigen Werten) und sucht. */
   async searchParams(raw: RawSearchParams): Promise<SearchResult> {
+    const { query, categoryPath } = await this.resolveParams(raw);
+    return this.search(query, categoryPath);
+  }
+
+  /**
+   * Liest und prüft Suchparameter wie in der Such-URL. Eine Kategorie wird über Pfad oder (alte) ID aufgelöst.
+   * Ungültige Werte ergeben 400 mit deutschen Meldungen je Parameter.
+   */
+  async resolveParams(raw: RawSearchParams): Promise<{ query: SearchQuery; categoryPath: string | null; filters: SearchFilter[] }> {
     let scope = peekFilterScope(raw);
     const categoryParam = [raw.kategorie, raw.categoryId].flat().find(Boolean)?.trim();
     let categoryPath: string | null = null;
@@ -65,13 +75,20 @@ export class ListingSearchService {
       });
     }
     if (categoryPath) query.category = categoryPath;
-    return this.search(query, categoryPath);
+    return { query, categoryPath, filters };
   }
 
   /** `categoryPath`: bereits aufgelöste Kategorie (`query.category` kann eine alte ID sein). */
-  async search(query: SearchQuery, categoryPath: string | null): Promise<SearchResult> {
+  async search(query: SearchQuery, categoryPath: string | null, options: { publishedAfter?: Date; publishedUntil?: Date } = {}): Promise<SearchResult> {
     const center = await this.resolveCenter(query);
-    const search: ResolvedSearch = { query, filters: searchFiltersFor(categoryPath ?? filterScope(query)), categoryPath, center };
+    const search: ResolvedSearch = {
+      query,
+      filters: searchFiltersFor(categoryPath ?? filterScope(query)),
+      categoryPath,
+      center,
+      publishedAfter: options.publishedAfter,
+      publishedUntil: options.publishedUntil,
+    };
 
     let page: { ids: string[]; total: number; engine: SearchResult['engine'] } | null = null;
     if (this.index.enabled && Date.now() >= this.meiliUnavailableUntil) {

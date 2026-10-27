@@ -15,7 +15,11 @@ export type AuditAction =
   | 'listing.image_added'
   | 'listing.image_rejected'
   | 'listing.image_deleted'
-  | 'listing.images_reordered';
+  | 'listing.images_reordered'
+  | 'conversation.started'
+  | 'user.blocked'
+  | 'user.unblocked'
+  | 'user.reported';
 
 export interface AuditEvent {
   action: AuditAction;
