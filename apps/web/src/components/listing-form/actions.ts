@@ -16,10 +16,7 @@ import { zodFieldErrors, type FormState } from '@/lib/form-state';
 const TEXT_FIELDS = ['title', 'description', 'categoryId', 'priceType', 'price', 'condition', 'postalCode', 'locationId'] as const;
 
 function readForm(formData: FormData) {
-  const values = Object.fromEntries(TEXT_FIELDS.map((f) => [f, String(formData.get(f) ?? '').trim()])) as Record<
-    (typeof TEXT_FIELDS)[number],
-    string
-  >;
+  const values = Object.fromEntries(TEXT_FIELDS.map((f) => [f, String(formData.get(f) ?? '').trim()])) as Record<string, string>;
   const priceCents = values.price ? parseEuroInputToCents(values.price) : null;
   const attributes: Record<string, string | number | boolean> = {};
   const attributeErrors: Record<string, string[]> = {};
