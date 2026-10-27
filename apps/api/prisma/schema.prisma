@@ -96,6 +96,10 @@ model User {
   suspendedAt           DateTime?   @map("suspended_at")
   /// Meldungen dieser Person werden bis dahin nicht angenommen (Art. 23 DSA, nach Verwarnung)
   reportingBlockedUntil DateTime?   @map("reporting_blocked_until")
+  /// Händlerprofil (Phase 7): Website, ob die Telefonnummer öffentlich ist, Logo (WebP, siehe docs/haendler.md)
+  website               String?     @db.VarChar(200)
+  showPhone             Boolean     @default(false) @map("show_phone")
+  logoKey               String?     @map("logo_key")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
   deletedAt             DateTime?   @map("deleted_at")
@@ -121,8 +125,11 @@ model User {
   appealsReviewed     Appeal[]             @relation("AppealReviewer")
   notifications       Notification[]
   deletion            AccountDeletion?
+  bookings            Booking[]
+  payments            Payment[]
 
   @@index([status])
+  @@index([accountType, status])
   @@map("users")
 }
 
@@ -228,6 +235,15 @@ model Listing {
   createdAt   DateTime       @default(now()) @map("created_at")
   updatedAt   DateTime       @updatedAt @map("updated_at")
   deletedAt   DateTime?      @map("deleted_at")
+  /// Zusatzleistungen (Phase 7) – abgeleitet aus aktiven Buchungen, damit Suche und Karten ohne Join auskommen.
+  /// Maßgeblich bleibt die Buchung; nach Ablauf wirken die Felder nicht mehr (Abfragen vergleichen mit „jetzt“).
+  highlightedUntil DateTime? @map("highlighted_until")
+  topUntil         DateTime? @map("top_until")
+  /// Zeitpunkt des letzten Hochschiebens; die Sortierung „Neueste“ nutzt max(publishedAt, bumpedAt)
+  bumpedAt         DateTime? @map("bumped_at")
+  /// Wurde die aktuelle Platzierung bezahlt? Dann wird sie als Werbung gekennzeichnet.
+  highlightPaid    Boolean   @default(false) @map("highlight_paid")
+  topPaid          Boolean   @default(false) @map("top_paid")
 
   seller        User                 @relation(fields: [sellerId], references: [id])
   category      Category?            @relation(fields: [categoryId], references: [id])
@@ -237,8 +253,11 @@ model Listing {
   conversations Conversation[]
   reports       Report[]
   decisions     ModerationDecision[]
+  bookings      Booking[]
+  viewDays      ListingViewDay[]
 
   @@index([status, publishedAt(sort: Desc)])
+  @@index([topUntil])
   @@index([sellerId, status])
   @@index([categoryId, status])
   @@index([locationId])
@@ -626,6 +645,203 @@ model AccountDeletion {
 
   @@index([status, updatedAt])
   @@map("account_deletions")
+}
+
+// ---------------------------------------------------------------------------
+// Monetarisierung (Phase 7) – Leistungen, Preise, Buchungen, Zahlungen, Statistiken
+// Zum Start ist alles kostenlos (BillingMode FREE). Siehe docs/monetarisierung.md.
+// ---------------------------------------------------------------------------
+
+/// Was eine aktivierte Buchung bewirkt
+enum ProductKind {
+  /// Inserat veröffentlichen bzw. verlängern
+  LISTING
+  /// Optische Hervorhebung auf Inseratskarten
+  HIGHLIGHT
+  /// Platz im Bereich „Top-Anzeigen“ passender Suchergebnisse
+  TOP_AD
+  /// Inserat in der Sortierung „Neueste“ wieder nach oben bringen (einmalig)
+  BUMP
+}
+
+/// Globaler Betriebsmodus. PAID erfordert eine ausdrückliche Umstellung durch einen Admin und Stripe.
+enum BillingMode {
+  FREE
+  PAID
+}
+
+enum BookingStatus {
+  /// Wartet auf eine bestätigte Zahlung (nur im kostenpflichtigen Betrieb)
+  PENDING_PAYMENT
+  /// Leistung wirkt bis `endsAt`
+  ACTIVE
+  /// Einmalige Leistung erbracht (Hochschieben)
+  COMPLETED
+  EXPIRED
+  /// Abgebrochen (z. B. Zahlung nicht abgeschlossen) – ohne Wirkung
+  CANCELLED
+  /// Zahlung erstattet – Wirkung beendet
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  CANCELLED
+  EXPIRED
+  REFUNDED
+  PARTIALLY_REFUNDED
+}
+
+/// Buchbare Leistung. Preise in Cent; ob tatsächlich verrechnet wird, entscheiden BillingMode und paidEnabled.
+model Product {
+  id                String      @id @default(cuid())
+  /// Eindeutige Produktkennung, z. B. „listing“, „highlight“, „top“, „bump“
+  code              String      @unique @db.VarChar(40)
+  kind              ProductKind
+  name              String      @db.VarChar(80)
+  description       String      @db.VarChar(500)
+  /// Preis im kostenpflichtigen Betrieb (Cent). Zum Start 0.
+  priceCents        Int         @default(0) @map("price_cents")
+  /// Geplanter späterer Preis – nur zur Information, wird nie automatisch wirksam
+  plannedPriceCents Int?        @map("planned_price_cents")
+  currency          String      @default("EUR") @db.Char(3)
+  /// Laufzeit in Tagen (Inserat, Hervorhebung, Top-Anzeige); beim Hochschieben leer
+  durationDays      Int?        @map("duration_days")
+  forPrivate        Boolean     @default(true) @map("for_private")
+  forBusiness       Boolean     @default(true) @map("for_business")
+  /// Leistung wird angeboten
+  isActive          Boolean     @default(true) @map("is_active")
+  /// Darf im kostenpflichtigen Betrieb verrechnet werden (zusätzlich zu BillingMode PAID)
+  paidEnabled       Boolean     @default(false) @map("paid_enabled")
+  /// Optionaler Aktionszeitraum: in dieser Zeit immer kostenlos. Das Ende schaltet nichts automatisch frei.
+  promoStartsAt     DateTime?   @map("promo_starts_at")
+  promoEndsAt       DateTime?   @map("promo_ends_at")
+  /// Gleichzeitig aktive Buchungen je Konto
+  maxActivePerUser  Int?        @map("max_active_per_user")
+  /// Gleichzeitig aktive Buchungen insgesamt (z. B. Plätze für Top-Anzeigen)
+  maxActiveTotal    Int?        @map("max_active_total")
+  /// Buchungen je Konto im Zeitraum `periodDays`
+  maxPerPeriod      Int?        @map("max_per_period")
+  periodDays        Int         @default(30) @map("period_days")
+  /// Mindestabstand zwischen zwei Buchungen für dasselbe Inserat (Hochschieben)
+  cooldownHours     Int?        @map("cooldown_hours")
+  sortOrder         Int         @default(0) @map("sort_order")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  bookings          Booking[]
+
+  @@map("products")
+}
+
+/// Plattformweite Einstellungen (genau eine Zeile, id = 1)
+model PlatformSettings {
+  id                    Int         @id @default(1)
+  billingMode           BillingMode @default(FREE) @map("billing_mode")
+  billingModeChangedAt  DateTime?   @map("billing_mode_changed_at")
+  billingModeChangedBy  String?     @map("billing_mode_changed_by") @db.Uuid
+  /// Einführungsaktion auf der Website
+  introEnabled          Boolean     @default(true) @map("intro_enabled")
+  introVisible          Boolean     @default(true) @map("intro_visible")
+  introTitle            String      @default("Jetzt kostenlos inserieren") @map("intro_title") @db.VarChar(80)
+  introDescription      String      @default("Während unserer Einführungsphase kannst du deine Inserate kostenlos veröffentlichen.") @map("intro_description") @db.VarChar(400)
+  introStartsAt         DateTime?   @map("intro_starts_at")
+  introEndsAt           DateTime?   @map("intro_ends_at")
+  /// Geplanten Standardpreis des Inserats (Produkt „listing“) in der Aktion anzeigen
+  introShowPlannedPrice Boolean     @default(false) @map("intro_show_planned_price")
+  /// Schutz vor automatisierter Nutzung: Buchungen je Konto und Stunde (alle Leistungen)
+  maxBookingsPerHour    Int         @default(20) @map("max_bookings_per_hour")
+  updatedAt             DateTime    @updatedAt @map("updated_at")
+
+  @@map("platform_settings")
+}
+
+/// Buchung einer Leistung. Preis und Produktangaben werden beim Buchen festgehalten und nie nachträglich geändert.
+model Booking {
+  id             String        @id @default(cuid())
+  /// null, wenn das Konto gelöscht wurde (bezahlte Buchungen bleiben für die Buchhaltung erhalten)
+  userId         String?       @map("user_id") @db.Uuid
+  listingId      String?       @map("listing_id")
+  productId      String        @map("product_id")
+  kind           ProductKind
+  status         BookingStatus
+  /// Preis zum Buchungszeitpunkt in Cent (0 = kostenlos)
+  priceCents     Int           @map("price_cents")
+  currency       String        @default("EUR") @db.Char(3)
+  /// Betriebsmodus beim Buchen
+  billingMode    BillingMode   @map("billing_mode")
+  /// Produkt zum Buchungszeitpunkt: Code, Name, Laufzeit, Standardpreis, geplanter Preis, Aktion
+  snapshot       Json
+  startsAt       DateTime?     @map("starts_at")
+  endsAt         DateTime?     @map("ends_at")
+  /// Vom Formular erzeugter Schlüssel: dieselbe Anfrage legt nie zwei Buchungen an
+  idempotencyKey String?       @map("idempotency_key") @db.VarChar(64)
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  user           User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  listing        Listing?      @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  product        Product       @relation(fields: [productId], references: [id])
+  payment        Payment?
+
+  @@unique([userId, idempotencyKey])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([listingId, kind, status])
+  @@index([status, endsAt])
+  @@index([productId, status])
+  @@map("bookings")
+}
+
+/// Zahlung zu einer Buchung (Stripe Checkout). Wird nur über geprüfte Webhooks bzw. die Stripe-API bestätigt.
+model Payment {
+  id                String        @id @default(cuid())
+  bookingId         String        @unique @map("booking_id")
+  userId            String?       @map("user_id") @db.Uuid
+  provider          String        @default("stripe") @db.VarChar(20)
+  status            PaymentStatus @default(PENDING)
+  amountCents       Int           @map("amount_cents")
+  refundedCents     Int           @default(0) @map("refunded_cents")
+  currency          String        @default("EUR") @db.Char(3)
+  /// Stripe-Live-Modus – bleibt gesperrt (STRIPE_LIVE_ENABLED)
+  livemode          Boolean       @default(false)
+  checkoutSessionId String?       @unique @map("checkout_session_id")
+  paymentIntentId   String?       @unique @map("payment_intent_id")
+  failureReason     String?       @map("failure_reason") @db.VarChar(300)
+  /// Vorbereitet für die Beleg- und Rechnungshistorie
+  receiptUrl        String?       @map("receipt_url") @db.VarChar(500)
+  invoiceNumber     String?       @unique @map("invoice_number") @db.VarChar(40)
+  paidAt            DateTime?     @map("paid_at")
+  refundedAt        DateTime?     @map("refunded_at")
+  createdAt         DateTime      @default(now()) @map("created_at")
+  updatedAt         DateTime      @updatedAt @map("updated_at")
+  booking           Booking       @relation(fields: [bookingId], references: [id], onDelete: Restrict)
+  user              User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status, createdAt])
+  @@map("payments")
+}
+
+/// Verarbeitete Stripe-Ereignisse (Idempotenz: jedes Ereignis wirkt genau einmal)
+model StripeEvent {
+  id          String   @id @db.VarChar(255)
+  type        String   @db.VarChar(100)
+  livemode    Boolean
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt])
+  @@map("stripe_events")
+}
+
+/// Aufrufe je Inserat und Tag (ohne eigene Aufrufe, Bots und wiederholtes Neuladen). Keine IPs gespeichert.
+model ListingViewDay {
+  listingId String   @map("listing_id")
+  day       DateTime @db.Date
+  views     Int      @default(0)
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
+
+  @@id([listingId, day])
+  @@map("listing_view_days")
 }
 
 // ---------------------------------------------------------------------------

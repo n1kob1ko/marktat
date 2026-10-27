@@ -31,6 +31,7 @@ export const listingInclude = {
       accountType: true,
       companyName: true,
       avatarUrl: true,
+      logoKey: true,
       createdAt: true,
       status: true,
       deletedAt: true,
@@ -71,6 +72,22 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
     salary: schema.price === 'none' ? formatSalary(carryOverAttributes(schema, listing.attributes), true) : null,
     publishedAt: listing.publishedAt?.toISOString() ?? null,
     createdAt: listing.createdAt.toISOString(),
+    ...promotionState(listing),
+  };
+}
+
+/** Zusatzleistungen wirken nur bis zu ihrem Ende – unabhängig davon, wann der Ablaufjob zuletzt lief. */
+export function promotionState(
+  listing: Pick<ListingWithRelations, 'highlightedUntil' | 'topUntil' | 'highlightPaid' | 'topPaid' | 'bumpedAt'>,
+  now = new Date(),
+) {
+  const highlighted = listing.highlightedUntil !== null && listing.highlightedUntil > now;
+  const top = listing.topUntil !== null && listing.topUntil > now;
+  return {
+    highlighted,
+    top,
+    sponsored: (highlighted && listing.highlightPaid) || (top && listing.topPaid),
+    bumpedAt: listing.bumpedAt?.toISOString() ?? null,
   };
 }
 

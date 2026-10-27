@@ -53,7 +53,7 @@ describe('meiliFilters', () => {
   });
 
   it('sortiert stabil', () => {
-    expect(meiliSort(resolved({ sortierung: 'preis_auf' }, null))).toEqual(['priceCents:asc', 'publishedAt:desc', 'id:desc']);
+    expect(meiliSort(resolved({ sortierung: 'preis_auf' }, null))).toEqual(['priceCents:asc', 'sortedAt:desc', 'id:desc']);
     const center = { latitude: 48.2, longitude: 16.37, postalCode: '1010' };
     expect(meiliSort(resolved({ sortierung: 'entfernung', plz: '1010' }, null, center))[0]).toBe('_geoPoint(48.2, 16.37):asc');
   });

@@ -40,8 +40,14 @@ export interface SearchDocument {
   stateSlug: string | null;
   postalCode: string | null;
   _geo?: { lat: number; lng: number };
-  /** Unix-Zeit in Millisekunden (Sortierung „Neueste“) */
+  /** Unix-Zeit in Millisekunden (Benachrichtigungen gespeicherter Suchen: wirklich neue Inserate) */
   publishedAt: number;
+  /** max(Veröffentlichung, Hochschieben) in Millisekunden – Sortierung „Neueste“ */
+  sortedAt: number;
+  /** Top-Anzeige bis (Unix-Sekunden, 0 = keine) */
+  topUntil: number;
+  /** Aufbau des Dokuments; ältere Einträge werden beim Abgleich neu geschrieben (kein Neuaufbau nötig) */
+  v: number;
   /** Unix-Zeit in Sekunden */
   expiresAt: number;
   /** Letzte Änderung (Unix-Sekunden) – für den Abgleich mit der Datenbank */
@@ -71,6 +77,9 @@ export function ancestorPaths(path: string): string[] {
 
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
+/** Erhöhen, wenn sich der Aufbau der Dokumente ändert (2 = Phase 7: sortedAt, topUntil) */
+export const SEARCH_DOCUMENT_VERSION = 2;
+
 export function toSearchDocument(listing: IndexableListing, categoryNames: (path: string) => string[]): SearchDocument {
   const path = listing.category?.path ?? null;
   const schema = categoryAttributeSchema(path);
@@ -96,6 +105,9 @@ export function toSearchDocument(listing: IndexableListing, categoryNames: (path
     postalCode: location?.postalCode ?? null,
     ...(location && { _geo: { lat: location.latitude, lng: location.longitude } }),
     publishedAt: (listing.publishedAt ?? listing.createdAt).getTime(),
+    sortedAt: Math.max((listing.publishedAt ?? listing.createdAt).getTime(), listing.bumpedAt?.getTime() ?? 0),
+    topUntil: listing.topUntil ? seconds(listing.topUntil) : 0,
+    v: SEARCH_DOCUMENT_VERSION,
     expiresAt: seconds(listing.expiresAt!),
     updatedAt: seconds(listing.updatedAt),
     attributes: filterValues(attributes),
@@ -105,13 +117,13 @@ export function toSearchDocument(listing: IndexableListing, categoryNames: (path
 /** Indexeinstellungen – werden beim Start abgeglichen und bei jeder Neuindizierung gesetzt. */
 export function indexSettings() {
   return {
-    displayedAttributes: ['id', 'updatedAt'],
+    displayedAttributes: ['id', 'updatedAt', 'v'],
     searchableAttributes: ['title', 'attributesText', 'categoryNames', 'description', 'place'],
     filterableAttributes: [
-      'vertical', 'categoryPaths', 'priceCents', 'condition', 'isBusiness', 'stateSlug', 'postalCode', '_geo', 'expiresAt', 'publishedAt',
+      'vertical', 'categoryPaths', 'priceCents', 'condition', 'isBusiness', 'stateSlug', 'postalCode', '_geo', 'expiresAt', 'publishedAt', 'topUntil',
       ...allSearchFilters().map((f) => `attributes.${f.key}`),
     ].sort(),
-    sortableAttributes: ['_geo', 'id', 'priceCents', 'publishedAt'],
+    sortableAttributes: ['_geo', 'id', 'priceCents', 'publishedAt', 'sortedAt'],
     rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
     // Bewusst ohne deutsche Wortzerlegung (localizedAttributes „deu“): sie verhindert Tippfehlertoleranz
     // bei zusammengesetzten Wörtern („Fahrad“ fände „Fahrrad“ nicht mehr).

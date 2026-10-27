@@ -54,10 +54,13 @@ export function meiliFilters(search: ResolvedSearch, now = new Date()): string[]
   return filters;
 }
 
-/** Sortierung; bei Gleichstand immer das neuere Inserat, zuletzt die ID (stabile Seiten, gleich wie in SQL). */
+/**
+ * Sortierung; bei Gleichstand immer das neuere Inserat, zuletzt die ID (stabile Seiten, gleich wie in SQL).
+ * „Neueste“ nutzt max(Veröffentlichung, Hochschieben) – Hochgeschobene sinken danach wieder normal ab.
+ */
 export function meiliSort(search: ResolvedSearch): string[] {
   const { query, center } = search;
-  const newest = ['publishedAt:desc', 'id:desc'];
+  const newest = ['sortedAt:desc', 'id:desc'];
   switch (query.sort) {
     case 'preis_auf':
       return ['priceCents:asc', ...newest];
@@ -150,9 +153,12 @@ export function sqlConditions(search: ResolvedSearch): Prisma.Sql[] {
   return conditions;
 }
 
+/** max(Veröffentlichung, Hochschieben) wie `sortedAt` im Suchindex (GREATEST ignoriert NULL) */
+export const SORTED_AT = Prisma.sql`COALESCE(GREATEST(l.published_at, l.bumped_at), l.created_at)`;
+
 export function sqlOrder(search: ResolvedSearch): Prisma.Sql {
   const { query, center } = search;
-  const newest = Prisma.sql`COALESCE(l.published_at, l.created_at) DESC, l.id COLLATE "C" DESC`;
+  const newest = Prisma.sql`${SORTED_AT} DESC, l.id COLLATE "C" DESC`;
   switch (query.sort) {
     case 'preis_auf':
       return Prisma.sql`${PRICE} ASC NULLS LAST, ${newest}`;

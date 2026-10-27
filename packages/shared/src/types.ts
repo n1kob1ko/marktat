@@ -7,6 +7,7 @@ import type {
   Vertical,
 } from './enums.js';
 import type { ListingAttributes } from './attributes/types.js';
+import type { BillingMode, BookingStatus, EffectivePrice, IntroOffer, PaymentStatus, ProductCode, ProductKind } from './billing.js';
 import type { ReportReason } from './schemas/interactions.js';
 import type {
   AppealStatus,
@@ -37,6 +38,8 @@ export interface SearchResult extends Paginated<ListingSummary> {
   location: LocationSummary | null;
   /** Welche Suche geantwortet hat; `postgres` = Ausweichbetrieb ohne Meilisearch */
   engine: 'meilisearch' | 'postgres';
+  /** Top-Anzeigen mit denselben Filtern (nur Seite 1, abwechselnd ausgewählt) */
+  topAds: ListingSummary[];
 }
 
 export interface ApiError {
@@ -58,6 +61,11 @@ export interface MeResponse {
   companyRegisterNumber: string | null;
   vatId: string | null;
   companyAddress: string | null;
+  /** Händlerprofil (Phase 7) */
+  website: string | null;
+  showPhone: boolean;
+  /** URL des Logos bzw. Profilbilds (WebP) */
+  logoUrl: string | null;
   /** E-Mail bei neuen Nachrichten */
   notifyMessagesByEmail: boolean;
   /** E-Mail bei neuen Treffern gespeicherter Suchen (je Suche einzeln aktivierbar) */
@@ -124,6 +132,15 @@ export interface ListingSummary {
   distanceKm?: number | null;
   publishedAt: string | null;
   createdAt: string;
+  /** Zusatzleistungen (Phase 7): nur solange sie gelten */
+  highlighted: boolean;
+  top: boolean;
+  /** Platzierung bzw. Hervorhebung wurde bezahlt → als „Anzeige“ kennzeichnen */
+  sponsored: boolean;
+  /** Zuletzt hochgeschoben (das Veröffentlichungsdatum bleibt unverändert) */
+  bumpedAt: string | null;
+  /** Nur in „Meine Anzeigen“: Laufzeiten der aktiven Zusatzleistungen */
+  promotionsUntil?: { highlighted: string | null; top: string | null };
 }
 
 /** Ein fertig verarbeitetes Bild. URLs zeigen nie auf die unverarbeitete Originaldatei. */
@@ -478,4 +495,206 @@ export interface AdminDashboard {
     /** Wichtige Ereignisse aus dem Audit-Log */
     events: AuditEntry[];
   } | null;
+}
+
+// ---------------------------------------------------------------------------
+// Monetarisierung, Buchungen, Statistiken, Händler (Phase 7)
+// ---------------------------------------------------------------------------
+
+export interface ProductDto {
+  id: string;
+  code: ProductCode;
+  kind: ProductKind;
+  name: string;
+  description: string;
+  /** Standardpreis im kostenpflichtigen Betrieb */
+  priceCents: number;
+  plannedPriceCents: number | null;
+  currency: 'EUR';
+  durationDays: number | null;
+  forPrivate: boolean;
+  forBusiness: boolean;
+  isActive: boolean;
+  paidEnabled: boolean;
+  promoStartsAt: string | null;
+  promoEndsAt: string | null;
+  maxActivePerUser: number | null;
+  maxActiveTotal: number | null;
+  maxPerPeriod: number | null;
+  periodDays: number;
+  cooldownHours: number | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  /** Was eine Buchung jetzt kosten würde */
+  effective: EffectivePrice;
+}
+
+export interface BillingSettingsDto {
+  billingMode: BillingMode;
+  billingModeChangedAt: string | null;
+  introEnabled: boolean;
+  introVisible: boolean;
+  introTitle: string;
+  introDescription: string;
+  introStartsAt: string | null;
+  introEndsAt: string | null;
+  introShowPlannedPrice: boolean;
+  maxBookingsPerHour: number;
+  updatedAt: string;
+}
+
+export interface StripeStatus {
+  /** Schlüssel und Webhook-Secret vorhanden */
+  configured: boolean;
+  /** test = sk_test_…; live = sk_live_… (gesperrt, solange STRIPE_LIVE_ENABLED nicht gesetzt ist) */
+  keyMode: 'test' | 'live' | null;
+  webhookConfigured: boolean;
+  liveEnabled: boolean;
+  /** Zahlungen sind technisch möglich (Testmodus oder freigegebener Live-Modus) */
+  usable: boolean;
+}
+
+export interface BillingOverview {
+  settings: BillingSettingsDto;
+  products: ProductDto[];
+  stripe: StripeStatus;
+  /** Gründe, warum der kostenpflichtige Betrieb nicht eingeschaltet werden kann (leer = möglich) */
+  paidModeBlockers: string[];
+  intro: IntroOffer | null;
+  counts: { activeBookings: number; bookings30d: number; paidBookings: number; revenueCents: number };
+}
+
+/** Öffentliche Preisinformation für Website und Inseratsformular */
+export interface PublicBillingInfo {
+  mode: BillingMode;
+  intro: IntroOffer | null;
+  products: {
+    code: ProductCode;
+    kind: ProductKind;
+    name: string;
+    description: string;
+    priceCents: number;
+    requiresPayment: boolean;
+    plannedPriceCents: number | null;
+    durationDays: number | null;
+    isActive: boolean;
+  }[];
+}
+
+export interface BookingDto {
+  id: string;
+  product: { code: string; name: string; kind: ProductKind };
+  status: BookingStatus;
+  /** Preis zum Buchungszeitpunkt – ändert sich nie */
+  priceCents: number;
+  currency: string;
+  billingMode: BillingMode;
+  listing: { id: string; title: string } | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+  payment: { status: PaymentStatus; amountCents: number; refundedCents: number; paidAt: string | null; receiptUrl: string | null } | null;
+}
+
+export interface AdminBookingDto extends BookingDto {
+  user: { id: string; displayName: string; accountType: AccountType } | null;
+}
+
+export interface BookingResult {
+  booking: BookingDto;
+  /** Nur im kostenpflichtigen Betrieb: Weiterleitung zu Stripe Checkout */
+  checkoutUrl: string | null;
+}
+
+/** Zusatzleistung für ein bestimmtes eigenes Inserat */
+export interface ListingPromotionOption {
+  code: ProductCode;
+  kind: ProductKind;
+  name: string;
+  description: string;
+  priceCents: number;
+  requiresPayment: boolean;
+  durationDays: number | null;
+  /** Jetzt buchbar */
+  available: boolean;
+  /** Warum nicht (deutsch), z. B. „Wieder möglich ab 28.10.2026, 14:00“ */
+  unavailableReason: string | null;
+  /** Läuft gerade bis … */
+  activeUntil: string | null;
+  /** Hochschieben: frühestens wieder ab … */
+  nextAvailableAt: string | null;
+}
+
+export interface ProductUsage {
+  code: ProductCode;
+  name: string;
+  kind: ProductKind;
+  active: number;
+  maxActivePerUser: number | null;
+  usedInPeriod: number;
+  maxPerPeriod: number | null;
+  periodDays: number;
+  cooldownHours: number | null;
+}
+
+export interface MyBillingOverview {
+  mode: BillingMode;
+  intro: IntroOffer | null;
+  usage: ProductUsage[];
+  activeBookings: BookingDto[];
+  history: Paginated<BookingDto>;
+}
+
+export interface ListingStats {
+  listingId: string;
+  title: string;
+  status: ListingStatus;
+  createdAt: string;
+  publishedAt: string | null;
+  expiresAt: string | null;
+  bumpedAt: string | null;
+  totalViews: number;
+  /** Letzte 30 Tage, ältester zuerst, Tage ohne Aufrufe mit 0 */
+  viewsByDay: { day: string; views: number }[];
+  favorites: number;
+  /** Personen, die das Inserat gemerkt oder angeschrieben haben (ohne doppelte) */
+  interestedPeople: number;
+  /** Unterhaltungen zu diesem Inserat */
+  inquiries: number;
+  activePromotions: { code: string; name: string; endsAt: string | null }[];
+  /** Seit wann Aufrufe gezählt werden (Einführung der Statistik) */
+  countingSince: string | null;
+}
+
+export interface DealerProfile {
+  id: string;
+  companyName: string;
+  displayName: string;
+  logoUrl: string | null;
+  description: string | null;
+  address: string | null;
+  website: string | null;
+  phone: string | null;
+  companyRegisterNumber: string | null;
+  vatId: string | null;
+  memberSince: string;
+  activeListings: number;
+  listings: Paginated<ListingSummary>;
+}
+
+export interface DealerDashboard {
+  listings: { active: number; paused: number; expired: number; drafts: number; other: number };
+  views30d: number;
+  totalViews: number;
+  favorites: number;
+  inquiries30d: number;
+  inquiries: number;
+  activeTop: number;
+  activeHighlights: number;
+  bumps30d: number;
+  usage: ProductUsage[];
+  topListings: { id: string; title: string; views: number; favorites: number; inquiries: number }[];
+  profileComplete: boolean;
+  missingProfileFields: string[];
 }

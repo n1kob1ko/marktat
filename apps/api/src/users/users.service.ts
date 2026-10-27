@@ -7,7 +7,7 @@ import type { AuthUser, SupabaseClaims } from '../auth/auth.types.js';
 import { toMe, toPublicSeller } from './users.mapper.js';
 
 const LAST_SEEN_INTERVAL_MS = 15 * 60_000;
-const BUSINESS_FIELDS = ['companyName', 'companyRegisterNumber', 'vatId', 'companyAddress'] as const;
+const BUSINESS_FIELDS = ['companyName', 'companyRegisterNumber', 'vatId', 'companyAddress', 'website', 'showPhone'] as const;
 
 @Injectable()
 export class UsersService {
@@ -123,6 +123,7 @@ export class UsersService {
         accountType: true,
         companyName: true,
         avatarUrl: true,
+        logoKey: true,
         createdAt: true,
         _count: { select: { listings: { where: { status: 'ACTIVE', expiresAt: { gt: new Date() } } } } },
       },

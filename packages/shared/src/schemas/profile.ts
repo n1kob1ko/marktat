@@ -34,5 +34,15 @@ export const updateProfileSchema = z.object({
     .optional()
     .or(z.literal('').transform(() => null)),
   companyAddress: optionalText(200),
+  /** Händlerprofil: Website (nur https) und ob die Telefonnummer öffentlich angezeigt wird */
+  website: z
+    .string()
+    .trim()
+    .max(200)
+    .refine((v) => v === '' || /^https:\/\/[^\s/$.?#][^\s]*$/i.test(v), 'Bitte gib eine Adresse mit https:// ein.')
+    .transform((v) => (v === '' ? null : v))
+    .nullable()
+    .optional(),
+  showPhone: z.boolean().optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
