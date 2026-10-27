@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useState, useTransition, type FormE
 import { Eye, MapPin } from 'lucide-react';
 import { Alert, Button, Card, cn, Field, Input, Select, Textarea } from '@marktat/ui';
 import {
+  ATTRIBUTE_FIELDS,
   ITEM_CONDITION_LABELS,
   ITEM_CONDITIONS,
   isAustrianPostalCode,
@@ -71,6 +72,7 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
   });
 
   const main = categories.find((c) => c.id === mainId);
+  const attributeFields = main ? ATTRIBUTE_FIELDS[main.vertical] : [];
   const needsPrice = priceType === 'FIXED' || priceType === 'NEGOTIABLE';
   const isMarketplace = (main?.vertical ?? 'MARKETPLACE') === 'MARKETPLACE';
 
@@ -165,7 +167,26 @@ export function ListingForm({ categories, action, listing }: ListingFormProps) {
               </Select>
             </Field>
           ) : null}
-          <p className="text-sm text-ink-500">Bilder hochladen und kategoriespezifische Felder (z. B. Kilometerstand, Wohnfläche) folgen in den nächsten Phasen.</p>
+          {attributeFields.length > 0 ? (
+            <div className="space-y-4 border-t border-line pt-5">
+              <h3 className="font-semibold text-ink-900">Weitere Angaben</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                {attributeFields.map((field) => (
+                  <Field key={field.key} label={field.label + (field.unit ? ` (${field.unit})` : '')} error={errors[`attributes.${field.key}`]}>
+                    <Input
+                      key={mainId + ':' + field.key}
+                      name={`attr_${field.key}`}
+                      type={field.kind === 'number' ? 'number' : 'text'}
+                      min={field.min}
+                      max={field.max}
+                      step={field.kind === 'number' ? 'any' : undefined}
+                      defaultValue={v?.[`attributes.${field.key}`] ?? listing?.attributes?.[field.key]?.toString() ?? ''}
+                    />
+                  </Field>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </Card>
 
         <Card className="space-y-5 p-5 sm:p-7">
