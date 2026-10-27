@@ -7,7 +7,7 @@
  */
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DEAL_CATEGORIES, STATES, slugify, VERTICAL_SLUGS, type Vertical } from '@marktat/shared';
+import { DEAL_CATEGORIES, SERVICE_CATEGORIES, STATES, slugify, VERTICAL_SLUGS, type Vertical } from '@marktat/shared';
 import { createPrismaClient } from '../../src/prisma/create-client.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { CATEGORY_TREE, type CategorySeed } from './categories.js';
@@ -77,6 +77,24 @@ async function seedDealCategories(prisma: PrismaClient) {
   console.log(`Deal-Kategorien: ${DEAL_CATEGORIES.length}`);
 }
 
+/** Kategorien der Dienstleistungen (Phase 10) – wie bei den Deals über den Slug, entfernte nur deaktiviert. */
+async function seedServiceCategories(prisma: PrismaClient) {
+  for (const [sortOrder, category] of SERVICE_CATEGORIES.entries()) {
+    const data = {
+      name: category.name,
+      groupSlug: category.group.slug,
+      groupName: category.group.name,
+      regulated: category.regulated ?? false,
+      relatedCategoryPath: category.relatedCategoryPath ?? null,
+      sortOrder,
+      isActive: true,
+    };
+    await prisma.serviceCategory.upsert({ where: { slug: category.slug }, update: data, create: { slug: category.slug, ...data } });
+  }
+  await prisma.serviceCategory.updateMany({ where: { slug: { notIn: SERVICE_CATEGORIES.map((c) => c.slug) } }, data: { isActive: false } });
+  console.log(`Dienstleistungs-Kategorien: ${SERVICE_CATEGORIES.length}`);
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error('DATABASE_URL ist nicht gesetzt.');
@@ -89,6 +107,7 @@ async function main() {
     }
     console.log(`Kategorien: ${total}`);
     await seedDealCategories(prisma);
+    await seedServiceCategories(prisma);
     if (process.argv.includes('--demo')) {
       if (process.env.NODE_ENV === 'production') {
         throw new Error('Demo-Daten dürfen nicht in Produktion angelegt werden.');

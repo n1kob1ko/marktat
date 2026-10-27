@@ -38,6 +38,7 @@ export class DataExportService {
         where: { OR: [{ buyerId: id }, { sellerId: id }] },
         include: {
           listing: { select: { id: true, title: true } },
+          serviceProfile: { select: { id: true, headline: true } },
           buyer: { select: { displayName: true, status: true } },
           seller: { select: { displayName: true, status: true } },
           messages: { where: { senderId: id }, orderBy: { createdAt: 'asc' }, select: { body: true, createdAt: true, readAt: true } },
@@ -46,8 +47,8 @@ export class DataExportService {
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.userBlock.findMany({ where: { blockerId: id }, include: { blocked: { select: { displayName: true, status: true } } } }),
-      this.prisma.report.findMany({ where: { reporterId: id }, select: { targetType: true, reason: true, details: true, status: true, createdAt: true, listing: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
-      this.prisma.moderationDecision.findMany({ where: { userId: id }, include: { appeal: true, listing: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.report.findMany({ where: { reporterId: id }, select: { targetType: true, reason: true, details: true, status: true, createdAt: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.moderationDecision.findMany({ where: { userId: id }, include: { appeal: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } }, orderBy: { createdAt: 'asc' } }),
       this.prisma.notification.findMany({ where: { userId: id }, orderBy: { createdAt: 'asc' } }),
       this.prisma.auditLog.findMany({ where: { actorId: id }, select: { action: true, createdAt: true, ipPrefix: true }, orderBy: { createdAt: 'desc' }, take: ACTIVITY_LIMIT }),
       this.prisma.booking.findMany({
@@ -56,8 +57,8 @@ export class DataExportService {
         orderBy: { createdAt: 'asc' },
       }),
     ]);
-    // Händlerbereich (Phase 10): Deals, Filialen, Produktfeeds
-    const [deals, stores, feeds] = await Promise.all([
+    // Händlerbereich und Dienstleistungen (Phase 10): Deals, Filialen, Produktfeeds, Anbieterprofil
+    const [deals, stores, feeds, serviceProfile] = await Promise.all([
       this.prisma.deal.findMany({
         where: { merchantId: id, status: { not: 'DELETED' } },
         include: { category: { select: { name: true } }, priceRecords: { select: { priceCents: true, recordedAt: true }, orderBy: { recordedAt: 'asc' } } },
@@ -65,6 +66,15 @@ export class DataExportService {
       }),
       this.prisma.dealerStore.findMany({ where: { merchantId: id, deletedAt: null }, include: { location: { select: { postalCode: true, place: true } } } }),
       this.prisma.dealFeed.findMany({ where: { merchantId: id, deletedAt: null }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.serviceProfile.findFirst({
+        where: { userId: id, status: { not: 'DELETED' } },
+        include: {
+          categories: { include: { category: { select: { name: true } } } },
+          location: { select: { postalCode: true, place: true } },
+          portfolio: { include: { category: { select: { name: true } } }, orderBy: { sortOrder: 'asc' } },
+          qualifications: { orderBy: { createdAt: 'asc' } },
+        },
+      }),
     ]);
     const name = (u: { displayName: string; status: string }) => (u.status === 'DELETED' ? 'Gelöschtes Konto' : u.displayName);
 
@@ -121,6 +131,7 @@ export class DataExportService {
       conversations: conversations.map((c) => ({
         id: c.id,
         listing: c.listing,
+        serviceProfile: c.serviceProfile ? { id: c.serviceProfile.id, headline: c.serviceProfile.headline } : null,
         myRole: c.buyerId === id ? 'Interessent' : 'Anbieter',
         partner: name(c.buyerId === id ? c.seller : c.buyer),
         startedAt: c.createdAt,
@@ -129,7 +140,14 @@ export class DataExportService {
       })),
       blockedPersons: blocks.map((b) => ({ displayName: name(b.blocked), blockedAt: b.createdAt })),
       reportsMade: reports.map((r) => ({
-        target: r.targetType === 'LISTING' ? `Inserat „${r.listing?.title ?? 'gelöscht'}“` : 'Unterhaltung',
+        target:
+          r.targetType === 'LISTING'
+            ? `Inserat „${r.listing?.title ?? 'gelöscht'}“`
+            : r.targetType === 'DEAL'
+              ? `Angebot „${r.deal?.title ?? 'gelöscht'}“`
+              : r.targetType === 'SERVICE_PROFILE'
+                ? `Anbieterprofil „${r.serviceProfile?.headline ?? 'gelöscht'}“`
+                : 'Unterhaltung',
         reason: REPORT_REASON_LABELS[r.reason],
         details: r.details,
         status: r.status,
@@ -138,6 +156,8 @@ export class DataExportService {
       moderationDecisions: decisions.map((d) => ({
         action: MODERATION_ACTION_LABELS[d.action],
         listing: d.listing?.title ?? null,
+        deal: d.deal?.title ?? null,
+        serviceProfile: d.serviceProfile?.headline ?? null,
         reason: d.reason ? REPORT_REASON_LABELS[d.reason] : null,
         ground: d.ground,
         statement: d.statement,
@@ -167,6 +187,45 @@ export class DataExportService {
       })),
       stores: stores.map((s) => ({ name: s.name, street: s.street, postalCode: s.location.postalCode, place: s.location.place, openingHours: s.openingHours })),
       dealFeeds: feeds.map((f) => ({ name: f.name, url: f.url, format: f.format, status: f.status, licenseNote: f.licenseNote, createdAt: f.createdAt })),
+      serviceProfile: serviceProfile
+        ? {
+            id: serviceProfile.id,
+            status: serviceProfile.status,
+            headline: serviceProfile.headline,
+            summary: serviceProfile.summary,
+            description: serviceProfile.description,
+            categories: serviceProfile.categories.map((c) => c.category.name),
+            skills: serviceProfile.skills,
+            location: serviceProfile.location,
+            serviceRadiusKm: serviceProfile.serviceRadiusKm,
+            austriaWide: serviceProfile.austriaWide,
+            remote: serviceProfile.remote,
+            priceType: serviceProfile.priceType,
+            priceCents: serviceProfile.priceCents,
+            experienceYears: serviceProfile.experienceYears,
+            website: serviceProfile.website,
+            availability: serviceProfile.availability,
+            availabilityNote: serviceProfile.availabilityNote,
+            hasImage: Boolean(serviceProfile.imageKey),
+            imageRights: serviceProfile.imageRights,
+            imageCredit: serviceProfile.imageCredit,
+            confirmedAt: serviceProfile.confirmedAt,
+            publishedAt: serviceProfile.publishedAt,
+            createdAt: serviceProfile.createdAt,
+            portfolio: serviceProfile.portfolio.map((p) => ({
+              title: p.title,
+              description: p.description,
+              category: p.category?.name ?? null,
+              url: p.url,
+              hasImage: Boolean(p.imageKey),
+              imageRights: p.imageRights,
+              imageCredit: p.imageCredit,
+              hiddenByModeration: Boolean(p.hiddenAt),
+              createdAt: p.createdAt,
+            })),
+            qualifications: serviceProfile.qualifications.map((q) => ({ title: q.title, issuer: q.issuer, reference: q.reference, status: q.status, reviewedAt: q.reviewedAt })),
+          }
+        : null,
       bookings: bookings.map((b) => ({
         product: b.product.name,
         listing: b.listing?.title ?? null,

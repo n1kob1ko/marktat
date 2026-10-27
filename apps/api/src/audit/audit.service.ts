@@ -95,7 +95,28 @@ export type AuditAction =
   | 'deal.feed_ended'
   | 'admin.deal_feed_approve'
   | 'admin.deal_feed_reject'
-  | 'admin.deal_feed_pause';
+  | 'admin.deal_feed_pause'
+  | 'service_profile.created'
+  | 'service_profile.updated'
+  | 'service_profile.published'
+  | 'service_profile.paused'
+  | 'service_profile.resumed'
+  | 'service_profile.resubmitted'
+  | 'service_profile.deleted'
+  | 'service_profile.image_updated'
+  | 'service_profile.reported'
+  | 'service_profile.portfolio_created'
+  | 'service_profile.portfolio_updated'
+  | 'service_profile.portfolio_deleted'
+  | 'service_profile.qualification_created'
+  | 'service_profile.qualification_deleted'
+  | 'moderation.service_profile_rejected'
+  | 'moderation.service_profile_hidden'
+  | 'moderation.service_profile_restored'
+  | 'moderation.portfolio_item_hidden'
+  | 'moderation.portfolio_item_restored'
+  | 'admin.qualification_verified'
+  | 'admin.qualification_rejected';
 
 /** Ereignisse, die das Dashboard als „wichtig“ hervorhebt */
 export const IMPORTANT_AUDIT_PREFIXES = [

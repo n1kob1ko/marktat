@@ -10,6 +10,8 @@ import {
   decideAppealAction,
   decideDealAction,
   decideListingAction,
+  decidePortfolioItemAction,
+  decideServiceProfileAction,
   decideUserAction,
   dealsBlockAction,
   dismissReportAction,
@@ -45,6 +47,8 @@ const DECISION_ACTIONS = {
   listing: decideListingAction,
   user: decideUserAction,
   deal: decideDealAction,
+  serviceProfile: decideServiceProfileAction,
+  portfolioItem: decidePortfolioItemAction,
   dealsBlock: dealsBlockAction,
 } satisfies Record<string, Action>;
 
@@ -60,7 +64,10 @@ export function DecisionForm({
   reportId,
   defaultReason,
   stepUp,
+  hidden,
 }: {
+  /** Zusätzliche versteckte Felder (z. B. das Profil, zu dem ein Portfolio-Eintrag gehört) */
+  hidden?: Record<string, string>;
   /** Kritische Aktion (Kontosperre): Bestätigungscode abfragen, wenn die Sitzung 2FA nutzt */
   stepUp?: { enabled: boolean; maxAgeMinutes: number };
   target: keyof typeof DECISION_ACTIONS;
@@ -84,6 +91,9 @@ export function DecisionForm({
       <input type="hidden" name="id" value={id} />
       {version ? <input type="hidden" name="version" value={version} /> : null}
       {reportId ? <input type="hidden" name="reportId" value={reportId} /> : null}
+      {Object.entries(hidden ?? {}).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">Maßnahme</legend>
         <div className="mt-2 space-y-2">

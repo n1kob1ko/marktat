@@ -23,6 +23,7 @@ import { AuditService } from '../audit/audit.service.js';
 import { loadEnv } from '../config/env.js';
 import { Prisma, type Message } from '../generated/prisma/client.js';
 import { ImageUrls } from '../images/image-urls.js';
+import { MediaUrls } from '../images/media.js';
 import { JobsService } from '../jobs/jobs.service.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
@@ -30,6 +31,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
+import { serviceProfileImageUrl } from '../services/service-images.js';
+import { isServiceProfilePublic, publicServiceProfileWhere } from '../services/visibility.js';
 
 /** Grenzwerte gegen Spam und massenhaftes Anschreiben (je Konto, gilt über alle API-Instanzen). */
 export const MESSAGE_LIMITS = {
@@ -64,12 +67,24 @@ const conversationInclude = {
       images: { where: { status: 'READY' }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }], take: 1, select: { id: true } },
     },
   },
+  serviceProfile: {
+    select: {
+      id: true,
+      headline: true,
+      status: true,
+      imageKey: true,
+      user: { select: { id: true, status: true, deletedAt: true, accountType: true, logoKey: true } },
+    },
+  },
   buyer: { select: userSelect },
   seller: { select: userSelect },
   messages: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1 },
 } satisfies Prisma.ConversationInclude;
 
 type ConversationRow = Prisma.ConversationGetPayload<{ include: typeof conversationInclude }>;
+
+/** Worauf sich eine neue Unterhaltung bezieht */
+type Subject = { kind: 'listing'; id: string } | { kind: 'service'; id: string };
 type UserRow = ConversationRow['buyer'];
 
 const MESSAGE_EMAIL_JOB = 'message-email';
@@ -77,7 +92,7 @@ const MESSAGE_EMAIL_JOB = 'message-email';
 const DUPLICATE_CLIENT_ID = 'Diese Nachricht wurde bereits in einer anderen Unterhaltung gesendet. Bitte lade die Seite neu.';
 
 /**
- * Private Nachrichten zwischen Interessent und Anbieter, je Inserat eine Unterhaltung.
+ * Private Nachrichten zwischen Interessent und Anbieter, je Inserat bzw. Anbieterprofil eine Unterhaltung.
  * Jede Abfrage ist auf die beiden Beteiligten beschränkt; fremde IDs ergeben 404 (keine Bestätigung,
  * dass es die Unterhaltung gibt).
  */
@@ -89,6 +104,7 @@ export class MessagesService implements OnModuleInit {
   constructor(
     private readonly prisma: PrismaService,
     private readonly urls: ImageUrls,
+    private readonly mediaUrls: MediaUrls,
     private readonly realtime: RealtimeService,
     private readonly jobs: JobsService,
     private readonly mail: MailService,
@@ -106,29 +122,31 @@ export class MessagesService implements OnModuleInit {
    * Erste Nachricht zu einem Inserat. Besteht schon eine Unterhaltung, wird sie fortgesetzt.
    * Mit `clientId` ist das Senden wiederholbar: Ein zweiter Aufruf liefert die schon gespeicherte Nachricht.
    */
-  async start(
-    user: AuthUser,
-    listingId: string,
-    body: string,
-    ip?: string,
-    clientId?: string,
-  ): Promise<{ conversationId: string; message: ChatMessage }> {
+  start(user: AuthUser, listingId: string, body: string, ip?: string, clientId?: string): Promise<{ conversationId: string; message: ChatMessage }> {
+    return this.startWith(user, { kind: 'listing', id: listingId }, body, ip, clientId);
+  }
+
+  /** Anfrage an eine Anbieterin bzw. einen Anbieter von Dienstleistungen (gleiche Regeln wie bei Inseraten) */
+  startForService(user: AuthUser, profileId: string, body: string, ip?: string, clientId?: string): Promise<{ conversationId: string; message: ChatMessage }> {
+    return this.startWith(user, { kind: 'service', id: profileId }, body, ip, clientId);
+  }
+
+  private async startWith(user: AuthUser, subject: Subject, body: string, ip?: string, clientId?: string): Promise<{ conversationId: string; message: ChatMessage }> {
+    const sameSubject = (conversation: { listingId: string | null; serviceProfileId: string | null }) =>
+      subject.kind === 'listing' ? conversation.listingId === subject.id : conversation.serviceProfileId === subject.id;
     const previous = await this.previousSend(user.id, clientId);
     if (previous) {
-      if (previous.conversation.listingId !== listingId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      if (!sameSubject(previous.conversation)) throw new ConflictException(DUPLICATE_CLIENT_ID);
       return { conversationId: previous.conversationId, message: toChatMessage(previous, user.id) };
     }
-    const listing = ENTITY_ID.test(listingId)
-      ? await this.prisma.listing.findFirst({ where: { id: listingId, ...publiclyVisibleWhere() }, select: { id: true, sellerId: true } })
-      : null;
-    if (!listing) throw new NotFoundException('Diese Anzeige ist nicht mehr verfügbar.');
-    if (listing.sellerId === user.id) throw new BadRequestException('Das ist deine eigene Anzeige – du kannst dir nicht selbst schreiben.');
-    await this.assertNotBlocked(user.id, listing.sellerId);
+    const ownerId = await this.subjectOwner(user, subject);
+    await this.assertNotBlocked(user.id, ownerId);
 
-    const existing = await this.prisma.conversation.findUnique({
-      where: { listingId_buyerId: { listingId, buyerId: user.id } },
-      select: { id: true },
-    });
+    const key =
+      subject.kind === 'listing'
+        ? { listingId_buyerId: { listingId: subject.id, buyerId: user.id } }
+        : { serviceProfileId_buyerId: { serviceProfileId: subject.id, buyerId: user.id } };
+    const existing = await this.prisma.conversation.findUnique({ where: key, select: { id: true } });
     if (!existing) await this.assertConversationLimit(user.id);
     await this.assertMessageLimit(user.id);
 
@@ -136,13 +154,17 @@ export class MessagesService implements OnModuleInit {
     try {
       created = await this.prisma.$transaction(async (tx) => {
         const conversation = await tx.conversation.upsert({
-          where: { listingId_buyerId: { listingId, buyerId: user.id } },
-          create: { listingId, buyerId: user.id, sellerId: listing.sellerId },
+          where: key,
+          create: {
+            ...(subject.kind === 'listing' ? { listingId: subject.id } : { serviceProfileId: subject.id }),
+            buyerId: user.id,
+            sellerId: ownerId,
+          },
           update: {},
           select: { id: true },
         });
         const message = await tx.message.create({
-          data: { conversationId: conversation.id, senderId: user.id, recipientId: listing.sellerId, body, clientId },
+          data: { conversationId: conversation.id, senderId: user.id, recipientId: ownerId, body, clientId },
         });
         await tx.conversation.update({ where: { id: conversation.id }, data: { lastMessageAt: message.createdAt } });
         return { conversationId: conversation.id, message };
@@ -150,15 +172,40 @@ export class MessagesService implements OnModuleInit {
     } catch (error) {
       // Gleichzeitig doppelt abgeschickt: Die andere Anfrage hat die Nachricht schon gespeichert
       const raced = await this.previousSendAfter(error, user.id, clientId);
-      if (raced.conversation.listingId !== listingId) throw new ConflictException(DUPLICATE_CLIENT_ID);
+      if (!sameSubject(raced.conversation)) throw new ConflictException(DUPLICATE_CLIENT_ID);
       return { conversationId: raced.conversationId, message: toChatMessage(raced, user.id) };
     }
     const { conversationId, message } = created;
     if (!existing) {
-      this.audit.log({ action: 'conversation.started', actorId: user.id, entityType: 'conversation', entityId: conversationId, ip, metadata: { listingId } });
+      this.audit.log({
+        action: 'conversation.started',
+        actorId: user.id,
+        entityType: 'conversation',
+        entityId: conversationId,
+        ip,
+        metadata: subject.kind === 'listing' ? { listingId: subject.id } : { serviceProfileId: subject.id },
+      });
     }
     await this.afterSend(message);
     return { conversationId, message: toChatMessage(message, user.id) };
+  }
+
+  /** Konto, das angeschrieben wird – nur bei öffentlich sichtbaren Inhalten und nie das eigene */
+  private async subjectOwner(user: AuthUser, subject: Subject): Promise<string> {
+    if (subject.kind === 'listing') {
+      const listing = ENTITY_ID.test(subject.id)
+        ? await this.prisma.listing.findFirst({ where: { id: subject.id, ...publiclyVisibleWhere() }, select: { sellerId: true } })
+        : null;
+      if (!listing) throw new NotFoundException('Diese Anzeige ist nicht mehr verfügbar.');
+      if (listing.sellerId === user.id) throw new BadRequestException('Das ist deine eigene Anzeige – du kannst dir nicht selbst schreiben.');
+      return listing.sellerId;
+    }
+    const profile = ENTITY_ID.test(subject.id)
+      ? await this.prisma.serviceProfile.findFirst({ where: { id: subject.id, ...publicServiceProfileWhere() }, select: { userId: true } })
+      : null;
+    if (!profile) throw new NotFoundException('Dieses Anbieterprofil ist nicht mehr verfügbar.');
+    if (profile.userId === user.id) throw new BadRequestException('Das ist dein eigenes Profil – du kannst dir nicht selbst schreiben.');
+    return profile.userId;
   }
 
   async list(user: AuthUser, options: { filter?: ConversationFilter; q?: string; page?: number } = {}): Promise<Paginated<ConversationSummary>> {
@@ -298,6 +345,12 @@ export class MessagesService implements OnModuleInit {
     return row?.id ?? null;
   }
 
+  /** Für die Seite eines Anbieterprofils: bestehende Unterhaltung der angemeldeten Person */
+  async conversationIdForService(userId: string, serviceProfileId: string): Promise<string | null> {
+    const row = await this.prisma.conversation.findUnique({ where: { serviceProfileId_buyerId: { serviceProfileId, buyerId: userId } }, select: { id: true } });
+    return row?.id ?? null;
+  }
+
   // --- Blockieren und Melden -----------------------------------------------------
 
   async block(user: AuthUser, targetId: string, ip?: string): Promise<void> {
@@ -354,7 +407,7 @@ export class MessagesService implements OnModuleInit {
 
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      include: { listing: { select: { title: true } }, buyer: { select: userSelect }, seller: { select: userSelect } },
+      include: { listing: { select: { title: true } }, serviceProfile: { select: { headline: true } }, buyer: { select: userSelect }, seller: { select: userSelect } },
     });
     const recipient = await this.prisma.user.findUnique({ where: { id: recipientId } });
     const alreadyNotified = unread.length > pendingIds.length;
@@ -364,10 +417,13 @@ export class MessagesService implements OnModuleInit {
     }
     const sender = conversation.buyerId === recipientId ? conversation.seller : conversation.buyer;
     const senderName = displayName(sender);
-    const title = conversation.listing.title;
+    const title = conversation.listing?.title ?? conversation.serviceProfile?.headline ?? 'Unterhaltung';
     const url = `${this.env.WEB_URL}/nachrichten/${conversation.id}`;
     const count = pendingIds.length;
-    const intro = conversation.sellerId === recipientId ? `zu deiner Anzeige „${title}“` : `zur Anzeige „${title}“`;
+    const toOwner = conversation.sellerId === recipientId;
+    const intro = conversation.listing
+      ? toOwner ? `zu deiner Anzeige „${title}“` : `zur Anzeige „${title}“`
+      : toOwner ? `zu deinem Anbieterprofil „${title}“` : `zum Anbieterprofil „${title}“`;
     const text = [
       `Hallo ${recipient.displayName},`,
       '',
@@ -396,7 +452,7 @@ export class MessagesService implements OnModuleInit {
   /** Schon mit dieser Kennung gesendete Nachricht (erneutes Abschicken nach Doppelklick oder Verbindungsabbruch) */
   private previousSend(senderId: string, clientId?: string) {
     if (!clientId) return Promise.resolve(null);
-    return this.prisma.message.findFirst({ where: { senderId, clientId }, include: { conversation: { select: { listingId: true } } } });
+    return this.prisma.message.findFirst({ where: { senderId, clientId }, include: { conversation: { select: { listingId: true, serviceProfileId: true } } } });
   }
 
   /** Nach einem Fehler beim Speichern: Lag es an einer gleichzeitig gespeicherten Nachricht mit derselben Kennung? */
@@ -450,6 +506,7 @@ export class MessagesService implements OnModuleInit {
       and.push({
         OR: [
           { listing: { title: contains } },
+          { serviceProfile: { headline: contains } },
           { buyerId: userId, seller: { displayName: contains } },
           { sellerId: userId, buyer: { displayName: contains } },
         ],
@@ -471,23 +528,40 @@ export class MessagesService implements OnModuleInit {
   private toSummary(row: ConversationRow, userId: string, unreadCount: number): ConversationSummary {
     const role = row.buyerId === userId ? 'buyer' : 'seller';
     const partner = role === 'buyer' ? row.seller : row.buyer;
-    const { listing } = row;
-    const available = isPubliclyVisible(listing);
-    const image = listing.images[0];
     const last = row.messages[0];
+    let listing: ConversationSummary['listing'] = null;
+    let subject: ConversationSummary['subject'];
+    if (row.listing) {
+      const available = isPubliclyVisible(row.listing);
+      const image = row.listing.images[0];
+      listing = {
+        id: row.listing.id,
+        title: row.listing.title,
+        // Beteiligte kannten das Inserat schon; nicht mehr öffentliche Bilder nur signiert, gelöschte gar nicht
+        imageUrl: image && !row.listing.deletedAt ? this.urls.url(image.id, 'thumb', !available) : null,
+        priceType: row.listing.priceType,
+        priceCents: row.listing.priceCents === null ? null : Number(row.listing.priceCents),
+        available,
+      };
+      subject = { kind: 'listing', id: listing.id, title: listing.title, imageUrl: listing.imageUrl, available, href: `/anzeige/${listing.id}` };
+    } else {
+      const profile = row.serviceProfile!;
+      const available = isServiceProfilePublic(profile);
+      subject = {
+        kind: 'service',
+        id: profile.id,
+        title: profile.headline,
+        imageUrl: profile.status === 'DELETED' ? null : serviceProfileImageUrl(profile, this.mediaUrls, 'thumb'),
+        available,
+        href: `/dienstleistungen/${profile.id}`,
+      };
+    }
     return {
       id: row.id,
       role,
       partner: { id: partner.id, displayName: displayName(partner), inactive: isInactive(partner) },
-      listing: {
-        id: listing.id,
-        title: listing.title,
-        // Beteiligte kannten das Inserat schon; nicht mehr öffentliche Bilder nur signiert, gelöschte gar nicht
-        imageUrl: image && !listing.deletedAt ? this.urls.url(image.id, 'thumb', !available) : null,
-        priceType: listing.priceType,
-        priceCents: listing.priceCents === null ? null : Number(listing.priceCents),
-        available,
-      },
+      subject,
+      listing,
       lastMessage: last
         ? { body: preview(last.body), mine: last.senderId === userId, createdAt: last.createdAt.toISOString() }
         : null,

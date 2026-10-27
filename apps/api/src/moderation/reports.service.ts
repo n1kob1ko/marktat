@@ -18,6 +18,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { publicDealWhere } from '../deals/deals.mapper.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { publicServiceProfileWhere } from '../services/visibility.js';
 import { decisionInclude, personSelect, reportSummaryInclude, toAdminDecision, toPerson, toReportSummary, type ReportWithRelations } from './moderation.mapper.js';
 import { NotificationsService } from './notifications.service.js';
 
@@ -74,6 +75,17 @@ export class ReportsService {
     return { id: report.id };
   }
 
+  /** Meldung eines Anbieterprofils (z. B. falsche Qualifikationen, fremde Bilder im Portfolio, Betrug) */
+  async reportServiceProfile(user: AuthUser, profileId: string, input: ReportListingInput, ip?: string): Promise<{ id: string }> {
+    if (!ENTITY_ID.test(profileId)) throw new NotFoundException('Dieses Anbieterprofil gibt es nicht.');
+    const profile = await this.prisma.serviceProfile.findFirst({ where: { id: profileId, ...publicServiceProfileWhere() }, select: { id: true, userId: true } });
+    if (!profile) throw new NotFoundException('Dieses Anbieterprofil gibt es nicht (mehr).');
+    if (profile.userId === user.id) throw new ForbiddenException('Dein eigenes Profil kannst du nicht melden.');
+    const report = await this.create(user, { targetType: 'SERVICE_PROFILE', serviceProfileId: profile.id, reportedId: profile.userId, reason: input.reason, details: input.details });
+    this.audit.log({ action: 'service_profile.reported', actorId: user.id, entityType: 'service_profile', entityId: profile.id, ip, metadata: { reportId: report.id, reason: input.reason } });
+    return { id: report.id };
+  }
+
   async reportConversation(user: AuthUser, conversation: { id: string; reportedId: string }, input: ReportUserInput, ip?: string) {
     const report = await this.create(user, {
       targetType: 'CONVERSATION',
@@ -92,7 +104,16 @@ export class ReportsService {
    */
   private async create(
     user: AuthUser,
-    data: { targetType: 'LISTING' | 'CONVERSATION' | 'DEAL'; listingId?: string; dealId?: string; conversationId?: string; reportedId: string; reason: ReportReason; details?: string },
+    data: {
+      targetType: 'LISTING' | 'CONVERSATION' | 'DEAL' | 'SERVICE_PROFILE';
+      listingId?: string;
+      dealId?: string;
+      serviceProfileId?: string;
+      conversationId?: string;
+      reportedId: string;
+      reason: ReportReason;
+      details?: string;
+    },
   ) {
     return this.prisma.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`report:${user.id}`}))`;
@@ -110,7 +131,13 @@ export class ReportsService {
         where: {
           reporterId: user.id,
           status: { in: OPEN_STATUSES },
-          ...(data.listingId ? { listingId: data.listingId } : data.dealId ? { dealId: data.dealId } : { conversationId: data.conversationId }),
+          ...(data.listingId
+            ? { listingId: data.listingId }
+            : data.dealId
+              ? { dealId: data.dealId }
+              : data.serviceProfileId
+                ? { serviceProfileId: data.serviceProfileId }
+                : { conversationId: data.conversationId }),
         },
         select: { id: true },
       });
@@ -120,7 +147,9 @@ export class ReportsService {
             ? 'Du hast diese Anzeige bereits gemeldet. Wir sehen sie uns an und melden uns.'
             : data.dealId
               ? 'Du hast dieses Angebot bereits gemeldet. Wir sehen es uns an.'
-              : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
+              : data.serviceProfileId
+                ? 'Du hast dieses Anbieterprofil bereits gemeldet. Wir sehen es uns an.'
+                : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
         );
       }
       const report = await tx.report.create({
@@ -161,7 +190,8 @@ export class ReportsService {
     const listingIds = [...new Set(rows.flatMap((r) => (r.listingId ? [r.listingId] : [])))];
     const conversationIds = [...new Set(rows.flatMap((r) => (r.targetType === 'CONVERSATION' && r.conversationId ? [r.conversationId] : [])))];
     const dealIds = [...new Set(rows.flatMap((r) => (r.dealId ? [r.dealId] : [])))];
-    const [byListing, byConversation, byDeal] = await Promise.all([
+    const profileIds = [...new Set(rows.flatMap((r) => (r.serviceProfileId ? [r.serviceProfileId] : [])))];
+    const [byListing, byConversation, byDeal, byProfile] = await Promise.all([
       listingIds.length
         ? this.prisma.report.groupBy({ by: ['listingId'], where: { listingId: { in: listingIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
@@ -169,16 +199,22 @@ export class ReportsService {
         ? this.prisma.report.groupBy({ by: ['conversationId'], where: { conversationId: { in: conversationIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
       dealIds.length ? this.prisma.report.groupBy({ by: ['dealId'], where: { dealId: { in: dealIds }, status: { in: OPEN_STATUSES } }, _count: true }) : [],
+      profileIds.length
+        ? this.prisma.report.groupBy({ by: ['serviceProfileId'], where: { serviceProfileId: { in: profileIds }, status: { in: OPEN_STATUSES } }, _count: true })
+        : [],
     ]);
     const listingCounts = new Map(byListing.map((g) => [g.listingId, g._count]));
     const conversationCounts = new Map(byConversation.map((g) => [g.conversationId, g._count]));
     const dealCounts = new Map(byDeal.map((g) => [g.dealId, g._count]));
+    const profileCounts = new Map(byProfile.map((g) => [g.serviceProfileId, g._count]));
     return rows.map((row) => {
       const open = row.listingId
         ? (listingCounts.get(row.listingId) ?? 0)
         : row.dealId
           ? (dealCounts.get(row.dealId) ?? 0)
-          : row.conversationId
+          : row.serviceProfileId
+            ? (profileCounts.get(row.serviceProfileId) ?? 0)
+            : row.conversationId
             ? (conversationCounts.get(row.conversationId) ?? 0)
             : 0;
       const self = OPEN_STATUSES.includes(row.status) ? 1 : 0;
@@ -192,6 +228,8 @@ export class ReportsService {
       ? { listingId: report.listingId }
       : report.dealId
         ? { dealId: report.dealId }
+        : report.serviceProfileId
+        ? { serviceProfileId: report.serviceProfileId }
         : report.conversationId
         ? { conversationId: report.conversationId }
         : null;
@@ -246,7 +284,7 @@ export class ReportsService {
     }
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: report.conversationId! },
-      select: { listing: { select: { id: true, title: true } } },
+      select: { listing: { select: { id: true, title: true } }, serviceProfile: { select: { id: true, headline: true } } },
     });
     const rows = await this.prisma.message.findMany({
       where: { conversationId: report.conversationId!, createdAt: { lte: report.createdAt } },
@@ -258,6 +296,11 @@ export class ReportsService {
     this.audit.log({ action: 'report.messages_viewed', actorId: viewer.id, entityType: 'conversation', entityId: report.conversationId!, ip, metadata: { reportId: id } });
     return {
       listing: conversation?.listing ?? null,
+      subject: conversation?.listing
+        ? { kind: 'listing', id: conversation.listing.id, title: conversation.listing.title }
+        : conversation?.serviceProfile
+          ? { kind: 'service', id: conversation.serviceProfile.id, title: conversation.serviceProfile.headline }
+          : null,
       messages: rows
         .slice(0, REPORTED_MESSAGES_LIMIT)
         .reverse()
@@ -329,7 +372,7 @@ export class ReportsService {
     actorId: string,
     status: 'RESOLVED' | 'DISMISSED' | 'IN_REVIEW',
   ) {
-    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, conversationId: true, reason: true } });
+    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, serviceProfileId: true, conversationId: true, reason: true } });
     if (!open.length) return [];
     const final = status !== 'IN_REVIEW';
     await tx.report.updateMany({
@@ -344,7 +387,7 @@ export class ReportsService {
 
   /** Meldende Personen erfahren das Ergebnis (Art. 16 Abs. 5 DSA) – ohne Details zur betroffenen Person. */
   async notifyReporters(
-    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; conversationId: string | null; reason: ReportReason }[],
+    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; serviceProfileId?: string | null; conversationId: string | null; reason: ReportReason }[],
     outcome: 'RESOLVED' | 'DISMISSED',
   ) {
     const titles = new Map<string, string>();
@@ -356,17 +399,23 @@ export class ReportsService {
     if (dealIds.length) {
       for (const d of await this.prisma.deal.findMany({ where: { id: { in: dealIds } }, select: { id: true, title: true } })) titles.set(d.id, d.title);
     }
+    const profileIds = [...new Set(reports.flatMap((r) => (r.serviceProfileId ? [r.serviceProfileId] : [])))];
+    if (profileIds.length) {
+      for (const p of await this.prisma.serviceProfile.findMany({ where: { id: { in: profileIds } }, select: { id: true, headline: true } })) titles.set(p.id, p.headline);
+    }
     const seen = new Set<string>();
     for (const report of reports) {
       if (!report.reporterId) continue;
-      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.conversationId}`;
+      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.serviceProfileId ?? report.conversationId}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const subject = report.listingId
         ? `die Anzeige „${titles.get(report.listingId) ?? 'Anzeige'}“`
         : report.dealId
           ? `das Angebot „${titles.get(report.dealId) ?? 'Angebot'}“`
-          : 'eine Unterhaltung';
+          : report.serviceProfileId
+            ? `das Anbieterprofil „${titles.get(report.serviceProfileId) ?? 'Anbieterprofil'}“`
+            : 'eine Unterhaltung';
       const result =
         outcome === 'RESOLVED'
           ? 'Wir haben einen Verstoß festgestellt und Maßnahmen ergriffen.'

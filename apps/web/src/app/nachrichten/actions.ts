@@ -29,20 +29,24 @@ async function tokenOrFailure(): Promise<string | { ok: false; message: string; 
   return token ?? { ok: false, message: 'Deine Sitzung ist abgelaufen. Bitte melde dich neu an.', status: 401 };
 }
 
-/** Erste Nachricht von der Detailseite. Führt danach direkt in die Unterhaltung. */
+/** Erste Nachricht von der Detailseite eines Inserats oder Anbieterprofils. Führt danach direkt in die Unterhaltung. */
 export async function startConversationAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const listingId = String(formData.get('listingId') ?? '');
+  const serviceProfileId = String(formData.get('serviceProfileId') ?? '');
   const body = String(formData.get('body') ?? '');
   const clientId = String(formData.get('clientId') ?? '') || undefined;
-  if (!ID_PATTERN.test(listingId)) return { status: 'error', message: 'Diese Anzeige gibt es nicht.' };
+  const service = Boolean(serviceProfileId);
+  const id = service ? serviceProfileId : listingId;
+  if (!ID_PATTERN.test(id)) return { status: 'error', message: service ? 'Dieses Anbieterprofil gibt es nicht.' : 'Diese Anzeige gibt es nicht.' };
+  const page = service ? `/dienstleistungen/${id}` : `/anzeige/${id}`;
   const token = await getAccessToken();
-  if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(`/anzeige/${listingId}`)}&hinweis=nachricht`);
+  if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(page)}&hinweis=nachricht`);
 
   const parsed = sendMessageSchema.safeParse({ body, clientId });
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values: { body } };
   let conversationId: string;
   try {
-    ({ conversationId } = await api<{ conversationId: string }>(`/listings/${listingId}/conversations`, {
+    ({ conversationId } = await api<{ conversationId: string }>(service ? `/services/${id}/conversations` : `/listings/${id}/conversations`, {
       method: 'POST',
       token,
       body: parsed.data,

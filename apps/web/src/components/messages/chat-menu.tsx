@@ -51,8 +51,8 @@ export function ChatMenu({ conversation }: { conversation: ConversationDetail })
       </button>
       {open ? (
         <div id={menuId} className="absolute top-11 right-0 z-30 w-64 rounded-xl border border-line bg-surface p-1.5 shadow-lg">
-          <Link href={`/anzeige/${conversation.listing.id}`} className={itemClasses} onClick={() => setOpen(false)}>
-            <ExternalLink className="size-4 text-ink-500" aria-hidden="true" /> Anzeige ansehen
+          <Link href={conversation.subject.href} className={itemClasses} onClick={() => setOpen(false)}>
+            <ExternalLink className="size-4 text-ink-500" aria-hidden="true" /> {conversation.subject.kind === 'service' ? 'Anbieterprofil ansehen' : 'Anzeige ansehen'}
           </Link>
           {partner.inactive ? null : conversation.blockedByMe ? (
             <form action={blockUserAction}>

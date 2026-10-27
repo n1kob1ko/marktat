@@ -10,9 +10,10 @@ import { SubmitButton } from '@/components/submit-button';
 import { ClientIdField } from '@/components/client-id-field';
 
 const SUGGESTIONS = ['Ist die Anzeige noch verfügbar?', 'Ist der Preis verhandelbar?', 'Wann könnte ich es mir ansehen?'];
+const SERVICE_SUGGESTIONS = ['Hätten Sie in den nächsten Wochen Zeit?', 'Können Sie mir ein unverbindliches Angebot machen?', 'Arbeiten Sie auch bei mir vor Ort?'];
 
-/** Erste Nachricht an den Anbieter direkt auf der Detailseite – danach geht es in den Chat. */
-export function ContactForm({ listingId, sellerName }: { listingId: string; sellerName: string }) {
+/** Erste Nachricht an den Anbieter direkt auf der Detailseite (Inserat oder Anbieterprofil) – danach geht es in den Chat. */
+export function ContactForm({ listingId, serviceProfileId, sellerName }: { listingId?: string; serviceProfileId?: string; sellerName: string }) {
   const [state, action] = useActionState(startConversationAction, initialFormState);
   const textarea = useRef<HTMLTextAreaElement>(null);
   const error = state.fieldErrors?.body?.[0];
@@ -25,7 +26,8 @@ export function ContactForm({ listingId, sellerName }: { listingId: string; sell
   }
   return (
     <form action={action} className="mt-5 space-y-3" id="nachricht">
-      <input type="hidden" name="listingId" value={listingId} />
+      {listingId ? <input type="hidden" name="listingId" value={listingId} /> : null}
+      {serviceProfileId ? <input type="hidden" name="serviceProfileId" value={serviceProfileId} /> : null}
       <ClientIdField name="clientId" />
       {state.status === 'error' && state.message ? <Alert tone="danger">{state.message}</Alert> : null}
       <div className="space-y-1.5">
@@ -33,7 +35,7 @@ export function ContactForm({ listingId, sellerName }: { listingId: string; sell
           Nachricht an {sellerName}
         </label>
         <ul className="flex flex-wrap gap-1.5" aria-label="Vorschläge">
-          {SUGGESTIONS.map((text) => (
+          {(serviceProfileId ? SERVICE_SUGGESTIONS : SUGGESTIONS).map((text) => (
             <li key={text}>
               <button
                 type="button"
@@ -51,7 +53,7 @@ export function ContactForm({ listingId, sellerName }: { listingId: string; sell
           name="body"
           required
           maxLength={MESSAGE_MAX_LENGTH}
-          placeholder="Hallo, ist die Anzeige noch verfügbar?"
+          placeholder={serviceProfileId ? 'Hallo, ich suche Unterstützung bei …' : 'Hallo, ist die Anzeige noch verfügbar?'}
           defaultValue={state.values?.body}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? 'contact-error' : undefined}

@@ -5,18 +5,19 @@ import { Alert, Checkbox, Field, Textarea } from '@marktat/ui';
 import { REPORT_REASON_HINTS, REPORT_REASON_LABELS, REPORT_REASONS } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
-import { reportDealAction, reportListingAction } from './actions';
+import { reportDealAction, reportListingAction, reportServiceProfileAction } from './actions';
 
-/** Meldeformular nach Art. 16 DSA: Grund, Begründung, Erklärung nach Treu und Glauben. Für Inserate und Deals. */
-export function ReportListingForm({ listingId, dealId }: { listingId?: string; dealId?: string }) {
-  const [state, action] = useActionState(dealId ? reportDealAction : reportListingAction, initialFormState);
-  const what = dealId ? 'das Angebot' : 'die Anzeige';
+/** Meldeformular nach Art. 16 DSA: Grund, Begründung, Erklärung nach Treu und Glauben. Für Inserate, Deals und Anbieterprofile. */
+export function ReportListingForm({ listingId, dealId, serviceProfileId }: { listingId?: string; dealId?: string; serviceProfileId?: string }) {
+  const [state, action] = useActionState(serviceProfileId ? reportServiceProfileAction : dealId ? reportDealAction : reportListingAction, initialFormState);
+  const what = serviceProfileId ? 'das Anbieterprofil' : dealId ? 'das Angebot' : 'die Anzeige';
   const errors = state.fieldErrors ?? {};
   return (
     <form action={action} className="space-y-5">
       {state.status === 'error' && state.message ? <Alert tone="danger">{state.message}</Alert> : null}
       {listingId ? <input type="hidden" name="listingId" value={listingId} /> : null}
       {dealId ? <input type="hidden" name="dealId" value={dealId} /> : null}
+      {serviceProfileId ? <input type="hidden" name="serviceProfileId" value={serviceProfileId} /> : null}
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">
           Was stimmt nicht?<span className="ml-0.5 text-danger-600" aria-hidden="true">*</span>

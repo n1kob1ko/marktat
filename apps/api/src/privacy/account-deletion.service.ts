@@ -223,6 +223,11 @@ export class AccountDeletionService implements OnModuleInit {
     // Produktbilder der Deals
     const deals = await this.prisma.deal.findMany({ where: { merchantId: userId, imageKey: { not: null } }, select: { imageKey: true } });
     for (const deal of deals) keys.push(...IMAGE_VARIANT_NAMES.map((variant) => mediaVariantKey(deal.imageKey!, variant)));
+    // Profilbild und Portfolio des Anbieterprofils
+    const profile = await this.prisma.serviceProfile.findUnique({ where: { userId }, select: { imageKey: true, portfolio: { where: { imageKey: { not: null } }, select: { imageKey: true } } } });
+    for (const key of [profile?.imageKey, ...(profile?.portfolio.map((p) => p.imageKey) ?? [])]) {
+      if (key) keys.push(...IMAGE_VARIANT_NAMES.map((variant) => mediaVariantKey(key, variant)));
+    }
     // Händlerlogo
     const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { logoKey: true } });
     if (user?.logoKey) keys.push(user.logoKey);
@@ -251,6 +256,9 @@ export class AccountDeletionService implements OnModuleInit {
       await tx.deal.deleteMany({ where: { merchantId: userId } });
       await tx.dealFeed.deleteMany({ where: { merchantId: userId } });
       await tx.dealerStore.deleteMany({ where: { merchantId: userId } });
+      // Anbieterprofil mit Kategorien, Portfolio und Qualifikationen (Unterhaltungen dazu sind oben schon gelöscht;
+      // Verweise aus Meldungen und Entscheidungen werden null, der Schnappschuss bleibt)
+      await tx.serviceProfile.deleteMany({ where: { userId } });
       // Eigene Meldungen bleiben für die Moderation, aber ohne Verweis auf die meldende Person
       await tx.report.updateMany({ where: { reporterId: userId }, data: { reporterId: null } });
       await tx.report.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });

@@ -257,6 +257,9 @@ export interface ConversationSummary {
   /** Rolle der angemeldeten Person: Interessent (buyer) oder Anbieter (seller) */
   role: 'buyer' | 'seller';
   partner: ConversationPartner;
+  /** Worum es geht: Inserat oder (Phase 10) Anbieterprofil */
+  subject: ConversationSubject;
+  /** Nur bei Unterhaltungen zu einem Inserat */
   listing: {
     id: string;
     title: string;
@@ -265,10 +268,23 @@ export interface ConversationSummary {
     priceCents: number | null;
     /** false = nicht mehr öffentlich (pausiert, abgelaufen, gelöscht) */
     available: boolean;
-  };
+  } | null;
   lastMessage: { body: string; mine: boolean; createdAt: string } | null;
   lastMessageAt: string;
   unreadCount: number;
+}
+
+export type ConversationSubjectKind = 'listing' | 'service';
+
+export interface ConversationSubject {
+  kind: ConversationSubjectKind;
+  id: string;
+  title: string;
+  imageUrl: string | null;
+  /** false = nicht mehr öffentlich */
+  available: boolean;
+  /** Öffentliche Seite des Inserats bzw. Profils */
+  href: string;
 }
 
 export interface ConversationDetail extends ConversationSummary {
@@ -319,6 +335,8 @@ export interface ModerationDecisionView {
   listing: { id: string; title: string } | null;
   /** Phase 10: Entscheidung zu einem Deal */
   deal: { id: string; title: string } | null;
+  /** Phase 10: Entscheidung zu einem Anbieterprofil (bzw. einem seiner Portfolio-Einträge) */
+  serviceProfile: { id: string; title: string } | null;
   appeal: AppealView | null;
   /** Einspruch ist noch möglich (einschränkende Maßnahme, Frist offen, noch kein Einspruch) */
   canAppeal: boolean;
@@ -369,6 +387,7 @@ export interface AdminReportSummary {
   createdAt: string;
   listing: { id: string; title: string; status: string } | null;
   deal: { id: string; title: string; status: string } | null;
+  serviceProfile: { id: string; title: string; status: string } | null;
   conversationId: string | null;
   reported: (PersonRef & { status: UserStatus }) | null;
   reporter: PersonRef | null;
@@ -412,6 +431,7 @@ export interface ReportedMessage {
 
 export interface ReportedConversation {
   listing: { id: string; title: string } | null;
+  subject: { kind: ConversationSubjectKind; id: string; title: string } | null;
   messages: ReportedMessage[];
   /** Nur Nachrichten bis zum Zeitpunkt der Meldung; ältere als die letzten 100 fehlen */
   truncated: boolean;

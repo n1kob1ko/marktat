@@ -50,3 +50,25 @@ export async function reportDealAction(_prev: FormState, formData: FormData): Pr
   }
   redirect(`/deals/${dealId}?hinweis=gemeldet`);
 }
+
+export async function reportServiceProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const profileId = String(formData.get('serviceProfileId') ?? '');
+  if (!ENTITY_ID.test(profileId)) return { status: 'error', message: 'Dieses Anbieterprofil gibt es nicht.' };
+  const values = { reason: String(formData.get('reason') ?? ''), details: String(formData.get('details') ?? '') };
+  const { token } = await requireUser(`/melden?anbieter=${profileId}`);
+  const parsed = reportListingSchema.safeParse({
+    reason: values.reason || undefined,
+    details: values.details,
+    goodFaith: formData.get('goodFaith') === 'on' ? true : undefined,
+  });
+  if (!parsed.success) {
+    return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
+  }
+  try {
+    await api(`/services/${profileId}/report`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values };
+    throw error;
+  }
+  redirect(`/dienstleistungen/${profileId}?hinweis=gemeldet`);
+}

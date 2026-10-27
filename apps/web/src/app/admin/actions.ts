@@ -10,6 +10,8 @@ import {
   dealsBlockSchema,
   dismissReportSchema,
   listingDecisionSchema,
+  portfolioItemDecisionSchema,
+  qualificationReviewSchema,
   reportingRestrictionSchema,
   updateReportSchema,
   userDecisionSchema,
@@ -144,6 +146,77 @@ export async function decideDealAction(_prev: FormState, formData: FormData): Pr
   }
   updateTag('deals');
   redirect(`/admin/deals/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-deal-freigegeben' : 'mod-deal-entschieden'}`);
+}
+
+export async function decideServiceProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/${id}`);
+  try {
+    await api(`/admin/services/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/dienstleistungen');
+  redirect(`/admin/dienstleistungen/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-anbieter-freigegeben' : 'mod-anbieter-entschieden'}`);
+}
+
+/** Einzelnen Portfolio-Eintrag ausblenden bzw. wieder zeigen; zurück geht es zum Profil (verstecktes Feld profileId) */
+export async function decidePortfolioItemAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const profileId = String(formData.get('profileId') ?? '');
+  if (!ENTITY_ID.test(id) || !ENTITY_ID.test(profileId)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = portfolioItemDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/${profileId}`);
+  try {
+    await api(`/admin/service-portfolio/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  redirect(`/admin/dienstleistungen/${profileId}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-portfolio-freigegeben' : 'mod-portfolio-ausgeblendet'}`);
+}
+
+/** Qualifikation prüfen: bestätigen („Von MarktAT geprüft“) oder nicht bestätigen */
+export async function reviewQualificationAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const profileId = String(formData.get('profileId') ?? '');
+  if (!ENTITY_ID.test(id) || !ENTITY_ID.test(profileId)) return invalid;
+  const kept = values(formData, ['note']);
+  const parsed = qualificationReviewSchema.safeParse({ decision: text(formData, 'decision'), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte wähle ein Ergebnis.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff(`/admin/dienstleistungen/${profileId}`);
+  try {
+    await api(`/admin/service-qualifications/${id}/review`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  redirect(`/admin/dienstleistungen/${profileId}?hinweis=qualifikation-geprueft`);
 }
 
 /** Konto für Deals sperren (Moderation) bzw. Sperre aufheben (nur Administratoren, prüft die API) */
