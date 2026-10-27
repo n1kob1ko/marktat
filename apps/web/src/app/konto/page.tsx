@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert, Badge, Card, Skeleton } from '@marktat/ui';
 import { formatDate } from '@marktat/shared';
-import { requireUser } from '@/lib/auth';
+import { isStaff, requireUser } from '@/lib/auth';
 import { ProfileForm } from './profile-form';
 
 export const metadata: Metadata = { title: 'Mein Konto', robots: { index: false } };
@@ -39,10 +40,14 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
             {user.role !== 'USER' ? <Badge tone="accent">{user.role === 'ADMIN' ? 'Administration' : 'Moderation'}</Badge> : null}
           </div>
           <p className="text-ink-500">Mitglied seit {formatDate(user.createdAt)}</p>
+          {isStaff(user) ? (
+            <Link href="/admin" className="inline-block font-semibold text-brand-700 hover:underline">Zum Moderationsbereich</Link>
+          ) : null}
         </Card>
         <Card className="p-5 text-sm text-ink-600">
           <p className="font-semibold text-ink-900">Datenschutz</p>
-          <p className="mt-1.5 leading-relaxed">Datenexport und Kontolöschung (DSGVO Art. 15, 17, 20) folgen in einer der nächsten Ausbaustufen.</p>
+          <p className="mt-1.5 leading-relaxed">Lade alle deine Daten herunter oder lösche dein Konto (DSGVO Art. 15, 17, 20).</p>
+          <Link href="/konto/datenschutz" className="mt-2 inline-block font-semibold text-brand-700 hover:underline">Zu Datenexport und Löschung</Link>
         </Card>
       </aside>
     </div>

@@ -152,16 +152,18 @@ export class ListingsService {
     const attributes = carryOverAttributes(schema, current.attributes);
     this.assertComplete(fields, schema, attributes);
     const now = new Date();
-    const updated = await this.prisma.listing.update({
-      where: { id },
+    // Nur aus dem geprüften Status heraus: eine gleichzeitige Moderationsentscheidung darf nicht überschrieben werden
+    const changed = await this.prisma.listing.updateMany({
+      where: { id, status: current.status },
       data: {
         attributes,
         status: 'ACTIVE',
         publishedAt: status === 'DRAFT' || !current.publishedAt ? now : current.publishedAt,
         expiresAt: expiryFrom(now),
       },
-      include: listingInclude,
     });
+    if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
+    const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
     this.audit.log({
       action: status === 'DRAFT' ? 'listing.published' : 'listing.renewed',
       actorId: user.id,
@@ -178,7 +180,7 @@ export class ListingsService {
     if (effectiveStatus(current) !== 'ACTIVE') {
       throw new ConflictException('Nur aktive Inserate können pausiert werden.');
     }
-    return this.setStatus(user, id, 'PAUSED', 'listing.paused', ip);
+    return this.setStatus(user, id, 'ACTIVE', 'PAUSED', 'listing.paused', ip);
   }
 
   async resume(user: AuthUser, id: string, ip?: string) {
@@ -189,7 +191,7 @@ export class ListingsService {
     if (current.expiresAt && current.expiresAt <= new Date()) {
       throw new ConflictException('Das Inserat ist abgelaufen. Bitte verlängere es.');
     }
-    return this.setStatus(user, id, 'ACTIVE', 'listing.resumed', ip);
+    return this.setStatus(user, id, 'PAUSED', 'ACTIVE', 'listing.resumed', ip);
   }
 
   async remove(user: AuthUser, id: string, ip?: string) {
@@ -239,8 +241,18 @@ export class ListingsService {
     return { isFavorite: Boolean(favorite), conversationId: conversation?.id ?? null };
   }
 
-  private async setStatus(user: AuthUser, id: string, status: ListingStatus, action: 'listing.paused' | 'listing.resumed', ip?: string) {
-    const updated = await this.prisma.listing.update({ where: { id }, data: { status }, include: listingInclude });
+  /** Statuswechsel nur aus `from` heraus (atomar), damit eine gleichzeitige Moderationsentscheidung gewinnt */
+  private async setStatus(
+    user: AuthUser,
+    id: string,
+    from: ListingStatus,
+    status: ListingStatus,
+    action: 'listing.paused' | 'listing.resumed',
+    ip?: string,
+  ) {
+    const changed = await this.prisma.listing.updateMany({ where: { id, status: from }, data: { status } });
+    if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
+    const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
     this.audit.log({ action, actorId: user.id, entityType: 'listing', entityId: id, ip });
     this.searchIndex.sync(id);
     return toListingDetail(updated, this.urls, user.id);

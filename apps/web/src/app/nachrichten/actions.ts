@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
-  REPORT_REASONS,
+  CONVERSATION_REPORT_REASONS,
   reportUserSchema,
   sendMessageSchema,
   type ChatMessage,
@@ -115,7 +115,7 @@ export async function reportUserAction(_prev: FormState, formData: FormData): Pr
   if (!ID_PATTERN.test(conversationId)) return { status: 'error', message: 'Diese Unterhaltung gibt es nicht.' };
   const { token } = await requireUser(`/nachrichten/${conversationId}`);
   const parsed = reportUserSchema.safeParse({
-    reason: (REPORT_REASONS as readonly string[]).includes(values.reason) ? values.reason : undefined,
+    reason: (CONVERSATION_REPORT_REASONS as readonly string[]).includes(values.reason) ? values.reason : undefined,
     details: values.details,
   });
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values };

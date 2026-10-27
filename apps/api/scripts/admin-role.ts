@@ -12,7 +12,8 @@ import { PrismaService } from '../src/prisma/prisma.service.js';
 import { RoleChangeError, setRoleByEmail } from '../src/users/admin-role.js';
 
 const ROLES = ['USER', 'MODERATOR', 'ADMIN'] as const;
-const { values } = parseArgs({ options: { email: { type: 'string' }, role: { type: 'string' }, list: { type: 'boolean' } } });
+// `pnpm … admin:role -- --email …` reicht das `--` an das Skript weiter
+const { values } = parseArgs({ args: process.argv.slice(2).filter((arg) => arg !== '--'), options: { email: { type: 'string' }, role: { type: 'string' }, list: { type: 'boolean' } } });
 
 const prisma = new PrismaService();
 try {

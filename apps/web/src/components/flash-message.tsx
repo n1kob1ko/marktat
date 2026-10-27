@@ -15,6 +15,16 @@ const MESSAGES: Record<string, { tone: 'success' | 'danger' | 'warning'; text: s
   'alarm-an': { tone: 'success', text: 'Du bekommst ab jetzt eine E-Mail, sobald neue passende Anzeigen erscheinen.' },
   'alarm-aus': { tone: 'success', text: 'Die E-Mail-Benachrichtigung für diese Suche ist ausgeschaltet.' },
   'suche-geloescht': { tone: 'success', text: 'Die gespeicherte Suche wurde gelöscht.' },
+  eingereicht: { tone: 'success', text: 'Danke! Die Anzeige wird erneut geprüft. Wir melden uns, sobald sie wieder online ist.' },
+  'nicht-ueberarbeitet': { tone: 'warning', text: 'Bitte überarbeite die Anzeige zuerst. Danach kannst du sie erneut zur Prüfung einreichen.' },
+  gemeldet: { tone: 'success', text: 'Danke für deine Meldung. Ein Mensch aus unserem Team prüft sie – das Ergebnis findest du unter „Mitteilungen“ in deinem Konto.' },
+  'einspruch-eingereicht': { tone: 'success', text: 'Dein Einspruch ist eingegangen. Jemand aus dem Team prüft die Entscheidung erneut.' },
+  'mod-entschieden': { tone: 'success', text: 'Die Entscheidung ist gespeichert. Das Inserat ist nicht mehr öffentlich, die betroffene Person wurde mit Begründung informiert.' },
+  'mod-freigegeben': { tone: 'success', text: 'Das Inserat ist freigegeben. Die Anbieterin bzw. der Anbieter wurde informiert.' },
+  'mod-gesperrt': { tone: 'success', text: 'Das Konto ist gesperrt. Die Person wurde mit Begründung informiert.' },
+  'mod-entsperrt': { tone: 'success', text: 'Die Sperre ist aufgehoben. Die Person wurde informiert.' },
+  'mod-einspruch': { tone: 'success', text: 'Der Einspruch ist entschieden. Die Person wurde informiert.' },
+  'mod-geschlossen': { tone: 'success', text: 'Die Meldung ist ohne Maßnahme abgeschlossen. Die meldende Person wurde informiert.' },
   aktion: { tone: 'danger', text: 'Die Aktion konnte nicht ausgeführt werden. Bitte versuche es erneut.' },
 };
 

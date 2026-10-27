@@ -105,6 +105,8 @@ export class AccountDeletionService implements OnModuleInit {
       });
     });
     this.audit.log({ action: 'privacy.deletion_requested', actorId: user.id, entityType: 'user', entityId: user.id, ip });
+    // Sofort aus der Suche nehmen; der Auftrag entfernt die Einträge danach endgültig
+    this.searchIndex.syncSeller(user.id);
     // Die gerade zur Prüfung erzeugte Sitzung und alle anderen Sitzungen beenden
     await this.authAdmin.signOutEverywhere(session.accessToken);
     await this.enqueue(deletion.id);

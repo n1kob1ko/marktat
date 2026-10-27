@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { Ban, ExternalLink, Flag, MoreVertical, X } from 'lucide-react';
-import { REPORT_REASONS, REPORT_REASON_LABELS, type ConversationDetail } from '@marktat/shared';
+import { CONVERSATION_REPORT_REASONS, REPORT_REASON_LABELS, type ConversationDetail } from '@marktat/shared';
 import { Alert, Button, Textarea, buttonClasses } from '@marktat/ui';
 import { initialFormState } from '@/lib/form-state';
 import { blockUserAction, reportUserAction } from '@/app/nachrichten/actions';
@@ -144,7 +144,7 @@ function ReportDialog({ conversation, onClose }: { conversation: ConversationDet
           <fieldset>
             <legend className="text-sm font-semibold text-ink-900">Was ist passiert?</legend>
             <div className="mt-2 space-y-1">
-              {REPORT_REASONS.map((reason) => (
+              {CONVERSATION_REPORT_REASONS.map((reason) => (
                 <label key={reason} className="flex cursor-pointer items-center gap-3 rounded-lg px-2 py-2 text-sm hover:bg-canvas">
                   <input type="radio" name="reason" value={reason} defaultChecked={state.values?.reason === reason} required className="size-4 accent-brand-700" />
                   {REPORT_REASON_LABELS[reason]}
@@ -160,7 +160,7 @@ function ReportDialog({ conversation, onClose }: { conversation: ConversationDet
             <Textarea id="report-details" name="details" maxLength={1000} defaultValue={state.values?.details} className="min-h-24" />
             {state.fieldErrors?.details ? <p className="text-sm font-medium text-danger-600">{state.fieldErrors.details[0]}</p> : null}
           </div>
-          <p className="text-xs text-ink-500">Unser Team sieht sich die Unterhaltung an. Die andere Person wird darüber nicht benachrichtigt.</p>
+          <p className="text-xs text-ink-500">Unser Team prüft die Meldung und sieht dafür bei Bedarf die Nachrichten bis zu diesem Zeitpunkt ein. Du erfährst per Mitteilung, wie wir entschieden haben.</p>
           <div className="flex justify-end gap-2">
             <Button variant="ghost" onClick={() => dialog.current?.close()}>
               Abbrechen

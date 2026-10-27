@@ -11,7 +11,7 @@
 
 **Autorisierung**
 - Globaler Auth-Guard: jeder Endpunkt ist geschützt, außer er ist ausdrücklich mit `@Public()` markiert.
-- Rollen-Guard (`@Roles()`) für spätere Moderations- und Admin-Endpunkte.
+- Rollen-Guard (`@Roles()`, rangbasiert) für Moderations- und Admin-Endpunkte (seit Phase 6 in Benutzung, siehe unten).
 - Eigentümerprüfung serverseitig bei jeder Änderung; fremde Inserate liefern 404.
 
 **Eingaben**
@@ -35,9 +35,38 @@
 - Unterhaltungen nur für die beiden Beteiligten; fremde oder manipulierte IDs ergeben 404, Absender/Empfänger setzt der Server.
 - Rate-Limits je Konto in der Datenbank (wirken auch hinter dem Next.js-Server und über mehrere Instanzen): 10 Nachrichten/Minute, 100/Stunde, 10 neue Unterhaltungen/Stunde, 30/Tag, 10 Meldungen/Tag.
 - Klartext ohne HTML-Interpretation, Steuer- und Richtungszeichen werden entfernt, 2.000 Zeichen Höchstlänge (auch als Spaltenlänge).
-- Blockieren in beide Richtungen, Meldungen in `user_reports`, beides im Audit-Log.
+- Blockieren in beide Richtungen, Meldungen in `reports` (bis Phase 5 `user_reports`), beides im Audit-Log.
 - E-Mails enthalten keinen Nachrichtentext. Private Nachrichten kommen nie in den Suchindex.
 - Die Echtzeit-Verbindung läuft über die eigene Herkunft (`/api/ereignisse`); das Access-Token bleibt auf dem Server.
+
+**Moderation, Rollen und Datenschutz (Phase 6)** – Details in [moderation.md](moderation.md) und [datenschutz.md](datenschutz.md)
+- Rollen nur aus der Datenbank, bei jeder Anfrage neu gelesen; JWT-Metadaten und Profil-Updates können sie nicht ändern
+  (getestet mit gefälschten `user_metadata`/`app_metadata`). `ADMIN` nur per Kommandozeile (`admin:role`), kein
+  Bootstrap-Endpunkt, kein Standardpasswort.
+- Alle Routen unter `/v1/admin/*` verlangen mindestens `MODERATOR` (Unit-Test über alle Routen), Kontensuche,
+  Rollen, Protokoll und Systemstatistiken `ADMIN`. Keine Selbst-Sperre, keine eigene Rollenänderung, das letzte
+  aktive Admin-Konto ist geschützt; Änderungen an Team-Konten laufen serialisiert (Advisory Lock).
+- Gesperrte Konten erreichen nur Konto-Status, Entscheidungen, Einspruch, Mitteilungen, Export und Löschung
+  (`@AllowSuspended()`); gelöschte Konten bekommen überall 403. Auf öffentlichen Routen gelten beide als Gast.
+- Inserate und Bilder gesperrter oder gelöschter Konten sind nicht öffentlich (Detailseite 404, Bilder nur signiert
+  für Eigentümer und Team, Suchindex wird sofort aktualisiert).
+- Moderationsentscheidungen mit Zeilensperre und Versionsprüfung; Statuswechsel durch Anbieter atomar, damit sie
+  keine gleichzeitige Moderationsentscheidung überschreiben.
+- Keine automatischen Sperren aufgrund der Anzahl von Meldungen. Doppelte offene Meldungen werden abgewiesen,
+  Meldungen sind je Konto begrenzt, missbräuchliche Meldungen werden markiert.
+- Private Nachrichten nur zu einer offenen Meldung, nach Bestätigung, begrenzt auf die Zeit bis zur Meldung und im
+  Audit-Log protokolliert (ohne Inhalt).
+- Kontolöschung nur mit erneuter Passwortprüfung bei Supabase Auth (5 Fehlversuche/Stunde) und Bestätigungswort;
+  Konto sofort gesperrt, Löschschritte idempotent mit Wiederholung, Fehlerstatus und Admin-Neustart.
+- **Rate-Limits je Konto:** Der Throttler zählt angemeldete Anfragen je Konto (`user:<id>`), sonst je IP – vorher
+  teilten sich hinter dem Next.js-Server alle Nutzer eine IP. Mit `REDIS_URL` liegen die Zähler in Redis und gelten
+  über alle API-Instanzen (bei Redis-Ausfall wird nicht blockiert). `TRUST_PROXY` setzt Express `trust proxy` für
+  den Betrieb hinter einem Load-Balancer.
+- Fehlermeldungen von Hintergrundaufträgen werden gekürzt und E-Mail-Adressen maskiert, bevor sie gespeichert oder
+  im Dashboard angezeigt werden. Auftrags-Daten enthalten nur IDs.
+- Admin-Seiten sind `noindex`; Formulare prüfen IDs vor dem Einsetzen in API-Pfade; Links aus Mitteilungen laufen
+  durch `safeRedirectPath`.
+- Dependabot (`.github/dependabot.yml`) für npm, GitHub Actions und Docker-Images.
 
 **Protokollierung**
 - `audit_logs` für Profilanlage und -änderung, Anlegen, Veröffentlichen, Verlängern, Pausieren, Fortsetzen und Löschen von Inseraten sowie neue Unterhaltungen, Blockieren und Melden. IPs werden gekürzt gespeichert (IPv4 /24, IPv6 /48), keine Tokens oder Passwörter.
@@ -52,13 +81,12 @@
 | Thema | Plan |
 | --- | --- |
 | CSP mit Nonce | Aktuell `'unsafe-inline'` für Skripte, weil Next.js Inline-Skripte erzeugt. Umstellung auf Nonce über den Proxy, sobald die Seiten-Caching-Strategie feststeht. |
-| Reverse-Proxy/IP | Hinter Load-Balancer muss `trust proxy` gesetzt werden, sonst greift das Rate-Limit pro Proxy-IP statt pro Nutzer. |
-| Rate-Limit verteilt | Throttler speichert im Speicher; bei mehreren API-Instanzen Redis-Storage verwenden. |
-| Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)): signierte, kurzlebige Upload-URLs, Typ- und Größenprüfung vor und nach dem Upload, Inhaltsprüfung, Neukodierung ohne EXIF/GPS, privater Bucket. Offen: automatische Inhaltsmoderation (Phase 3). |
-| Kontolöschung/Datenexport | Phase 3 (DSGVO Art. 17/20) über die Supabase-Admin-API. |
-| 2FA | Supabase unterstützt TOTP; Aktivierung für Händler und Admins in Phase 3. |
-| Monitoring | Sentry o. Ä. und Alarmierung in Phase 6. |
-| Abhängigkeiten | Dependabot/Renovate aktivieren. |
+| 2FA | Supabase unterstützt TOTP; für Admin- und Moderationskonten vor dem Livebetrieb dringend empfohlen (heute schützt nur das Passwort den Admin-Bereich). |
+| Monitoring und Alarmierung | Fehlgeschlagene Aufträge und Löschungen stehen im Admin-Dashboard; Sentry o. Ä. und Alarme (E-Mail/Chat) fehlen noch. |
+| Endgültige Löschung soft-gelöschter Inserate | Vom Anbieter gelöschte Inserate bleiben als `DELETED` erhalten; Frist und Löschauftrag festlegen (inkl. Bilder in R2). |
+| Bilder im Datenexport | Export enthält Bild-Metadaten, nicht die Dateien. |
+| Meldungen ohne Konto | Meldeformular nur angemeldet; ob das nach Art. 16 DSA reicht, rechtlich prüfen. |
+| Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)). Offen: automatische Inhaltsprüfung (z. B. bekannte Missbrauchsdarstellungen). |
 
 ## Backup-Konzept (für den Produktionsbetrieb)
 

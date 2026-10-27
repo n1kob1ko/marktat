@@ -27,8 +27,13 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Nur Entwicklungswerte aus .env.example – CI braucht keine echten Zugangsdaten.
       - run: cp .env.example .env
-      - name: Datenbank, Suche, Redis und Mailpit starten
-        run: docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db meilisearch redis mailpit
+      # Supabase Auth (auth + gateway) brauchen die Tests zu Kontolöschung und erneuter Anmeldung
+      - name: Datenbank, Suche, Redis, Mailpit und Supabase Auth starten
+        run: |
+          docker compose -f infra/docker-compose.yml --env-file .env up -d --wait db meilisearch redis mailpit auth gateway
+          for i in $(seq 1 30); do curl -sf http://localhost:54321/auth/v1/health && exit 0; sleep 2; done
+          docker compose -f infra/docker-compose.yml --env-file .env logs auth gateway
+          exit 1
       - run: pnpm build
       - run: pnpm lint
       - run: pnpm typecheck

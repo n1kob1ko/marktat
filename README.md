@@ -52,7 +52,21 @@ pnpm --filter @marktat/web test:e2e         # Playwright, Desktop + Mobil; brauc
 pnpm --filter @marktat/api r2:check         # echte Cloudflare-R2-Verbindung prüfen (Werte aus der lokalen .env)
 ```
 
-Die API-Integrationstests leeren die Datenbank `marktat_test` (nicht die Entwicklungsdatenbank).
+Die API-Integrationstests leeren die Datenbank `marktat_test` (nicht die Entwicklungsdatenbank). Die Tests zu
+Kontolöschung und Datenexport legen echte Testkonten in Supabase Auth an und brauchen daher `auth` und `gateway` aus
+`pnpm infra:up`.
+
+## Erstes Administratorkonto
+
+Rollen gibt es nur in der Datenbank – kein Standardpasswort, kein öffentlicher Einrichtungs-Endpunkt. Konto normal
+registrieren, E-Mail bestätigen, einmal anmelden, dann auf dem Server:
+
+```bash
+pnpm --filter @marktat/api admin:role -- --email anna@example.at --role ADMIN
+pnpm --filter @marktat/api admin:role -- --list
+```
+
+Weitere Moderatorinnen und Moderatoren ernennen Admins danach unter `/admin/nutzer`. Details: [Moderation](docs/moderation.md).
 Die CI (`.github/workflows/ci.yml`) führt alles davon bei jedem Pull Request aus.
 
 ## Umgebungsvariablen
@@ -78,7 +92,7 @@ apps/api         NestJS 12, Prisma 7, Migrationen, Seeds, Integrationstests
 packages/shared  Zod-Schemas, Enums, Typen, Formatierung
 packages/ui      Design-Tokens und Basis-Komponenten
 infra            Docker Compose, Auth-Gateway, E-Mail-Vorlagen
-docs             Architektur, Datenmodell, Suche, Geodaten, Sicherheit, Rechtliches
+docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Datenschutz, Sicherheit, Rechtliches
 ```
 
 ## Dokumentation
@@ -89,6 +103,8 @@ docs             Architektur, Datenmodell, Suche, Geodaten, Sicherheit, Rechtlic
 - [Kategorie-Felder (Auto, Immobilien, Jobs, Marktplatz)](docs/kategorie-felder.md)
 - [Suche und Filter](docs/suche.md)
 - [Merkliste, gespeicherte Suchen, Nachrichten](docs/nachrichten.md)
+- [Moderation, Rollen, Meldungen, Einsprüche](docs/moderation.md)
+- [Datenschutz: Export, Kontolöschung, Löschfristen](docs/datenschutz.md)
 - [Geodaten / PLZ-Verzeichnis](docs/geodaten.md)
 - [Sicherheit und Backups](docs/sicherheit.md)
 - [Rechtliches – Checkliste](docs/rechtliches.md) (⚠️ muss anwaltlich geprüft werden)
@@ -105,8 +121,10 @@ Umgesetzt:
 - Kategorieabhängige Felder (Phase 3): Fahrzeugdaten, Wohnfläche/Zimmer/Ausstattung, Gehalt/Arbeitszeit u. v. m. je Unterkategorie, mit Pflichtfeldern, Prüfung in der API und Anzeige auf Detailseite und Karten
 - Suche (Phase 4): Meilisearch mit Tippfehlertoleranz und Sortierung nach Relevanz, Datum, Preis und Entfernung; Filter nach Kategorie, Bundesland, PLZ/Ort mit Umkreis, Preis, Anbieter, Zustand und den Eigenschaften je Bereich (Auto, Immobilien, Jobs, Marktplatz); teilbare Such-URLs, Filter-Chips, mobiles Filtermenü; Fallback auf PostgreSQL/PostGIS. Siehe [Suche](docs/suche.md)
 - Merkliste, gespeicherte Suchen und Nachrichten (Phase 5): Herz auf Karten und Detailseite, Merkliste im Konto; Suchen mit allen Filtern speichern, umbenennen, erneut ausführen, löschen, optional E-Mail bei neuen Treffern; Nachrichten je Anzeige mit Postfach (Filter, Suche, ungelesen), Chat in Echtzeit (Server-Sent Events), Lesebestätigung, Ungelesen-Zähler im Header, E-Mail bei neuen Nachrichten (Mailpit), Blockieren und Melden. Siehe [Nachrichten](docs/nachrichten.md)
+- Moderation und Admin-Bereich (Phase 6): Rollen USER/MODERATOR/ADMIN nur aus der Datenbank, Admin per Kommandozeile; Meldeformular für Inserate (Art. 16 DSA) mit Priorität, Verlauf, Duplikat- und Missbrauchsschutz; Dashboard mit Kennzahlen, Warteschlangen, Registrierungen, Auftragsfehlern und Ereignissen; Inserate prüfen, deaktivieren, ausblenden, freigeben; Konten sperren und entsperren; Einsprüche; Mitteilungen im Konto und per E-Mail; Audit-Log; Nachrichteneinsicht nur zu offenen Meldungen und protokolliert. Siehe [Moderation](docs/moderation.md)
+- Datenschutz (Phase 6): Datenexport als JSON, Kontolöschung mit erneuter Passwortprüfung und wiederholbaren Löschschritten, tägliche Aufbewahrungsbereinigung. Siehe [Datenschutz](docs/datenschutz.md)
 - Vollständiges PLZ-Verzeichnis (20.877 Orte, 2.461 PLZ, GeoNames CC BY 4.0) mit Bezirk und Bundesland
 
 Bewusst noch nicht umgesetzt:
-- Moderationsoberfläche (Meldungen werden gespeichert, aber noch nicht bearbeitet), Bilder in Nachrichten, Push-Benachrichtigungen, Zahlungen
+- Bilder in Nachrichten, Push-Benachrichtigungen, Zahlungen, 2FA für Team-Konten, Monitoring/Alarmierung (siehe [Sicherheit](docs/sicherheit.md))
 - Rechtstexte sind Platzhalter
