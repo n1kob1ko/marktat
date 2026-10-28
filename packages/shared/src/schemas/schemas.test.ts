@@ -121,7 +121,13 @@ describe('Nachrichten', () => {
 describe('Gespeicherte Suchen', () => {
   it('bereinigt Namen und Beschreibungen', () => {
     const parsed = createSavedSearchSchema.parse({ name: '  BMW\n 3er ', params: { q: 'BMW' }, labels: ['  bis 20.000 € ', ''] });
-    expect(parsed).toEqual({ name: 'BMW 3er', params: { q: 'BMW' }, labels: ['bis 20.000 €'], notify: false });
+    expect(parsed).toEqual({ kind: 'LISTINGS', name: 'BMW 3er', params: { q: 'BMW' }, labels: ['bis 20.000 €'], notify: false });
+  });
+
+  it('kennt die Arten Anzeigen, Deals und Dienstleistungen', () => {
+    expect(createSavedSearchSchema.parse({ kind: 'DEALS', name: 'x', params: { q: 'x' } }).kind).toBe('DEALS');
+    expect(createSavedSearchSchema.parse({ kind: 'SERVICES', name: 'x', params: { q: 'x' } }).kind).toBe('SERVICES');
+    expect(createSavedSearchSchema.safeParse({ kind: 'JOBS', name: 'x', params: { q: 'x' } }).success).toBe(false);
   });
 
   it('begrenzt Name und Parameter', () => {
