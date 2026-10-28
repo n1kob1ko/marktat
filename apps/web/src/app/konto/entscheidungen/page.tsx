@@ -58,7 +58,7 @@ async function Decisions() {
                   <span className="text-xs text-ink-500">{formatDate(d.createdAt)}</span>
                 </span>
                 <span className="mt-2 block font-semibold text-ink-900">
-                  {d.listing ? d.listing.title : MODERATION_ACTION_LABELS[d.action]}
+                  {d.listing ? d.listing.title : d.deal ? d.deal.title : d.serviceProfile ? d.serviceProfile.title : MODERATION_ACTION_LABELS[d.action]}
                 </span>
                 <span className="mt-1 line-clamp-2 block text-sm text-ink-600">{d.statement}</span>
                 {d.canAppeal ? <span className="mt-2 block text-sm font-semibold text-brand-700">Einspruch möglich bis {formatDate(d.appealDeadline!)}</span> : null}

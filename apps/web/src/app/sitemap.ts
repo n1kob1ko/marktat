@@ -3,13 +3,16 @@ import type { SitemapEntries } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { serverEnv } from '@/lib/env';
 
-/** Sitemap aus öffentlichen Inseraten, Händlerprofilen und Kategorien; wird stündlich neu erzeugt. */
+/** Sitemap aus den Bereichsseiten, öffentlichen Inseraten, Händlerprofilen und Kategorien; wird stündlich neu erzeugt. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   'use cache';
   const base = serverEnv.webUrl;
   const pages: MetadataRoute.Sitemap = [
     { url: `${base}/`, changeFrequency: 'hourly', priority: 1 },
     { url: `${base}/suche`, changeFrequency: 'hourly', priority: 0.8 },
+    { url: `${base}/deals`, changeFrequency: 'hourly', priority: 0.7 },
+    { url: `${base}/dienstleistungen`, changeFrequency: 'daily', priority: 0.7 },
+    { url: `${base}/dienstleistungen/projekte`, changeFrequency: 'daily', priority: 0.5 },
     { url: `${base}/impressum`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/datenschutz`, changeFrequency: 'yearly', priority: 0.1 },
     { url: `${base}/agb`, changeFrequency: 'yearly', priority: 0.1 },

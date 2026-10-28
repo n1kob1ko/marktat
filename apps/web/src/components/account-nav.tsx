@@ -8,6 +8,8 @@ import { useUnread } from '@/lib/realtime';
 const NAV = [
   { href: '/konto', label: 'Profil' },
   { href: '/konto/anzeigen', label: 'Meine Anzeigen' },
+  { href: '/konto/dienstleistungen', label: 'Dienstleistungen' },
+  { href: '/konto/projekte', label: 'Projektaufträge' },
   { href: '/konto/leistungen', label: 'Leistungen' },
   { href: '/nachrichten', label: 'Nachrichten' },
   { href: '/konto/merkliste', label: 'Merkliste' },
@@ -17,14 +19,17 @@ const NAV = [
   { href: '/konto/datenschutz', label: 'Datenschutz' },
 ];
 
+/** Nur für gewerbliche Konten */
+const DEALS = { href: '/konto/deals', label: 'Deals' };
+
 /** Nur für Moderation und Administration: Zwei-Faktor-Anmeldung */
 const SECURITY = { href: '/konto/sicherheit', label: 'Sicherheit' };
 
 /** Reiter im Kontobereich; „Nachrichten“ zeigt die Zahl ungelesener Nachrichten live. */
-export function AccountNav({ showSecurity = false }: { showSecurity?: boolean }) {
+export function AccountNav({ showSecurity = false, showDeals = false }: { showSecurity?: boolean; showDeals?: boolean }) {
   const pathname = usePathname();
   const unread = useUnread();
-  return <AccountNavList pathname={pathname} unreadMessages={unread?.messages ?? 0} showSecurity={showSecurity} />;
+  return <AccountNavList pathname={pathname} unreadMessages={unread?.messages ?? 0} showSecurity={showSecurity} showDeals={showDeals} />;
 }
 
 /** Ohne aktiven Reiter – Platzhalter, solange der Pfad bei dynamischen Seiten noch nicht feststeht */
@@ -32,8 +37,18 @@ export function AccountNavFallback() {
   return <AccountNavList pathname={null} unreadMessages={0} />;
 }
 
-function AccountNavList({ pathname, unreadMessages, showSecurity = false }: { pathname: string | null; unreadMessages: number; showSecurity?: boolean }) {
-  const items = showSecurity ? [...NAV, SECURITY] : NAV;
+function AccountNavList({
+  pathname,
+  unreadMessages,
+  showSecurity = false,
+  showDeals = false,
+}: {
+  pathname: string | null;
+  unreadMessages: number;
+  showSecurity?: boolean;
+  showDeals?: boolean;
+}) {
+  const items = [...NAV.slice(0, 4), ...(showDeals ? [DEALS] : []), ...NAV.slice(4), ...(showSecurity ? [SECURITY] : [])];
   return (
     <nav aria-label="Kontobereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
       <ul className="flex gap-1">

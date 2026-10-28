@@ -124,8 +124,8 @@ export class ListingStatsService implements OnModuleDestroy {
         SELECT sum(v.views) AS n FROM listing_view_days v JOIN listings l ON l.id = v.listing_id
         WHERE l.seller_id = ${sellerId}::uuid AND v.day >= ${dayOf(monthAgo)}::date`,
       this.prisma.favorite.count({ where: { listing: { sellerId } } }),
-      this.prisma.conversation.count({ where: { sellerId } }),
-      this.prisma.conversation.count({ where: { sellerId, createdAt: { gt: monthAgo } } }),
+      this.prisma.conversation.count({ where: { sellerId, listingId: { not: null } } }),
+      this.prisma.conversation.count({ where: { sellerId, listingId: { not: null }, createdAt: { gt: monthAgo } } }),
       this.prisma.booking.count({ where: { userId: sellerId, kind: 'BUMP', createdAt: { gt: monthAgo }, status: 'COMPLETED' } }),
       this.bookings.usage(sellerId, now),
     ]);

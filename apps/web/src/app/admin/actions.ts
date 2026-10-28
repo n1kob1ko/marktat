@@ -4,9 +4,14 @@ import { revalidatePath, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
   appealDecisionSchema,
+  assignDealMerchantSchema,
   changeRoleSchema,
+  dealFeedReviewSchema,
+  dealsBlockSchema,
   dismissReportSchema,
   listingDecisionSchema,
+  portfolioItemDecisionSchema,
+  qualificationReviewSchema,
   reportingRestrictionSchema,
   updateReportSchema,
   userDecisionSchema,
@@ -114,6 +119,180 @@ export async function decideListingAction(_prev: FormState, formData: FormData):
   }
   updateTag('listings');
   redirect(`/admin/inserate/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-freigegeben' : 'mod-entschieden'}`);
+}
+
+export async function decideDealAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/deals/${id}`);
+  try {
+    await api(`/admin/deals/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/deals/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-deal-freigegeben' : 'mod-deal-entschieden'}`);
+}
+
+export async function decideServiceProfileAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/${id}`);
+  try {
+    await api(`/admin/services/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/dienstleistungen');
+  redirect(`/admin/dienstleistungen/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-anbieter-freigegeben' : 'mod-anbieter-entschieden'}`);
+}
+
+/** Projektauftrag deaktivieren, bis zur Prüfung ausblenden oder freigeben */
+export async function decideProjectAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/projekte/${id}`);
+  try {
+    await api(`/admin/projects/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/dienstleistungen/projekte');
+  redirect(`/admin/dienstleistungen/projekte/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-projekt-freigegeben' : 'mod-projekt-entschieden'}`);
+}
+
+/** Einzelnen Portfolio-Eintrag ausblenden bzw. wieder zeigen; zurück geht es zum Profil (verstecktes Feld profileId) */
+export async function decidePortfolioItemAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const profileId = String(formData.get('profileId') ?? '');
+  if (!ENTITY_ID.test(id) || !ENTITY_ID.test(profileId)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = portfolioItemDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/${profileId}`);
+  try {
+    await api(`/admin/service-portfolio/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  redirect(`/admin/dienstleistungen/${profileId}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-portfolio-freigegeben' : 'mod-portfolio-ausgeblendet'}`);
+}
+
+/** Qualifikation prüfen: bestätigen („Von MarktAT geprüft“) oder nicht bestätigen */
+export async function reviewQualificationAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const profileId = String(formData.get('profileId') ?? '');
+  if (!ENTITY_ID.test(id) || !ENTITY_ID.test(profileId)) return invalid;
+  const kept = values(formData, ['note']);
+  const parsed = qualificationReviewSchema.safeParse({ decision: text(formData, 'decision'), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte wähle ein Ergebnis.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff(`/admin/dienstleistungen/${profileId}`);
+  try {
+    await api(`/admin/service-qualifications/${id}/review`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  redirect(`/admin/dienstleistungen/${profileId}?hinweis=qualifikation-geprueft`);
+}
+
+/** Konto für Deals sperren (Moderation) bzw. Sperre aufheben (nur Administratoren, prüft die API) */
+export async function dealsBlockAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!UUID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = dealsBlockSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'UNBLOCK') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const session = await requireStaff(`/admin/nutzer/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  try {
+    await api(`/admin/users/${id}/deals-block`, { method: 'POST', token: auth.token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/nutzer/${id}?hinweis=${parsed.data.decision === 'BLOCK' ? 'mod-deals-gesperrt' : 'mod-deals-entsperrt'}`);
+}
+
+/** Deal einem anderen gewerblichen Konto zuordnen (nur Administratoren, prüft die API) */
+export async function assignDealMerchantAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['merchantId', 'note']);
+  const parsed = assignDealMerchantSchema.safeParse({ merchantId: (text(formData, 'merchantId') ?? '').trim(), note: String(formData.get('note') ?? '') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const session = await requireStaff(`/admin/deals/${id}`);
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  try {
+    await api(`/admin/deals/${id}/merchant`, { method: 'PUT', token: auth.token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  redirect(`/admin/deals/${id}?hinweis=deal-haendler-geaendert`);
 }
 
 export async function decideUserAction(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -240,4 +419,22 @@ export async function resolveErrorAction(_prev: FormState, formData: FormData): 
   }
   revalidatePath('/admin/system');
   return { status: 'success' };
+}
+
+// --- Produktfeeds -----------------------------------------------------------------
+
+export async function reviewDealFeedAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['note']);
+  const parsed = dealFeedReviewSchema.safeParse({ decision: text(formData, 'decision'), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die Angaben.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const { token } = await requireStaff('/admin/deals/feeds');
+  try {
+    await api(`/admin/deal-feeds/${id}/review`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/admin/deals/feeds');
+  return { status: 'success', message: 'Gespeichert.' };
 }

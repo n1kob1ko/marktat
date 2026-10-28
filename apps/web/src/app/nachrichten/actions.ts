@@ -29,20 +29,27 @@ async function tokenOrFailure(): Promise<string | { ok: false; message: string; 
   return token ?? { ok: false, message: 'Deine Sitzung ist abgelaufen. Bitte melde dich neu an.', status: 401 };
 }
 
-/** Erste Nachricht von der Detailseite. Führt danach direkt in die Unterhaltung. */
+/** Erste Nachricht von der Detailseite eines Inserats, Anbieterprofils oder Projektauftrags. Führt danach direkt in die Unterhaltung. */
 export async function startConversationAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const listingId = String(formData.get('listingId') ?? '');
+  const subjects = [
+    { id: String(formData.get('projectId') ?? ''), page: '/dienstleistungen/projekte/', api: '/projects/', missing: 'Diesen Projektauftrag gibt es nicht.' },
+    { id: String(formData.get('serviceProfileId') ?? ''), page: '/dienstleistungen/', api: '/services/', missing: 'Dieses Anbieterprofil gibt es nicht.' },
+    { id: String(formData.get('listingId') ?? ''), page: '/anzeige/', api: '/listings/', missing: 'Diese Anzeige gibt es nicht.' },
+  ];
+  const subject = subjects.find((s) => s.id) ?? subjects[2]!;
   const body = String(formData.get('body') ?? '');
   const clientId = String(formData.get('clientId') ?? '') || undefined;
-  if (!ID_PATTERN.test(listingId)) return { status: 'error', message: 'Diese Anzeige gibt es nicht.' };
+  const id = subject.id;
+  if (!ID_PATTERN.test(id)) return { status: 'error', message: subject.missing };
+  const page = `${subject.page}${id}`;
   const token = await getAccessToken();
-  if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(`/anzeige/${listingId}`)}&hinweis=nachricht`);
+  if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(page)}&hinweis=nachricht`);
 
   const parsed = sendMessageSchema.safeParse({ body, clientId });
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values: { body } };
   let conversationId: string;
   try {
-    ({ conversationId } = await api<{ conversationId: string }>(`/listings/${listingId}/conversations`, {
+    ({ conversationId } = await api<{ conversationId: string }>(`${subject.api}${id}/conversations`, {
       method: 'POST',
       token,
       body: parsed.data,

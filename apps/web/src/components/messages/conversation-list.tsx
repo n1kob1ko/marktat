@@ -81,9 +81,9 @@ function ConversationItem({ item, active, href }: { item: ConversationSummary; a
       data-testid="conversation-item"
     >
       <span className="relative size-14 shrink-0 overflow-hidden rounded-xl bg-canvas">
-        {item.listing.imageUrl ? (
+        {item.subject.imageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Vorschaubild ist serverseitig optimiert
-          <img src={item.listing.imageUrl} alt="" className={cn('size-full object-cover', !item.listing.available && 'opacity-50 grayscale')} loading="lazy" />
+          <img src={item.subject.imageUrl} alt="" className={cn('size-full object-cover', !item.subject.available && 'opacity-50 grayscale')} loading="lazy" />
         ) : (
           <span className="flex size-full items-center justify-center">
             <ImageIcon className="size-5 text-ink-300" aria-hidden="true" />
@@ -100,9 +100,13 @@ function ConversationItem({ item, active, href }: { item: ConversationSummary; a
           </time>
         </span>
         <span className="mt-0.5 block truncate text-xs text-ink-500">
-          {item.role === 'seller' ? 'Deine Anzeige: ' : ''}
-          {item.listing.title}
-          {!item.listing.available ? ' · nicht mehr online' : ''}
+          {item.subject.kind === 'service'
+            ? item.role === 'seller' ? 'Dein Anbieterprofil: ' : 'Anbieterprofil: '
+            : item.subject.kind === 'project'
+              ? item.role === 'seller' ? 'Dein Projektauftrag: ' : 'Projektauftrag: '
+              : item.role === 'seller' ? 'Deine Anzeige: ' : ''}
+          {item.subject.title}
+          {!item.subject.available ? ' · nicht mehr online' : ''}
         </span>
         <span className="mt-1 flex items-center justify-between gap-2">
           <span className={cn('truncate text-sm', unread ? 'font-semibold text-ink-900' : 'text-ink-600')}>{preview}</span>

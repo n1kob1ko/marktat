@@ -56,6 +56,19 @@ const ACTION_TONES: Record<ModerationAction, BadgeTone> = {
   LISTING_RESTORED: 'success',
   ACCOUNT_SUSPENDED: 'danger',
   ACCOUNT_RESTORED: 'success',
+  DEAL_REJECTED: 'danger',
+  DEAL_HIDDEN: 'warning',
+  DEAL_RESTORED: 'success',
+  DEALS_BLOCKED: 'danger',
+  DEALS_UNBLOCKED: 'success',
+  SERVICE_PROFILE_REJECTED: 'danger',
+  SERVICE_PROFILE_HIDDEN: 'warning',
+  SERVICE_PROFILE_RESTORED: 'success',
+  PORTFOLIO_ITEM_HIDDEN: 'warning',
+  PORTFOLIO_ITEM_RESTORED: 'success',
+  PROJECT_REJECTED: 'danger',
+  PROJECT_HIDDEN: 'warning',
+  PROJECT_RESTORED: 'success',
 };
 export function ActionBadge({ action }: { action: ModerationAction }) {
   return <Badge tone={ACTION_TONES[action]}>{MODERATION_ACTION_LABELS[action]}</Badge>;
@@ -162,6 +175,33 @@ export function DecisionList({ decisions, showUser = false }: { decisions: Admin
                 <dt className="text-ink-500">Inserat</dt>
                 <dd>
                   <Link href={`/admin/inserate/${d.listing.id}`} className="text-brand-700 hover:underline">{d.listing.title}</Link>
+                </dd>
+              </>
+            ) : null}
+            {d.deal ? (
+              <>
+                <dt className="text-ink-500">Deal</dt>
+                <dd>
+                  <Link href={`/admin/deals/${d.deal.id}`} className="text-brand-700 hover:underline">{d.deal.title}</Link>
+                </dd>
+              </>
+            ) : null}
+            {d.serviceProfile ? (
+              <>
+                <dt className="text-ink-500">Anbieterprofil</dt>
+                <dd>
+                  <Link href={`/admin/dienstleistungen/${d.serviceProfile.id}`} className="text-brand-700 hover:underline">{d.serviceProfile.title}</Link>
+                  {typeof d.snapshot?.portfolioItemId === 'string' && typeof d.snapshot.title === 'string' ? (
+                    <span className="text-ink-600"> · Portfolio-Eintrag „{d.snapshot.title}“</span>
+                  ) : null}
+                </dd>
+              </>
+            ) : null}
+            {d.project ? (
+              <>
+                <dt className="text-ink-500">Projektauftrag</dt>
+                <dd>
+                  <Link href={`/admin/dienstleistungen/projekte/${d.project.id}`} className="text-brand-700 hover:underline">{d.project.title}</Link>
                 </dd>
               </>
             ) : null}

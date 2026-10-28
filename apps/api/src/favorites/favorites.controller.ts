@@ -26,6 +26,50 @@ export class FavoritesController {
     return this.favorites.lookup(user, (listingIds ?? '').split(',').map((id) => id.trim()));
   }
 
+  @Get('deals')
+  @ApiOperation({ summary: 'Gemerkte Deals (24 je Seite, neueste zuerst)' })
+  @ApiQuery({ name: 'seite', required: false })
+  listDeals(@CurrentUser() user: AuthUser, @Query('seite') page?: string) {
+    return this.favorites.listDeals(user, pageNumber(page));
+  }
+
+  @Put('deals/:dealId')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  @ApiOperation({ summary: 'Deal merken (idempotent)' })
+  async addDeal(@CurrentUser() user: AuthUser, @Param('dealId') dealId: string) {
+    await this.favorites.addDeal(user, dealId);
+  }
+
+  @Delete('deals/:dealId')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  async removeDeal(@CurrentUser() user: AuthUser, @Param('dealId') dealId: string) {
+    await this.favorites.removeDeal(user, dealId);
+  }
+
+  @Get('services')
+  @ApiOperation({ summary: 'Gemerkte Anbieterprofile (24 je Seite, neueste zuerst)' })
+  @ApiQuery({ name: 'seite', required: false })
+  listServices(@CurrentUser() user: AuthUser, @Query('seite') page?: string) {
+    return this.favorites.listServices(user, pageNumber(page));
+  }
+
+  @Put('services/:profileId')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  @ApiOperation({ summary: 'Anbieterprofil merken (idempotent)' })
+  async addService(@CurrentUser() user: AuthUser, @Param('profileId') profileId: string) {
+    await this.favorites.addService(user, profileId);
+  }
+
+  @Delete('services/:profileId')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  async removeService(@CurrentUser() user: AuthUser, @Param('profileId') profileId: string) {
+    await this.favorites.removeService(user, profileId);
+  }
+
   @Put(':listingId')
   @HttpCode(204)
   @Throttle(WRITE_LIMIT)

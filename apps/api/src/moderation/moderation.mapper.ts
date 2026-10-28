@@ -1,5 +1,6 @@
 import { APPEAL_WINDOW_DAYS, RESTRICTIVE_ACTIONS, type AdminDecision, type AdminReportSummary, type AppealView, type ModerationDecisionView, type PersonRef } from '@marktat/shared';
 import type { Appeal, ModerationDecision, Prisma } from '../generated/prisma/client.js';
+import { dealDisplayStatus } from '../deals/deals.mapper.js';
 import { effectiveStatus } from '../listings/listings.mapper.js';
 
 const DAY_MS = 86_400_000;
@@ -13,6 +14,9 @@ export function toPerson(user: { id: string; displayName: string; status?: strin
 
 export const decisionInclude = {
   listing: { select: { id: true, title: true } },
+  deal: { select: { id: true, title: true } },
+  serviceProfile: { select: { id: true, headline: true } },
+  project: { select: { id: true, title: true } },
   appeal: true,
   reversedBy: { select: { id: true }, take: 1 },
   moderator: { select: personSelect },
@@ -57,6 +61,9 @@ export function toDecisionView(decision: DecisionWithRelations, now = new Date()
     statement: decision.statement,
     createdAt: decision.createdAt.toISOString(),
     listing: decision.listing,
+    deal: decision.deal,
+    serviceProfile: decision.serviceProfile ? { id: decision.serviceProfile.id, title: decision.serviceProfile.headline } : null,
+    project: decision.project ? { id: decision.project.id, title: decision.project.title } : null,
     appeal: decision.appeal ? toAppealView(decision.appeal) : null,
     canAppeal: canAppeal(decision, now),
     appealDeadline: restrictive ? appealDeadline(decision).toISOString() : null,
@@ -76,6 +83,9 @@ export function toAdminDecision(decision: DecisionWithRelations, now = new Date(
 
 export const reportSummaryInclude = {
   listing: { select: { id: true, title: true, status: true, expiresAt: true } },
+  deal: { select: { id: true, title: true, status: true, startsAt: true, endsAt: true, lastVerifiedAt: true, availability: true } },
+  serviceProfile: { select: { id: true, headline: true, status: true } },
+  project: { select: { id: true, title: true, status: true } },
   reported: { select: personSelect },
   reporter: { select: personSelect },
   assignee: { select: personSelect },
@@ -93,6 +103,9 @@ export function toReportSummary(report: ReportWithRelations, relatedOpen: number
     details: report.details,
     createdAt: report.createdAt.toISOString(),
     listing: report.listing ? { id: report.listing.id, title: report.listing.title, status: effectiveStatus(report.listing) } : null,
+    deal: report.deal ? { id: report.deal.id, title: report.deal.title, status: dealDisplayStatus(report.deal) } : null,
+    serviceProfile: report.serviceProfile ? { id: report.serviceProfile.id, title: report.serviceProfile.headline, status: report.serviceProfile.status } : null,
+    project: report.project ? { id: report.project.id, title: report.project.title, status: report.project.status } : null,
     conversationId: report.conversationId,
     reported: report.reported ? { ...toPerson(report.reported)!, status: report.reported.status } : null,
     reporter: toPerson(report.reporter),

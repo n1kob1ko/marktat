@@ -2,10 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { createSavedSearchSchema, savedSearchNameSchema } from '@marktat/shared';
+import { createSavedSearchSchema, SAVED_SEARCH_KINDS, savedSearchNameSchema, type SavedSearchKind } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { getAccessToken, requireUser, safeRedirectPath } from '@/lib/auth';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
+import { SAVED_SEARCH_SUCCESS } from '@/lib/saved-searches';
 
 const ID_PATTERN = /^[a-z0-9]{20,40}$/;
 
@@ -24,7 +25,10 @@ export async function saveSearchAction(_prev: FormState, formData: FormData): Pr
   if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(returnTo)}&hinweis=suche`);
 
   const name = String(formData.get('name') ?? '');
+  const rawKind = String(formData.get('kind') ?? 'LISTINGS');
+  const kind: SavedSearchKind = (SAVED_SEARCH_KINDS as readonly string[]).includes(rawKind) ? (rawKind as SavedSearchKind) : 'LISTINGS';
   const parsed = createSavedSearchSchema.safeParse({
+    kind,
     name,
     params: parseJson(formData.get('params')),
     labels: parseJson(formData.get('labels')) ?? [],
@@ -42,9 +46,7 @@ export async function saveSearchAction(_prev: FormState, formData: FormData): Pr
   revalidatePath('/konto/suchen');
   return {
     status: 'success',
-    message: parsed.data.notify
-      ? 'Gespeichert. Wir schicken dir eine E-Mail, sobald neue passende Anzeigen erscheinen.'
-      : 'Die Suche ist gespeichert.',
+    message: parsed.data.notify ? SAVED_SEARCH_SUCCESS[kind] : 'Die Suche ist gespeichert.',
   };
 }
 

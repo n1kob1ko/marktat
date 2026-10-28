@@ -30,6 +30,18 @@ function accountOptions(viewer: MeResponse, target: AdminUserDetail): DecisionOp
   return [];
 }
 
+/** Deal-Sperre: sperren darf die Moderation, aufheben nur die Administration (bzw. ein Einspruch) */
+function dealsBlockOptions(viewer: MeResponse, target: AdminUserDetail): DecisionOption[] {
+  if (target.accountType !== 'BUSINESS' || target.status === 'DELETED') return [];
+  if (!target.dealsBlockedAt && (viewer.role === 'ADMIN' || target.role === 'USER')) {
+    return [{ value: 'BLOCK', label: 'Für Deals sperren', description: 'Alle Deals des Kontos verschwinden, neue können nicht veröffentlicht werden. Anzeigen bleiben unberührt.', restrictive: true }];
+  }
+  if (target.dealsBlockedAt && viewer.role === 'ADMIN') {
+    return [{ value: 'UNBLOCK', label: 'Deal-Sperre aufheben', description: 'Der Händler kann wieder Deals veröffentlichen; bestehende Deals werden wieder sichtbar, sofern sie noch gültig sind.', restrictive: false }];
+  }
+  return [];
+}
+
 export default function AdminUserPage({ params, searchParams }: PageProps<'/admin/nutzer/[id]'>) {
   return (
     <Suspense fallback={<Skeleton className="h-[32rem]" />}>
@@ -53,6 +65,7 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
   const self = account.id === viewer.id;
   const reportId = param(query, 'meldung');
   const options = accountOptions(viewer, account);
+  const dealOptions = dealsBlockOptions(viewer, account);
   const stepUp = { enabled: viewer.security?.level === 'aal2', maxAgeMinutes: viewer.security?.stepUpMaxAgeMinutes ?? 10 };
   // 2FA-Stand nur für Teamkonten (nur sie können 2FA einrichten); Fehler der Anmeldeverwaltung blenden den Abschnitt aus
   const mfa =
@@ -142,6 +155,20 @@ async function AdminUser({ params, searchParams }: Pick<PageProps<'/admin/nutzer
               </p>
             )}
           </Section>
+
+          {account.accountType === 'BUSINESS' && account.status !== 'DELETED' ? (
+            <Section title="Deals">
+              <p className="mb-3 text-sm text-ink-600">
+                {account.dealsBlockedAt ? `Für Deals gesperrt seit ${formatDateTime(account.dealsBlockedAt)}. ` : ''}
+                <Link href={`/admin/deals?merchant=${account.id}&filter=all`} className="font-semibold text-brand-700 hover:underline">Deals dieses Kontos</Link>
+              </p>
+              {self ? null : dealOptions.length ? (
+                <DecisionForm target="dealsBlock" id={account.id} options={dealOptions} stepUp={stepUp} />
+              ) : account.dealsBlockedAt ? (
+                <p className="text-sm text-ink-500">Die Deal-Sperre heben nur Administratoren auf – oder das Team über einen Einspruch.</p>
+              ) : null}
+            </Section>
+          ) : null}
 
           {isAdmin && !self && account.status !== 'DELETED' ? (
             <>

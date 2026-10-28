@@ -107,6 +107,31 @@ export const envSchema = z
     STEP_UP_MAX_AGE_MINUTES: z.coerce.number().int().min(1).max(60).default(10),
     /** Log-Format: pretty (lesbar, Standard lokal) oder json (eine Zeile je Eintrag, Standard in Produktion) */
     LOG_FORMAT: z.enum(['pretty', 'json']).optional(),
+    /**
+     * Deals (Phase 10): Angebotslinks regelmäßig prüfen (nur öffentliche https-Adressen, siehe common/safe-fetch.ts).
+     * false = keine ausgehenden Prüfungen (z. B. Umgebung ohne Internetzugang).
+     */
+    DEAL_LINK_CHECK: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /**
+     * Deals: freigegebene Produktfeeds der Händler regelmäßig abrufen (nur nach Freigabe durch das Team).
+     * false = keine Abrufe (z. B. Umgebung ohne Internetzugang); Händler können dann nur per CSV importieren.
+     */
+    DEAL_FEED_SYNC: z
+      .enum(['true', 'false'])
+      .default('true')
+      .transform((v) => v === 'true'),
+    /** Nur Tests: ausgehende Abrufe an lokale Testserver (http, 127.0.0.1) erlauben. In Produktion verboten. */
+    OUTBOUND_ALLOW_PRIVATE: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+  })
+  .refine((env) => env.NODE_ENV !== 'production' || !env.OUTBOUND_ALLOW_PRIVATE, {
+    message: 'OUTBOUND_ALLOW_PRIVATE ist nur für Tests gedacht und in Produktion verboten.',
+    path: ['OUTBOUND_ALLOW_PRIVATE'],
   })
   .refine((env) => env.NODE_ENV !== 'production' || env.APP_SIGNING_SECRET, {
     message: 'APP_SIGNING_SECRET ist in Produktion Pflicht.',

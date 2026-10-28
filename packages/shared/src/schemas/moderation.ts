@@ -14,11 +14,14 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: 'Erledigt – kein Verstoß',
 };
 
-export const REPORT_TARGETS = ['LISTING', 'CONVERSATION'] as const;
+export const REPORT_TARGETS = ['LISTING', 'CONVERSATION', 'DEAL', 'SERVICE_PROFILE', 'PROJECT'] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
   LISTING: 'Inserat',
   CONVERSATION: 'Unterhaltung',
+  DEAL: 'Deal / Angebot',
+  SERVICE_PROFILE: 'Anbieterprofil',
+  PROJECT: 'Projektauftrag',
 };
 
 export const REPORT_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
@@ -39,6 +42,19 @@ export const MODERATION_ACTIONS = [
   'LISTING_RESTORED',
   'ACCOUNT_SUSPENDED',
   'ACCOUNT_RESTORED',
+  'DEAL_REJECTED',
+  'DEAL_HIDDEN',
+  'DEAL_RESTORED',
+  'DEALS_BLOCKED',
+  'DEALS_UNBLOCKED',
+  'SERVICE_PROFILE_REJECTED',
+  'SERVICE_PROFILE_HIDDEN',
+  'SERVICE_PROFILE_RESTORED',
+  'PORTFOLIO_ITEM_HIDDEN',
+  'PORTFOLIO_ITEM_RESTORED',
+  'PROJECT_REJECTED',
+  'PROJECT_HIDDEN',
+  'PROJECT_RESTORED',
 ] as const;
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
@@ -47,9 +63,22 @@ export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
   LISTING_RESTORED: 'Inserat freigegeben',
   ACCOUNT_SUSPENDED: 'Konto gesperrt',
   ACCOUNT_RESTORED: 'Sperre aufgehoben',
+  DEAL_REJECTED: 'Deal deaktiviert',
+  DEAL_HIDDEN: 'Deal bis zur Prüfung ausgeblendet',
+  DEAL_RESTORED: 'Deal freigegeben',
+  DEALS_BLOCKED: 'Für Deals gesperrt',
+  DEALS_UNBLOCKED: 'Deal-Sperre aufgehoben',
+  SERVICE_PROFILE_REJECTED: 'Anbieterprofil deaktiviert',
+  SERVICE_PROFILE_HIDDEN: 'Anbieterprofil bis zur Prüfung ausgeblendet',
+  SERVICE_PROFILE_RESTORED: 'Anbieterprofil freigegeben',
+  PORTFOLIO_ITEM_HIDDEN: 'Portfolio-Eintrag ausgeblendet',
+  PORTFOLIO_ITEM_RESTORED: 'Portfolio-Eintrag wieder sichtbar',
+  PROJECT_REJECTED: 'Projektauftrag deaktiviert',
+  PROJECT_HIDDEN: 'Projektauftrag bis zur Prüfung ausgeblendet',
+  PROJECT_RESTORED: 'Projektauftrag freigegeben',
 };
 /** Einschränkende Maßnahmen: brauchen Grund, Rechtsgrundlage und Begründung (Art. 17 DSA) und erlauben Einspruch. */
-export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED'];
+export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'DEALS_BLOCKED', 'SERVICE_PROFILE_REJECTED', 'SERVICE_PROFILE_HIDDEN', 'PORTFOLIO_ITEM_HIDDEN', 'PROJECT_REJECTED', 'PROJECT_HIDDEN'];
 
 export const DECISION_GROUNDS = ['TERMS', 'ILLEGAL'] as const;
 export type DecisionGround = (typeof DECISION_GROUNDS)[number];
@@ -76,6 +105,20 @@ export const NOTIFICATION_TYPES = [
   'ACCOUNT_RESTORED',
   'APPEAL_DECIDED',
   'REPORT_HANDLED',
+  'DEAL_REJECTED',
+  'DEAL_HIDDEN',
+  'DEAL_RESTORED',
+  'DEALS_BLOCKED',
+  'DEALS_UNBLOCKED',
+  'SERVICE_PROFILE_REJECTED',
+  'SERVICE_PROFILE_HIDDEN',
+  'SERVICE_PROFILE_RESTORED',
+  'PORTFOLIO_ITEM_HIDDEN',
+  'PORTFOLIO_ITEM_RESTORED',
+  'QUALIFICATION_REVIEWED',
+  'PROJECT_REJECTED',
+  'PROJECT_HIDDEN',
+  'PROJECT_RESTORED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -164,6 +207,16 @@ export const listingDecisionSchema = z
   .strict()
   .superRefine((v, ctx) => requireGrounds(v.decision !== 'RESTORE', v, ctx));
 export type ListingDecisionInput = z.infer<typeof listingDecisionSchema>;
+
+/** Einzelnen Portfolio-Eintrag eines Anbieterprofils ausblenden bzw. wieder zeigen (Phase 10) */
+export const portfolioItemDecisionSchema = z
+  .object({
+    decision: z.enum(['HIDE', 'RESTORE'], { error: 'Bitte wähle eine Maßnahme.' }),
+    ...decisionFields,
+  })
+  .strict()
+  .superRefine((v, ctx) => requireGrounds(v.decision === 'HIDE', v, ctx));
+export type PortfolioItemDecisionInput = z.infer<typeof portfolioItemDecisionSchema>;
 
 export const userDecisionSchema = z
   .object({

@@ -1,7 +1,11 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { MAX_FAVORITES, type FavoriteItem, type Paginated } from '@marktat/shared';
+import { MAX_FAVORITES, type DealFavoriteItem, type FavoriteItem, type Paginated, type ServiceFavoriteItem } from '@marktat/shared';
 import type { AuthUser } from '../auth/auth.types.js';
+import { dealInclude, isDealPublic, publicDealWhere, toDealSummary } from '../deals/deals.mapper.js';
 import { ImageUrls } from '../images/image-urls.js';
+import { MediaUrls } from '../images/media.js';
+import { serviceProfileInclude, toServiceProfileSummary } from '../services/services.mapper.js';
+import { isServiceProfilePublic, publicServiceProfileWhere } from '../services/visibility.js';
 import { listingInclude, toListingSummary } from '../listings/listings.mapper.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { isPubliclyVisible } from '../search/search-document.js';
@@ -14,6 +18,7 @@ export class FavoritesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly urls: ImageUrls,
+    private readonly media: MediaUrls,
   ) {}
 
   /** Merkliste, neueste zuerst. Nicht mehr verfügbare Inserate bleiben sichtbar (ohne Bild), bis sie entfernt werden. */
@@ -74,5 +79,79 @@ export class FavoritesService {
 
   async isFavorite(userId: string, listingId: string): Promise<boolean> {
     return (await this.prisma.favorite.count({ where: { userId, listingId } })) > 0;
+  }
+  // --- Deals und Anbieterprofile (Phase 10) --------------------------------------------
+
+  /** Gemerkte Deals; abgelaufene bleiben (ohne Bild) sichtbar, bis sie entfernt werden */
+  async listDeals(user: AuthUser, page = 1): Promise<Paginated<DealFavoriteItem>> {
+    const where = { userId: user.id, deal: { status: { not: 'DELETED' as const } } };
+    const [total, rows] = await Promise.all([
+      this.prisma.dealFavorite.count({ where }),
+      this.prisma.dealFavorite.findMany({ where, orderBy: [{ createdAt: 'desc' }, { dealId: 'asc' }], skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: { deal: { include: dealInclude } } }),
+    ]);
+    const now = new Date();
+    const items = rows.map(({ deal, createdAt }): DealFavoriteItem => {
+      const available = isDealPublic(deal, now);
+      const summary = toDealSummary(deal, this.media, null, now);
+      if (!available) summary.imageUrl = null;
+      return { deal: summary, available, savedAt: createdAt.toISOString() };
+    });
+    return { items, page, pageSize: PAGE_SIZE, total };
+  }
+
+  async addDeal(user: AuthUser, dealId: string): Promise<void> {
+    const deal = ENTITY_ID.test(dealId) ? await this.prisma.deal.findFirst({ where: { id: dealId, ...publicDealWhere() }, select: { id: true, merchantId: true } }) : null;
+    if (!deal) throw new NotFoundException('Dieses Angebot ist nicht mehr verfügbar.');
+    if (deal.merchantId === user.id) throw new BadRequestException('Eigene Angebote kannst du nicht merken.');
+    if (await this.prisma.dealFavorite.findUnique({ where: { userId_dealId: { userId: user.id, dealId } } })) return;
+    if ((await this.prisma.dealFavorite.count({ where: { userId: user.id } })) >= MAX_FAVORITES) {
+      throw new BadRequestException(`Du hast schon ${MAX_FAVORITES} Deals gemerkt. Entferne zuerst alte Einträge.`);
+    }
+    await this.prisma.dealFavorite.createMany({ data: [{ userId: user.id, dealId }], skipDuplicates: true });
+  }
+
+  async removeDeal(user: AuthUser, dealId: string): Promise<void> {
+    if (!ENTITY_ID.test(dealId)) return;
+    await this.prisma.dealFavorite.deleteMany({ where: { userId: user.id, dealId } });
+  }
+
+  /** Gemerkte Anbieterprofile; pausierte bzw. gesperrte bleiben (ohne Bild) sichtbar, bis sie entfernt werden */
+  async listServices(user: AuthUser, page = 1): Promise<Paginated<ServiceFavoriteItem>> {
+    const where = { userId: user.id, profile: { status: { not: 'DELETED' as const } } };
+    const [total, rows] = await Promise.all([
+      this.prisma.serviceFavorite.count({ where }),
+      this.prisma.serviceFavorite.findMany({
+        where,
+        orderBy: [{ createdAt: 'desc' }, { profileId: 'asc' }],
+        skip: (page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+        include: { profile: { include: serviceProfileInclude } },
+      }),
+    ]);
+    const items = rows.map(({ profile, createdAt }): ServiceFavoriteItem => {
+      const available = isServiceProfilePublic(profile);
+      const summary = toServiceProfileSummary(profile, this.media);
+      if (!available) summary.imageUrl = null;
+      return { profile: summary, available, savedAt: createdAt.toISOString() };
+    });
+    return { items, page, pageSize: PAGE_SIZE, total };
+  }
+
+  async addService(user: AuthUser, profileId: string): Promise<void> {
+    const profile = ENTITY_ID.test(profileId)
+      ? await this.prisma.serviceProfile.findFirst({ where: { id: profileId, ...publicServiceProfileWhere() }, select: { id: true, userId: true } })
+      : null;
+    if (!profile) throw new NotFoundException('Dieses Anbieterprofil ist nicht mehr verfügbar.');
+    if (profile.userId === user.id) throw new BadRequestException('Dein eigenes Profil kannst du nicht merken.');
+    if (await this.prisma.serviceFavorite.findUnique({ where: { userId_profileId: { userId: user.id, profileId } } })) return;
+    if ((await this.prisma.serviceFavorite.count({ where: { userId: user.id } })) >= MAX_FAVORITES) {
+      throw new BadRequestException(`Du hast schon ${MAX_FAVORITES} Anbieter gemerkt. Entferne zuerst alte Einträge.`);
+    }
+    await this.prisma.serviceFavorite.createMany({ data: [{ userId: user.id, profileId }], skipDuplicates: true });
+  }
+
+  async removeService(user: AuthUser, profileId: string): Promise<void> {
+    if (!ENTITY_ID.test(profileId)) return;
+    await this.prisma.serviceFavorite.deleteMany({ where: { userId: user.id, profileId } });
   }
 }

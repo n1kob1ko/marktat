@@ -24,7 +24,8 @@ async function expectNoViolations(page: Page, label: string) {
 }
 
 test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ page }) => {
-  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-freizeit/fahrraeder', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
+  test.setTimeout(180_000);
+  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-freizeit/fahrraeder', '/deals', '/deals?q=notebook', '/dienstleistungen', '/dienstleistungen?bereich=it-digital', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await expectNoViolations(page, path);
   }
@@ -32,7 +33,7 @@ test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({
 
 test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im Bild', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const path of ['/', '/suche?q=rad', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
+  for (const path of ['/', '/suche?q=rad', '/deals', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await page.waitForLoadState('networkidle').catch(() => undefined);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -43,10 +44,11 @@ test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im
 });
 
 test('Angemeldete Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
   const email = `a11y-${testInfo.project.name}-${Date.now()}@example.test`;
   await registerConfirmed(page, 'Barriere Frei', email);
   await expectNoViolations(page, 'Konto');
-  for (const path of ['/inserieren', '/konto/anzeigen', '/konto/merkliste', '/konto/suchen', '/konto/benachrichtigungen', '/konto/datenschutz', '/nachrichten']) {
+  for (const path of ['/inserieren', '/konto/anzeigen', '/konto/merkliste', '/konto/merkliste?art=deals', '/konto/merkliste?art=anbieter', '/konto/suchen', '/konto/dienstleistungen', '/konto/projekte', '/konto/projekte/neu', '/konto/benachrichtigungen', '/konto/datenschutz', '/nachrichten']) {
     await page.goto(path);
     await expectNoViolations(page, path);
   }
@@ -67,10 +69,11 @@ test('Angemeldete Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ 
 });
 
 test('Admin-Bereich ohne automatisch erkennbare WCAG-Verstöße', async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
   const email = `a11y-admin-${testInfo.project.name}-${Date.now()}@example.test`;
   await registerConfirmed(page, 'Admin Barrierefrei', email);
   setRole(email, 'ADMIN');
-  for (const adminPath of ['/admin', '/admin/meldungen', '/admin/einsprueche', '/admin/inserate', '/admin/nutzer', '/admin/protokoll', '/admin/system', '/admin/monetarisierung', '/admin/monetarisierung/buchungen']) {
+  for (const adminPath of ['/admin', '/admin/meldungen', '/admin/einsprueche', '/admin/inserate', '/admin/nutzer', '/admin/protokoll', '/admin/system', '/admin/monetarisierung', '/admin/monetarisierung/buchungen', '/admin/deals', '/admin/dienstleistungen', '/admin/dienstleistungen/projekte']) {
     await page.goto(adminPath);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectNoViolations(page, adminPath);

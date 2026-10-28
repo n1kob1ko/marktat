@@ -1,5 +1,6 @@
 import {
   ATTRIBUTE_RULE_PATHS,
+  DEAL_CATEGORIES,
   categoryAttributeSchema,
   missingRequiredAttributes,
   parseListingAttributes,
@@ -26,6 +27,11 @@ function allPaths(): { path: string; leaf: boolean }[] {
 
 describe('Zusatzfelder und Kategoriebaum', () => {
   const paths = allPaths();
+
+  it('Deal-Kategorien verweisen nur auf existierende Kategorien der Kleinanzeigen', () => {
+    const known = new Set(paths.map((p) => p.path));
+    expect(DEAL_CATEGORIES.filter((c) => c.relatedCategoryPath && !known.has(c.relatedCategoryPath)).map((c) => c.slug)).toEqual([]);
+  });
 
   it('jede Regel verweist auf eine existierende Kategorie', () => {
     const known = new Set([...Object.values(VERTICAL_SLUGS), ...paths.map((p) => p.path)]);

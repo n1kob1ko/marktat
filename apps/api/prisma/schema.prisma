@@ -100,33 +100,45 @@ model User {
   website               String?     @db.VarChar(200)
   showPhone             Boolean     @default(false) @map("show_phone")
   logoKey               String?     @map("logo_key")
+  /// Deals (Phase 10): Bestätigung gewerblicher Anbieter nach Art. 30 DSA und Sperre durch das Team
+  dealerCertifiedAt     DateTime?   @map("dealer_certified_at")
+  dealsBlockedAt        DateTime?   @map("deals_blocked_at")
   createdAt             DateTime    @default(now()) @map("created_at")
   updatedAt             DateTime    @updatedAt @map("updated_at")
   deletedAt             DateTime?   @map("deleted_at")
 
-  listings            Listing[]
-  auditLogs           AuditLog[]
-  favorites           Favorite[]
-  savedSearches       SavedSearch[]
-  buyerConversations  Conversation[]       @relation("ConversationBuyer")
-  sellerConversations Conversation[]       @relation("ConversationSeller")
-  sentMessages        Message[]            @relation("MessageSender")
-  receivedMessages    Message[]            @relation("MessageRecipient")
-  blocks              UserBlock[]          @relation("BlockBy")
-  blockedBy           UserBlock[]          @relation("BlockOf")
-  reportsMade         Report[]             @relation("ReportBy")
-  reportsReceived     Report[]             @relation("ReportOf")
-  reportsAssigned     Report[]             @relation("ReportAssignee")
-  reportsHandled      Report[]             @relation("ReportHandler")
-  reportEvents        ReportEvent[]
-  decisionsReceived   ModerationDecision[] @relation("DecisionSubject")
-  decisionsMade       ModerationDecision[] @relation("DecisionModerator")
-  appeals             Appeal[]             @relation("AppealBy")
-  appealsReviewed     Appeal[]             @relation("AppealReviewer")
-  notifications       Notification[]
-  deletion            AccountDeletion?
-  bookings            Booking[]
-  payments            Payment[]
+  listings               Listing[]
+  auditLogs              AuditLog[]
+  favorites              Favorite[]
+  dealFavorites          DealFavorite[]
+  serviceFavorites       ServiceFavorite[]
+  savedSearches          SavedSearch[]
+  buyerConversations     Conversation[]         @relation("ConversationBuyer")
+  sellerConversations    Conversation[]         @relation("ConversationSeller")
+  sentMessages           Message[]              @relation("MessageSender")
+  receivedMessages       Message[]              @relation("MessageRecipient")
+  blocks                 UserBlock[]            @relation("BlockBy")
+  blockedBy              UserBlock[]            @relation("BlockOf")
+  reportsMade            Report[]               @relation("ReportBy")
+  reportsReceived        Report[]               @relation("ReportOf")
+  reportsAssigned        Report[]               @relation("ReportAssignee")
+  reportsHandled         Report[]               @relation("ReportHandler")
+  reportEvents           ReportEvent[]
+  decisionsReceived      ModerationDecision[]   @relation("DecisionSubject")
+  decisionsMade          ModerationDecision[]   @relation("DecisionModerator")
+  appeals                Appeal[]               @relation("AppealBy")
+  appealsReviewed        Appeal[]               @relation("AppealReviewer")
+  notifications          Notification[]
+  deletion               AccountDeletion?
+  bookings               Booking[]
+  payments               Payment[]
+  deals                  Deal[]
+  dealerStores           DealerStore[]
+  dealImports            DealImport[]
+  dealFeeds              DealFeed[]
+  serviceProfile         ServiceProfile?
+  reviewedQualifications ServiceQualification[] @relation("QualificationReviewer")
+  serviceProjects        ServiceProject[]
 
   @@index([status])
   @@index([accountType, status])
@@ -165,19 +177,22 @@ model District {
 
 /// Ort mit Postleitzahl. Eine PLZ kann mehrere Orte umfassen und umgekehrt.
 model Location {
-  id           Int                                    @id @default(autoincrement())
-  postalCode   String                                 @map("postal_code") @db.VarChar(4)
-  place        String
+  id              Int                                    @id @default(autoincrement())
+  postalCode      String                                 @map("postal_code") @db.VarChar(4)
+  place           String
   /// Gemeinde laut Statistik Austria (z. B. „Innsbruck“ für den Ortsteil „Wilten“), in Wien „Wien“
-  municipality String?
-  slug         String
-  districtId   Int                                    @map("district_id")
-  latitude     Float
-  longitude    Float
+  municipality    String?
+  slug            String
+  districtId      Int                                    @map("district_id")
+  latitude        Float
+  longitude       Float
   /// Wird aus latitude/longitude befüllt (siehe Seed); für Umkreissuche mit ST_DWithin
-  geom         Unsupported("geography(Point, 4326)")?
-  district     District                               @relation(fields: [districtId], references: [id])
-  listings     Listing[]
+  geom            Unsupported("geography(Point, 4326)")?
+  district        District                               @relation(fields: [districtId], references: [id])
+  listings        Listing[]
+  dealerStores    DealerStore[]
+  serviceProfiles ServiceProfile[]
+  serviceProjects ServiceProject[]
 
   @@unique([postalCode, place])
   @@index([postalCode])
@@ -214,38 +229,38 @@ model Category {
 }
 
 model Listing {
-  id          String         @id @default(cuid())
-  slug        String
-  sellerId    String         @map("seller_id") @db.Uuid
-  categoryId  String?        @map("category_id")
-  vertical    Vertical       @default(MARKETPLACE)
-  title       String
-  description String         @default("")
-  priceType   PriceType?     @map("price_type")
+  id               String         @id @default(cuid())
+  slug             String
+  sellerId         String         @map("seller_id") @db.Uuid
+  categoryId       String?        @map("category_id")
+  vertical         Vertical       @default(MARKETPLACE)
+  title            String
+  description      String         @default("")
+  priceType        PriceType?     @map("price_type")
   /// Preis in Cent. BigInt, damit auch Immobilienpreise abbildbar sind.
-  priceCents  BigInt?        @map("price_cents")
-  condition   ItemCondition?
+  priceCents       BigInt?        @map("price_cents")
+  condition        ItemCondition?
   /// Kategorieabhängige Zusatzfelder (validiert gegen Category.attributeSchema)
-  attributes  Json           @default("{}")
-  status      ListingStatus  @default(DRAFT)
-  locationId  Int?           @map("location_id")
-  viewCount   Int            @default(0) @map("view_count")
-  publishedAt DateTime?      @map("published_at")
-  expiresAt   DateTime?      @map("expires_at")
-  createdAt   DateTime       @default(now()) @map("created_at")
-  updatedAt   DateTime       @updatedAt @map("updated_at")
-  deletedAt   DateTime?      @map("deleted_at")
+  attributes       Json           @default("{}")
+  status           ListingStatus  @default(DRAFT)
+  locationId       Int?           @map("location_id")
+  viewCount        Int            @default(0) @map("view_count")
+  publishedAt      DateTime?      @map("published_at")
+  expiresAt        DateTime?      @map("expires_at")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+  deletedAt        DateTime?      @map("deleted_at")
   /// Zusatzleistungen (Phase 7) – abgeleitet aus aktiven Buchungen, damit Suche und Karten ohne Join auskommen.
   /// Maßgeblich bleibt die Buchung; nach Ablauf wirken die Felder nicht mehr (Abfragen vergleichen mit „jetzt“).
-  highlightedUntil DateTime? @map("highlighted_until")
-  topUntil         DateTime? @map("top_until")
+  highlightedUntil DateTime?      @map("highlighted_until")
+  topUntil         DateTime?      @map("top_until")
   /// Zeitpunkt des letzten Hochschiebens; die Sortierung „Neueste“ nutzt max(publishedAt, bumpedAt)
-  bumpedAt         DateTime? @map("bumped_at")
+  bumpedAt         DateTime?      @map("bumped_at")
   /// Wurde die aktuelle Platzierung bezahlt? Dann wird sie als Werbung gekennzeichnet.
-  highlightPaid    Boolean   @default(false) @map("highlight_paid")
-  topPaid          Boolean   @default(false) @map("top_paid")
+  highlightPaid    Boolean        @default(false) @map("highlight_paid")
+  topPaid          Boolean        @default(false) @map("top_paid")
   /// Kennung des Anlegeformulars: erneutes Abschicken liefert dasselbe Inserat statt eines zweiten
-  clientRequestId  String?   @map("client_request_id") @db.Uuid
+  clientRequestId  String?        @map("client_request_id") @db.Uuid
 
   seller        User                 @relation(fields: [sellerId], references: [id])
   category      Category?            @relation(fields: [categoryId], references: [id])
@@ -326,46 +341,89 @@ model Favorite {
 
 /// Gespeicherte Suche: dieselben Parameter wie in der Such-URL (siehe docs/suche.md).
 model SavedSearch {
-  id             String    @id @default(cuid())
-  userId         String    @map("user_id") @db.Uuid
-  name           String    @db.VarChar(80)
+  id             String          @id @default(cuid())
+  userId         String          @map("user_id") @db.Uuid
+  /// Welche Suche: Inserate (/suche), Deals (/deals) oder Anbieterprofile (/dienstleistungen) – Phase 10
+  kind           SavedSearchKind @default(LISTINGS)
+  name           String          @db.VarChar(80)
   /// Kanonische Suchparameter (`toSearchParams`), ohne Seite
   params         Json
   /// Sortierter Query-String der Parameter: dieselbe Suche kann nicht doppelt gespeichert werden
-  queryKey       String    @map("query_key") @db.VarChar(2000)
+  queryKey       String          @map("query_key") @db.VarChar(2000)
   /// Lesbare Filter zur Anzeige im Konto, z. B. „Preis bis € 500“
-  labels         String[]  @default([])
+  labels         String[]        @default([])
   /// E-Mail bei neuen Treffern
-  notify         Boolean   @default(false)
+  notify         Boolean         @default(false)
   /// Neue Treffer werden ab diesem Zeitpunkt gesucht
-  lastCheckedAt  DateTime  @default(now()) @map("last_checked_at")
-  lastNotifiedAt DateTime? @map("last_notified_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastCheckedAt  DateTime        @default(now()) @map("last_checked_at")
+  lastNotifiedAt DateTime?       @map("last_notified_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, queryKey])
+  @@unique([userId, kind, queryKey])
   @@index([userId, createdAt(sort: Desc)])
   @@index([notify, lastCheckedAt])
   @@map("saved_searches")
 }
 
+enum SavedSearchKind {
+  LISTINGS
+  DEALS
+  SERVICES
+}
+
+/// Gemerkte Deals (Phase 10); getrennt von der Merkliste für Inserate
+model DealFavorite {
+  userId    String   @map("user_id") @db.Uuid
+  dealId    String   @map("deal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dealId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([dealId])
+  @@map("deal_favorites")
+}
+
+/// Gemerkte Anbieterprofile (Phase 10)
+model ServiceFavorite {
+  userId    String         @map("user_id") @db.Uuid
+  profileId String         @map("profile_id")
+  createdAt DateTime       @default(now()) @map("created_at")
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile   ServiceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([userId, profileId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([profileId])
+  @@map("service_favorites")
+}
+
 /// Unterhaltung zwischen Interessent und Verkäufer zu genau einem Inserat.
 model Conversation {
-  id            String    @id @default(cuid())
-  listingId     String    @map("listing_id")
-  buyerId       String    @map("buyer_id") @db.Uuid
-  sellerId      String    @map("seller_id") @db.Uuid
-  lastMessageAt DateTime  @default(now()) @map("last_message_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  listing       Listing   @relation(fields: [listingId], references: [id])
-  buyer         User      @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
-  seller        User      @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
-  messages      Message[]
-  reports       Report[]
+  id               String          @id @default(cuid())
+  /// Worum es geht: genau eines von Inserat, Anbieterprofil (Phase 10) bzw. Projektauftrag (Phase 10)
+  listingId        String?         @map("listing_id")
+  serviceProfileId String?         @map("service_profile_id")
+  projectId        String?         @map("project_id")
+  buyerId          String          @map("buyer_id") @db.Uuid
+  sellerId         String          @map("seller_id") @db.Uuid
+  lastMessageAt    DateTime        @default(now()) @map("last_message_at")
+  createdAt        DateTime        @default(now()) @map("created_at")
+  listing          Listing?        @relation(fields: [listingId], references: [id], onDelete: Restrict)
+  serviceProfile   ServiceProfile? @relation(fields: [serviceProfileId], references: [id], onDelete: Restrict)
+  project          ServiceProject? @relation(fields: [projectId], references: [id], onDelete: Restrict)
+  buyer            User            @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
+  seller           User            @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
+  messages         Message[]
+  reports          Report[]
 
-  /// Je Inserat und Interessent genau eine Unterhaltung
+  /// Je Inserat (bzw. Profil) und Interessent genau eine Unterhaltung
   @@unique([listingId, buyerId])
+  @@unique([serviceProfileId, buyerId])
+  @@unique([projectId, buyerId])
   @@index([buyerId, lastMessageAt(sort: Desc)])
   @@index([sellerId, lastMessageAt(sort: Desc)])
   @@map("conversations")
@@ -389,9 +447,9 @@ model Message {
   sender         User         @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
   recipient      User         @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
+  @@unique([senderId, clientId])
   @@index([conversationId, createdAt])
   @@index([recipientId, readAt])
-  @@unique([senderId, clientId])
   @@index([senderId, createdAt])
   @@map("messages")
 }
@@ -432,6 +490,12 @@ enum ReportStatus {
 enum ReportTarget {
   LISTING
   CONVERSATION
+  /// Deal bzw. Angebot eines Händlers (Phase 10)
+  DEAL
+  /// Anbieterprofil für Dienstleistungen (Phase 10)
+  SERVICE_PROFILE
+  /// Projektauftrag (Phase 10)
+  PROJECT
 }
 
 enum ReportPriority {
@@ -448,37 +512,43 @@ enum ReportPriority {
 /// Meldung (Art. 16 DSA) zu einem Inserat oder aus einer Unterhaltung. Bis Phase 5 hieß die Tabelle user_reports.
 /// Meldungen führen nie automatisch zu einer Sperre; jede Maßnahme trifft ein Mensch (moderation_decisions).
 model Report {
-  id             String              @id @default(cuid())
-  targetType     ReportTarget        @default(CONVERSATION) @map("target_type")
+  id               String              @id @default(cuid())
+  targetType       ReportTarget        @default(CONVERSATION) @map("target_type")
   /// Meldende Person; null, wenn ihr Konto gelöscht wurde
-  reporterId     String?             @map("reporter_id") @db.Uuid
+  reporterId       String?             @map("reporter_id") @db.Uuid
   /// Betroffene Person (Anbieterin des Inserats bzw. Gesprächspartner)
-  reportedId     String?             @map("reported_id") @db.Uuid
-  listingId      String?             @map("listing_id")
-  conversationId String?             @map("conversation_id")
-  reason         ReportReason
-  details        String?             @db.VarChar(1000)
-  status         ReportStatus        @default(OPEN)
-  priority       ReportPriority      @default(NORMAL)
-  assigneeId     String?             @map("assignee_id") @db.Uuid
+  reportedId       String?             @map("reported_id") @db.Uuid
+  listingId        String?             @map("listing_id")
+  conversationId   String?             @map("conversation_id")
+  dealId           String?             @map("deal_id")
+  serviceProfileId String?             @map("service_profile_id")
+  projectId        String?             @map("project_id")
+  reason           ReportReason
+  details          String?             @db.VarChar(1000)
+  status           ReportStatus        @default(OPEN)
+  priority         ReportPriority      @default(NORMAL)
+  assigneeId       String?             @map("assignee_id") @db.Uuid
   /// Offensichtlich unbegründete Meldung (Art. 23 DSA) – zählt für die Einschränkung der Meldefunktion
-  abusive        Boolean             @default(false)
+  abusive          Boolean             @default(false)
   /// Entscheidung, mit der die Meldung erledigt wurde
-  decisionId     String?             @map("decision_id")
+  decisionId       String?             @map("decision_id")
   /// Interne Notiz der Moderation zum Abschluss (wird der meldenden Person nicht gezeigt)
-  resolutionNote String?             @map("resolution_note") @db.VarChar(1000)
-  handledById    String?             @map("handled_by_id") @db.Uuid
-  handledAt      DateTime?           @map("handled_at")
-  createdAt      DateTime            @default(now()) @map("created_at")
-  updatedAt      DateTime            @default(now()) @updatedAt @map("updated_at")
-  reporter       User?               @relation("ReportBy", fields: [reporterId], references: [id], onDelete: SetNull)
-  reported       User?               @relation("ReportOf", fields: [reportedId], references: [id], onDelete: SetNull)
-  assignee       User?               @relation("ReportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  handledBy      User?               @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
-  listing        Listing?            @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  conversation   Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  decision       ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
-  events         ReportEvent[]
+  resolutionNote   String?             @map("resolution_note") @db.VarChar(1000)
+  handledById      String?             @map("handled_by_id") @db.Uuid
+  handledAt        DateTime?           @map("handled_at")
+  createdAt        DateTime            @default(now()) @map("created_at")
+  updatedAt        DateTime            @default(now()) @updatedAt @map("updated_at")
+  reporter         User?               @relation("ReportBy", fields: [reporterId], references: [id], onDelete: SetNull)
+  reported         User?               @relation("ReportOf", fields: [reportedId], references: [id], onDelete: SetNull)
+  assignee         User?               @relation("ReportAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  handledBy        User?               @relation("ReportHandler", fields: [handledById], references: [id], onDelete: SetNull)
+  listing          Listing?            @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  conversation     Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  deal             Deal?               @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  serviceProfile   ServiceProfile?     @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
+  project          ServiceProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  decision         ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
+  events           ReportEvent[]
 
   @@index([status, createdAt])
   @@index([status, priority, createdAt])
@@ -486,6 +556,9 @@ model Report {
   @@index([listingId, status])
   @@index([reporterId, createdAt])
   @@index([conversationId])
+  @@index([dealId, status])
+  @@index([serviceProfileId, status])
+  @@index([projectId, status])
   @@map("reports")
 }
 
@@ -525,6 +598,28 @@ enum ModerationAction {
   LISTING_RESTORED
   ACCOUNT_SUSPENDED
   ACCOUNT_RESTORED
+  /// Deal wegen eines Verstoßes deaktiviert (Status REJECTED), z. B. irreführender Rabatt
+  DEAL_REJECTED
+  /// Deal bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  DEAL_HIDDEN
+  /// Deal nach Prüfung freigegeben
+  DEAL_RESTORED
+  /// Händlerkonto darf keine Deals mehr veröffentlichen (alle Deals ausgeblendet; Konto sonst nutzbar)
+  DEALS_BLOCKED
+  DEALS_UNBLOCKED
+  /// Anbieterprofil wegen eines Verstoßes deaktiviert (Status REJECTED)
+  SERVICE_PROFILE_REJECTED
+  /// Anbieterprofil bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  SERVICE_PROFILE_HIDDEN
+  SERVICE_PROFILE_RESTORED
+  /// Einzelner Portfolio-Eintrag ausgeblendet (Eintrag in snapshot.portfolioItemId)
+  PORTFOLIO_ITEM_HIDDEN
+  PORTFOLIO_ITEM_RESTORED
+  /// Projektauftrag wegen eines Verstoßes deaktiviert (Status REJECTED)
+  PROJECT_REJECTED
+  /// Projektauftrag bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  PROJECT_HIDDEN
+  PROJECT_RESTORED
 }
 
 /// Rechtsgrundlage einer Maßnahme (Art. 17 Abs. 3 lit. d/e DSA)
@@ -537,34 +632,43 @@ enum DecisionGround {
 
 /// Moderationsentscheidung mit Begründung an die betroffene Person (Art. 17 DSA). Wird nie automatisch getroffen.
 model ModerationDecision {
-  id            String               @id @default(cuid())
-  action        ModerationAction
+  id               String               @id @default(cuid())
+  action           ModerationAction
   /// Betroffene Person
-  userId        String               @map("user_id") @db.Uuid
-  listingId     String?              @map("listing_id")
-  moderatorId   String?              @map("moderator_id") @db.Uuid
+  userId           String               @map("user_id") @db.Uuid
+  listingId        String?              @map("listing_id")
+  dealId           String?              @map("deal_id")
+  serviceProfileId String?              @map("service_profile_id")
+  projectId        String?              @map("project_id")
+  moderatorId      String?              @map("moderator_id") @db.Uuid
   /// Art des Verstoßes (bei Freigaben leer)
-  reason        ReportReason?
-  ground        DecisionGround?
+  reason           ReportReason?
+  ground           DecisionGround?
   /// Begründung, die die betroffene Person sieht
-  statement     String               @db.VarChar(2000)
-  internalNote  String?              @map("internal_note") @db.VarChar(1000)
+  statement        String               @db.VarChar(2000)
+  internalNote     String?              @map("internal_note") @db.VarChar(1000)
   /// Stand des Inserats bei der Entscheidung (Titel, Beschreibung, Preis …) – zur Nachvollziehbarkeit
-  snapshot      Json?
+  snapshot         Json?
   /// Durch diese Entscheidung aufgehobene frühere Entscheidung (z. B. Freigabe nach Einspruch)
-  reversesId    String?              @map("reverses_id")
-  createdAt     DateTime             @default(now()) @map("created_at")
-  user          User                 @relation("DecisionSubject", fields: [userId], references: [id], onDelete: Cascade)
-  moderator     User?                @relation("DecisionModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
-  listing       Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
-  reverses      ModerationDecision?  @relation("DecisionReversal", fields: [reversesId], references: [id], onDelete: SetNull)
-  reversedBy    ModerationDecision[] @relation("DecisionReversal")
-  appeal        Appeal?
-  reports       Report[]
-  notifications Notification[]
+  reversesId       String?              @map("reverses_id")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  user             User                 @relation("DecisionSubject", fields: [userId], references: [id], onDelete: Cascade)
+  moderator        User?                @relation("DecisionModerator", fields: [moderatorId], references: [id], onDelete: SetNull)
+  listing          Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
+  deal             Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  serviceProfile   ServiceProfile?      @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
+  project          ServiceProject?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  reverses         ModerationDecision?  @relation("DecisionReversal", fields: [reversesId], references: [id], onDelete: SetNull)
+  reversedBy       ModerationDecision[] @relation("DecisionReversal")
+  appeal           Appeal?
+  reports          Report[]
+  notifications    Notification[]
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([listingId, createdAt(sort: Desc)])
+  @@index([dealId, createdAt(sort: Desc)])
+  @@index([serviceProfileId, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
   @@index([createdAt])
   @@map("moderation_decisions")
 }
@@ -606,6 +710,20 @@ enum NotificationType {
   ACCOUNT_RESTORED
   APPEAL_DECIDED
   REPORT_HANDLED
+  DEAL_REJECTED
+  DEAL_HIDDEN
+  DEAL_RESTORED
+  DEALS_BLOCKED
+  DEALS_UNBLOCKED
+  SERVICE_PROFILE_REJECTED
+  SERVICE_PROFILE_HIDDEN
+  SERVICE_PROFILE_RESTORED
+  PORTFOLIO_ITEM_HIDDEN
+  PORTFOLIO_ITEM_RESTORED
+  QUALIFICATION_REVIEWED
+  PROJECT_REJECTED
+  PROJECT_HIDDEN
+  PROJECT_RESTORED
 }
 
 /// Mitteilung im Konto (zusätzlich per E-Mail). Für Entscheidungen der Moderation, Einsprüche und Meldungen.
@@ -851,6 +969,209 @@ model ListingViewDay {
 }
 
 // ---------------------------------------------------------------------------
+// Deals & Angebote (Phase 10) – Angebote gewerblicher Händler, getrennt von Kleinanzeigen.
+// Preis-, Link- und Ablaufregeln: docs/deals.md
+// ---------------------------------------------------------------------------
+
+enum DealStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  EXPIRED
+  /// Ausgeblendet bis zur Prüfung (auffälliger Rabatt oder Entscheidung der Moderation)
+  PENDING_REVIEW
+  REJECTED
+  DELETED
+}
+
+enum DealChannel {
+  ONLINE
+  LOCAL
+  BOTH
+}
+
+/// Grundlage des Vergleichspreises. Ohne Grundlage gibt es keinen Rabatt.
+enum ReferencePriceType {
+  /// Niedrigster Preis des Händlers in den 30 Tagen vor der Ermäßigung (Angabe des Händlers)
+  LOWEST_30_DAYS
+  /// Unverbindliche Preisempfehlung des Herstellers (Angabe des Händlers mit Quelle)
+  RRP
+  /// Vom Team geprüfter Marktvergleich – vorbereitet, derzeit nicht vergeben
+  MARKET_CHECK
+}
+
+enum DealAvailability {
+  UNKNOWN
+  IN_STOCK
+  LIMITED
+  SOLD_OUT
+}
+
+enum DealImageRights {
+  OWN
+  MANUFACTURER
+  LICENSED
+}
+
+enum DealSource {
+  MANUAL
+  CSV
+  FEED
+}
+
+enum DealLinkStatus {
+  UNCHECKED
+  OK
+  BROKEN
+}
+
+/// Kategorien der Deals (Seed aus DEAL_CATEGORIES in @marktat/shared)
+model DealCategory {
+  id                  String  @id @default(cuid())
+  slug                String  @unique
+  name                String  @unique
+  icon                String?
+  sortOrder           Int     @default(0) @map("sort_order")
+  isActive            Boolean @default(true) @map("is_active")
+  /// Verwandte Kategorie der Kleinanzeigen (Pfad), z. B. für „Ähnliche Kleinanzeigen“
+  relatedCategoryPath String? @map("related_category_path")
+  deals               Deal[]
+
+  @@map("deal_categories")
+}
+
+/// Angebot eines gewerblichen Händlers. Bewusst kein Inserat: Preis, Vergleichspreis, Link, Laufzeit und Prüfung
+/// folgen eigenen Regeln.
+model Deal {
+  id                        String              @id @default(cuid())
+  slug                      String
+  merchantId                String              @map("merchant_id") @db.Uuid
+  categoryId                String              @map("category_id")
+  title                     String              @db.VarChar(120)
+  description               String              @default("") @db.VarChar(3000)
+  brand                     String?             @db.VarChar(60)
+  /// GTIN/EAN (vorbereitet für einen späteren Preisvergleich)
+  gtin                      String?             @db.VarChar(14)
+  /// Stabile Angebots-/Artikelnummer des Händlers: Importe aktualisieren darüber statt Doppelte anzulegen
+  externalId                String?             @map("external_id") @db.VarChar(100)
+  channel                   DealChannel
+  url                       String?             @db.VarChar(500)
+  isAffiliateLink           Boolean             @default(false) @map("is_affiliate_link")
+  /// Aktueller Angebotspreis in Cent (inkl. USt.)
+  priceCents                Int                 @map("price_cents")
+  currency                  String              @default("EUR") @db.Char(3)
+  unitPriceText             String?             @map("unit_price_text") @db.VarChar(40)
+  shippingNote              String?             @map("shipping_note") @db.VarChar(120)
+  /// Vergleichspreis des Händlers samt Grundlage und Quelle
+  referencePriceCents       Int?                @map("reference_price_cents")
+  referencePriceType        ReferencePriceType? @map("reference_price_type")
+  referencePriceSource      String?             @map("reference_price_source") @db.VarChar(200)
+  referencePriceEvidenceUrl String?             @map("reference_price_evidence_url") @db.VarChar(500)
+  /// Zeitpunkt, zu dem der Händler die Richtigkeit des Vergleichspreises bestätigt hat
+  referenceConfirmedAt      DateTime?           @map("reference_confirmed_at")
+  /// Abgeleitet (nie aus der Eingabe): ganze Prozent, abgerundet, nur mit Grundlage
+  discountPercent           Int?                @map("discount_percent")
+  availability              DealAvailability    @default(UNKNOWN)
+  startsAt                  DateTime            @map("starts_at")
+  endsAt                    DateTime            @map("ends_at")
+  status                    DealStatus          @default(DRAFT)
+  publishedAt               DateTime?           @map("published_at")
+  /// „Zuletzt geprüft“: Bestätigung durch Händler, Import oder Feed. Ohne Bestätigung kein „aktuell“.
+  lastVerifiedAt            DateTime?           @map("last_verified_at")
+  /// Warum der Deal vor der Veröffentlichung geprüft wird (z. B. sehr hoher Rabatt)
+  reviewReason              String?             @map("review_reason") @db.VarChar(200)
+  /// Präfix der Bildvarianten, z. B. "deals/<id>/<uuid>" (+ "/large.webp", "/thumb.webp")
+  imageKey                  String?             @map("image_key")
+  imageWidth                Int?                @map("image_width")
+  imageHeight               Int?                @map("image_height")
+  imageRights               DealImageRights?    @map("image_rights")
+  imageCredit               String?             @map("image_credit") @db.VarChar(120)
+  source                    DealSource          @default(MANUAL)
+  /// Prüfsumme der importierten Werte (unveränderte Zeilen werden übersprungen)
+  contentHash               String?             @map("content_hash") @db.VarChar(64)
+  linkStatus                DealLinkStatus      @default(UNCHECKED) @map("link_status")
+  linkCheckedAt             DateTime?           @map("link_checked_at")
+  linkFailures              Int                 @default(0) @map("link_failures")
+  viewCount                 Int                 @default(0) @map("view_count")
+  clickCount                Int                 @default(0) @map("click_count")
+  clientRequestId           String?             @map("client_request_id") @db.Uuid
+  /// Freigegebener Produktfeed, aus dem der Deal stammt (Herkunft FEED)
+  feedId                    String?             @map("feed_id")
+  /// Letzter Import (CSV oder Feed), der den Deal angelegt oder geändert hat
+  lastImportId              String?             @map("last_import_id")
+  createdAt                 DateTime            @default(now()) @map("created_at")
+  updatedAt                 DateTime            @updatedAt @map("updated_at")
+  deletedAt                 DateTime?           @map("deleted_at")
+
+  merchant     User                 @relation(fields: [merchantId], references: [id])
+  category     DealCategory         @relation(fields: [categoryId], references: [id])
+  stores       DealStore[]
+  priceRecords DealPriceRecord[]
+  reports      Report[]
+  decisions    ModerationDecision[]
+  favorites    DealFavorite[]
+  feed         DealFeed?            @relation(fields: [feedId], references: [id])
+
+  @@unique([merchantId, externalId])
+  @@unique([merchantId, clientRequestId])
+  @@index([status, endsAt])
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([merchantId, status])
+  @@index([categoryId, status])
+  @@index([lastVerifiedAt])
+  @@index([linkCheckedAt])
+  @@index([feedId])
+  @@map("deals")
+}
+
+/// Filiale bzw. Geschäft eines Händlers. Der Standort für die Umkreissuche kommt aus dem Ort (PLZ).
+model DealerStore {
+  id           String      @id @default(cuid())
+  merchantId   String      @map("merchant_id") @db.Uuid
+  name         String      @db.VarChar(120)
+  street       String      @db.VarChar(200)
+  locationId   Int         @map("location_id")
+  openingHours String?     @map("opening_hours") @db.VarChar(300)
+  createdAt    DateTime    @default(now()) @map("created_at")
+  updatedAt    DateTime    @updatedAt @map("updated_at")
+  deletedAt    DateTime?   @map("deleted_at")
+  merchant     User        @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  location     Location    @relation(fields: [locationId], references: [id])
+  deals        DealStore[]
+
+  @@index([merchantId])
+  @@index([locationId])
+  @@map("dealer_stores")
+}
+
+/// In welchen Filialen ein lokales Angebot gilt
+model DealStore {
+  dealId  String      @map("deal_id")
+  storeId String      @map("store_id")
+  deal    Deal        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  store   DealerStore @relation(fields: [storeId], references: [id], onDelete: Cascade)
+
+  @@id([dealId, storeId])
+  @@index([storeId])
+  @@map("deal_stores")
+}
+
+/// Eigene Aufzeichnung der Preise (bei jeder Änderung) – Grundlage für „niedrigster erfasster Preis“ und einen
+/// späteren Preisvergleich. Nie geschätzt oder nachträglich erzeugt.
+model DealPriceRecord {
+  id                  BigInt     @id @default(autoincrement())
+  dealId              String     @map("deal_id")
+  priceCents          Int        @map("price_cents")
+  referencePriceCents Int?       @map("reference_price_cents")
+  source              DealSource
+  recordedAt          DateTime   @default(now()) @map("recorded_at")
+  deal                Deal       @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId, recordedAt(sort: Desc)])
+  @@map("deal_price_records")
+}
+
+// ---------------------------------------------------------------------------
 // Sicherheit
 // ---------------------------------------------------------------------------
 
@@ -892,4 +1213,327 @@ model ErrorEvent {
 
   @@index([lastSeenAt])
   @@map("error_events")
+}
+
+enum DealImportStatus {
+  PREVIEW
+  COMMITTED
+  FAILED
+  CANCELLED
+  EXPIRED
+}
+
+enum DealFeedFormat {
+  CSV
+  JSON
+}
+
+enum DealFeedStatus {
+  /// Wartet auf Freigabe durch das Team – wird nicht abgerufen
+  PENDING
+  APPROVED
+  REJECTED
+  PAUSED
+  /// Nach mehreren Fehlschlägen in Folge angehalten
+  FAILING
+}
+
+/// Massenimport (CSV-Datei oder Abruf eines Feeds): Vorschau, Ergebnis je Zeile, Historie
+model DealImport {
+  id                 String           @id @default(cuid())
+  merchantId         String           @map("merchant_id") @db.Uuid
+  feedId             String?          @map("feed_id")
+  source             DealSource
+  format             DealFeedFormat   @default(CSV)
+  fileName           String?          @map("file_name") @db.VarChar(200)
+  status             DealImportStatus @default(PREVIEW)
+  /// Rohdaten nur bis zur Übernahme bzw. bis zum Ablauf der Vorschau
+  rawText            String?          @map("raw_text")
+  headers            Json             @default("[]")
+  mapping            Json             @default("{}")
+  /// Ergebnis je Zeile (DealImportRowResult[])
+  rows               Json             @default("[]")
+  counts             Json             @default("{}")
+  hasReferencePrices Boolean          @default(false) @map("has_reference_prices")
+  publish            Boolean?
+  error              String?          @db.VarChar(500)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  committedAt        DateTime?        @map("committed_at")
+  expiresAt          DateTime?        @map("expires_at")
+
+  merchant User      @relation(fields: [merchantId], references: [id])
+  feed     DealFeed? @relation(fields: [feedId], references: [id])
+
+  @@index([merchantId, createdAt(sort: Desc)])
+  @@index([status, expiresAt])
+  @@index([feedId, createdAt(sort: Desc)])
+  @@map("deal_imports")
+}
+
+/// Produktfeed eines Händlers (eigener oder lizenzierter Feed); wird erst nach Freigabe durch das Team abgerufen
+model DealFeed {
+  id                       String           @id @default(cuid())
+  merchantId               String           @map("merchant_id") @db.Uuid
+  name                     String           @db.VarChar(80)
+  url                      String           @db.VarChar(500)
+  format                   DealFeedFormat
+  intervalHours            Int              @map("interval_hours")
+  /// Herkunft und Nutzungsbedingungen laut Händler
+  licenseNote              String           @map("license_note") @db.VarChar(500)
+  licenseConfirmedAt       DateTime         @map("license_confirmed_at")
+  referencePricesConfirmed Boolean          @default(false) @map("reference_prices_confirmed")
+  imageRights              DealImageRights? @map("image_rights")
+  mapping                  Json             @default("{}")
+  status                   DealFeedStatus   @default(PENDING)
+  reviewNote               String?          @map("review_note") @db.VarChar(500)
+  reviewedById             String?          @map("reviewed_by_id") @db.Uuid
+  approvedAt               DateTime?        @map("approved_at")
+  etag                     String?          @db.VarChar(200)
+  lastModified             String?          @map("last_modified") @db.VarChar(100)
+  lastFetchedAt            DateTime?        @map("last_fetched_at")
+  nextFetchAt              DateTime?        @map("next_fetch_at")
+  lastError                String?          @map("last_error") @db.VarChar(500)
+  consecutiveFailures      Int              @default(0) @map("consecutive_failures")
+  createdAt                DateTime         @default(now()) @map("created_at")
+  updatedAt                DateTime         @updatedAt @map("updated_at")
+  deletedAt                DateTime?        @map("deleted_at")
+
+  merchant User         @relation(fields: [merchantId], references: [id])
+  deals    Deal[]
+  imports  DealImport[]
+
+  @@index([status, nextFetchAt])
+  @@index([merchantId])
+  @@map("deal_feeds")
+}
+
+// ---------------------------------------------------------------------------
+// Dienstleistungen (Phase 10): Anbieterprofile als Erweiterung des Kontos, Portfolio, Qualifikationen
+// ---------------------------------------------------------------------------
+
+enum ServiceProfileStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  PENDING_REVIEW
+  REJECTED
+  /// Von der Inhaber:in entfernt; die Zeile bleibt für bestehende Unterhaltungen und Entscheidungen
+  DELETED
+}
+
+enum ServicePriceType {
+  HOURLY
+  FIXED
+  ON_REQUEST
+}
+
+enum ServiceAvailability {
+  AVAILABLE
+  LIMITED
+  UNAVAILABLE
+}
+
+enum PortfolioImageRights {
+  OWN
+  CLIENT_PERMISSION
+  LICENSED
+}
+
+enum QualificationStatus {
+  CLAIMED
+  VERIFIED
+  REJECTED
+}
+
+/// Kategorien der Dienstleistungen (Seed aus packages/shared/src/services/categories.ts)
+model ServiceCategory {
+  id                  String  @id @default(cuid())
+  slug                String  @unique
+  name                String
+  groupSlug           String  @map("group_slug")
+  groupName           String  @map("group_name")
+  /// Für die Tätigkeit kann eine Gewerbeberechtigung bzw. ein Befähigungsnachweis nötig sein
+  regulated           Boolean @default(false)
+  /// Verwandte Kategorie der Kleinanzeigen (Marktplatz › Dienstleistungen bzw. Jobs › Freelance)
+  relatedCategoryPath String? @map("related_category_path")
+  sortOrder           Int     @default(0) @map("sort_order")
+  isActive            Boolean @default(true) @map("is_active")
+
+  profiles  ServiceProfileCategory[]
+  portfolio ServicePortfolioItem[]
+  projects  ServiceProject[]
+
+  @@index([groupSlug, sortOrder])
+  @@map("service_categories")
+}
+
+/// Anbieterprofil: Erweiterung eines bestehenden Kontos (höchstens eines je Konto, keine eigene Registrierung)
+model ServiceProfile {
+  id               String                @id @default(cuid())
+  userId           String                @unique @map("user_id") @db.Uuid
+  status           ServiceProfileStatus  @default(DRAFT)
+  headline         String                @db.VarChar(120)
+  summary          String                @db.VarChar(300)
+  description      String                @db.VarChar(5000)
+  skills           String[]              @default([])
+  locationId       Int?                  @map("location_id")
+  serviceRadiusKm  Int?                  @map("service_radius_km")
+  austriaWide      Boolean               @default(false) @map("austria_wide")
+  remote           Boolean               @default(false)
+  priceType        ServicePriceType      @default(ON_REQUEST) @map("price_type")
+  /// Stundensatz bzw. Pauschale „ab“ in Cent (leer bei „auf Anfrage“)
+  priceCents       Int?                  @map("price_cents")
+  experienceYears  Int?                  @map("experience_years")
+  website          String?               @db.VarChar(300)
+  availability     ServiceAvailability   @default(AVAILABLE)
+  availabilityNote String?               @map("availability_note") @db.VarChar(160)
+  imageKey         String?               @map("image_key")
+  imageRights      PortfolioImageRights? @map("image_rights")
+  imageCredit      String?               @map("image_credit") @db.VarChar(120)
+  /// Grund, solange das Team das Profil prüft
+  reviewReason     String?               @map("review_reason") @db.VarChar(300)
+  /// Bestätigung der Angaben beim ersten Veröffentlichen
+  confirmedAt      DateTime?             @map("confirmed_at")
+  publishedAt      DateTime?             @map("published_at")
+  viewCount        Int                   @default(0) @map("view_count")
+  createdAt        DateTime              @default(now()) @map("created_at")
+  updatedAt        DateTime              @updatedAt @map("updated_at")
+
+  user           User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  location       Location?                @relation(fields: [locationId], references: [id])
+  categories     ServiceProfileCategory[]
+  portfolio      ServicePortfolioItem[]
+  qualifications ServiceQualification[]
+  conversations  Conversation[]
+  reports        Report[]
+  decisions      ModerationDecision[]
+  favorites      ServiceFavorite[]
+
+  @@index([status, updatedAt(sort: Desc)])
+  @@index([locationId])
+  @@map("service_profiles")
+}
+
+model ServiceProfileCategory {
+  profileId  String @map("profile_id")
+  categoryId String @map("category_id")
+
+  profile  ServiceProfile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category ServiceCategory @relation(fields: [categoryId], references: [id])
+
+  @@id([profileId, categoryId])
+  @@index([categoryId])
+  @@map("service_profile_categories")
+}
+
+/// Arbeitsprobe im Portfolio (Bild nur mit Angabe der Rechte)
+model ServicePortfolioItem {
+  id          String                @id @default(cuid())
+  profileId   String                @map("profile_id")
+  title       String                @db.VarChar(120)
+  description String?               @db.VarChar(1000)
+  categoryId  String?               @map("category_id")
+  url         String?               @db.VarChar(500)
+  imageKey    String?               @map("image_key")
+  imageRights PortfolioImageRights? @map("image_rights")
+  imageCredit String?               @map("image_credit") @db.VarChar(120)
+  sortOrder   Int                   @default(0) @map("sort_order")
+  /// Vom Team ausgeblendet (Begründung in moderation_decisions)
+  hiddenAt    DateTime?             @map("hidden_at")
+  createdAt   DateTime              @default(now()) @map("created_at")
+  updatedAt   DateTime              @updatedAt @map("updated_at")
+
+  profile  ServiceProfile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  category ServiceCategory? @relation(fields: [categoryId], references: [id])
+
+  @@index([profileId, sortOrder])
+  @@map("service_portfolio_items")
+}
+
+/// Qualifikation laut Anbieter:in; „geprüft“ nur nach Prüfung durch das Team
+model ServiceQualification {
+  id           String              @id @default(cuid())
+  profileId    String              @map("profile_id")
+  title        String              @db.VarChar(120)
+  issuer       String?             @db.VarChar(120)
+  /// z. B. GISA-Zahl, Register- oder Zeugnisnummer (öffentlich erst nach der Prüfung)
+  reference    String?             @db.VarChar(120)
+  status       QualificationStatus @default(CLAIMED)
+  reviewedById String?             @map("reviewed_by_id") @db.Uuid
+  reviewedAt   DateTime?           @map("reviewed_at")
+  reviewNote   String?             @map("review_note") @db.VarChar(500)
+  createdAt    DateTime            @default(now()) @map("created_at")
+  updatedAt    DateTime            @updatedAt @map("updated_at")
+
+  profile    ServiceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  reviewedBy User?          @relation("QualificationReviewer", fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  @@index([profileId])
+  @@index([status])
+  @@map("service_qualifications")
+}
+
+// ---------------------------------------------------------------------------
+// Projektaufträge (Phase 10): Jemand sucht für ein konkretes Vorhaben eine selbstständige Dienstleistung.
+// Kein Jobangebot und keine Ausschreibung: keine Gebote, keine öffentlichen Angebote, Kontakt nur über Nachrichten.
+// ---------------------------------------------------------------------------
+
+enum ServiceProjectStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  /// Von der Auftraggeber:in beendet (z. B. jemand gefunden)
+  CLOSED
+  PENDING_REVIEW
+  REJECTED
+  /// Von der Auftraggeber:in entfernt; die Zeile bleibt für bestehende Unterhaltungen und Entscheidungen
+  DELETED
+}
+
+enum ProjectBudgetType {
+  /// Pauschalbetrag für das Vorhaben
+  FIXED
+  /// Stundensatz
+  HOURLY
+  /// Noch offen bzw. nach Absprache
+  OPEN
+}
+
+model ServiceProject {
+  id           String               @id @default(cuid())
+  userId       String               @map("user_id") @db.Uuid
+  status       ServiceProjectStatus @default(DRAFT)
+  title        String               @db.VarChar(120)
+  description  String               @db.VarChar(5000)
+  categoryId   String               @map("category_id")
+  /// Ort der Arbeit (leer bei reiner Remote-Arbeit)
+  locationId   Int?                 @map("location_id")
+  remote       Boolean              @default(false)
+  budgetType   ProjectBudgetType    @default(OPEN) @map("budget_type")
+  /// Budget in Cent (Pauschale bzw. Stundensatz bis), leer bei „offen“
+  budgetCents  Int?                 @map("budget_cents")
+  /// Zeitrahmen in Worten, z. B. „bis Ende März“
+  timeframe    String?              @db.VarChar(160)
+  /// Sichtbar bis (ab Veröffentlichung 30 Tage, verlängerbar)
+  expiresAt    DateTime?            @map("expires_at")
+  publishedAt  DateTime?            @map("published_at")
+  confirmedAt  DateTime?            @map("confirmed_at")
+  closedAt     DateTime?            @map("closed_at")
+  reviewReason String?              @map("review_reason") @db.VarChar(300)
+  viewCount    Int                  @default(0) @map("view_count")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      ServiceCategory      @relation(fields: [categoryId], references: [id])
+  location      Location?            @relation(fields: [locationId], references: [id])
+  conversations Conversation[]
+  reports       Report[]
+  decisions     ModerationDecision[]
+
+  @@index([status, expiresAt])
+  @@index([userId, status])
+  @@index([categoryId])
+  @@index([locationId])
+  @@map("service_projects")
 }

@@ -178,8 +178,8 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
   }
 
   const lastOwnConfirmed = [...messages].reverse().find((m) => m.mine && !m.localId);
-  const { listing, partner } = conversation;
-  const price = listing.priceType === 'FREE' ? 'Zu verschenken' : listing.priceCents !== null ? formatPriceCents(listing.priceCents) : null;
+  const { listing, partner, subject } = conversation;
+  const price = !listing ? null : listing.priceType === 'FREE' ? 'Zu verschenken' : listing.priceCents !== null ? formatPriceCents(listing.priceCents) : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-canvas/40">
@@ -188,11 +188,11 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
         <Link href={backHref} className="-ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5 lg:hidden" aria-label="Zurück zu allen Nachrichten">
           <ArrowLeft className="size-5" aria-hidden="true" />
         </Link>
-        <Link href={`/anzeige/${listing.id}`} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl hover:opacity-90">
+        <Link href={subject.href} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl hover:opacity-90">
           <span className="size-11 shrink-0 overflow-hidden rounded-lg bg-canvas">
-            {listing.imageUrl ? (
+            {subject.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element -- Vorschaubild ist serverseitig optimiert
-              <img src={listing.imageUrl} alt="" className={cn('size-full object-cover', !listing.available && 'opacity-50 grayscale')} />
+              <img src={subject.imageUrl} alt="" className={cn('size-full object-cover', !subject.available && 'opacity-50 grayscale')} />
             ) : (
               <span className="flex size-full items-center justify-center">
                 <ImageIcon className="size-5 text-ink-300" aria-hidden="true" />
@@ -204,7 +204,8 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
               {partner.displayName}
             </span>
             <span className="block truncate text-xs text-ink-500">
-              {listing.title}
+              {subject.kind === 'service' ? 'Anbieterprofil: ' : subject.kind === 'project' ? 'Projektauftrag: ' : ''}
+              {subject.title}
               {price ? ` · ${price}` : ''}
             </span>
           </span>
@@ -212,10 +213,10 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
         <ChatMenu conversation={conversation} />
       </header>
 
-      {!listing.available ? (
+      {!subject.available ? (
         <p className="flex items-center gap-2 border-b border-line bg-warning-50 px-4 py-2 text-sm text-warning-700">
           <Info className="size-4 shrink-0" aria-hidden="true" />
-          Diese Anzeige ist nicht mehr online. Ihr könnt trotzdem weiterschreiben.
+          {subject.kind === 'service' ? 'Dieses Anbieterprofil ist nicht mehr online.' : subject.kind === 'project' ? 'Dieser Projektauftrag ist nicht mehr online.' : 'Diese Anzeige ist nicht mehr online.'} Ihr könnt trotzdem weiterschreiben.
         </p>
       ) : null}
 

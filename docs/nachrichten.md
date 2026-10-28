@@ -26,6 +26,22 @@
 - `labels` speichert die Filterbeschreibung zur Anzeige („bis 20.000 €“, „1010 Wien + 50 km“). Höchstens 50 Suchen je Konto.
 - **Benachrichtigung:** Ein wiederkehrender Auftrag (`saved-search-alerts`, alle `SAVED_SEARCH_ALERT_MINUTES`) sucht für jede Suche mit Glocke nach Inseraten, die seit `last_checked_at` veröffentlicht wurden, und schickt höchstens eine Sammel-E-Mail je Suche und Lauf (bis zu fünf Treffer und ein Link auf alle). Das Prüffenster endet zwei Minuten vor „jetzt“, weil neue Inserate kurz brauchen, bis sie im Suchindex stehen. Jedes Inserat wird je Suche nur einmal gemeldet.
 
+## Deals und Anbieterprofile (Phase 10)
+
+**Merkliste.** Deals und Anbieterprofile haben eigene Tabellen (`deal_favorites`, `service_favorites`, Primärschlüssel je Konto und Eintrag, Cascade beim Löschen). Die Merkliste der Inserate bleibt unverändert.
+
+- Web: Knopf „Merken“ auf `/deals/[id]` und `/dienstleistungen/[id]`, Reiter auf `/konto/merkliste?art=anzeigen|deals|anbieter`.
+- API: `GET /v1/me/favorites/deals`, `PUT/DELETE /v1/me/favorites/deals/:dealId`, `GET /v1/me/favorites/services`, `PUT/DELETE /v1/me/favorites/services/:profileId`.
+- Gemerkt werden können nur öffentlich sichtbare, fremde Einträge (eigene → 400, nicht sichtbare → 404). Höchstens 500 je Art und Konto.
+- Abgelaufene, pausierte oder gesperrte Einträge bleiben ausgegraut und ohne Bild stehen, bis sie entfernt werden. Gelöschte Anbieterprofile verschwinden aus der Liste, weil von ihnen nichts mehr übrig ist.
+
+**Gespeicherte Suchen.** `saved_searches.kind` (`LISTINGS`, `DEALS`, `SERVICES`, Standard `LISTINGS`). Der Unique-Schlüssel ist jetzt `(user_id, kind, query_key)`: dieselben Parameter als Deal- und als Inseratssuche sind zwei Suchen.
+
+- „Suche speichern“ erscheint auf `/deals` und `/dienstleistungen`, sobald ein Begriff oder Filter gesetzt ist. `/konto/suchen` zeigt die Art und verlinkt auf die passende Seite.
+- Die API prüft die Parameter mit derselben Logik wie `/v1/deals` bzw. `/v1/services` (`parseDealSearchParams`, `parseServiceSearchParams`) und speichert sie kanonisch.
+- **Keine Benachrichtigungsflut:** Deal- und Anbietersuchen werden höchstens einmal in 24 Stunden geprüft (`SAVED_SEARCH_DIGEST_HOURS`). Daraus entsteht je Suche höchstens eine Sammel-E-Mail am Tag mit bis zu fünf Treffern. Inseratssuchen bleiben bei der bisherigen Taktung.
+- Die Migration `20261102090000_favorites_saved_searches` legt den neuen Unique-Index an, bevor der alte entfernt wird. Bestehende Suchen bekommen `LISTINGS`, es gehen keine Daten verloren.
+
 ## Nachrichten
 
 - Eine Unterhaltung gehört immer zu einem Inserat und genau zwei Personen (`conversations`, Unique `(listing_id, buyer_id)`). Schreibt der Interessent zum selben Inserat erneut, wird die Unterhaltung fortgesetzt.

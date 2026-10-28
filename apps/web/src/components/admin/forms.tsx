@@ -8,8 +8,13 @@ import { SubmitButton } from '@/components/submit-button';
 import { StepUpField } from '@/components/security/step-up-field';
 import {
   decideAppealAction,
+  decideDealAction,
   decideListingAction,
+  decidePortfolioItemAction,
+  decideServiceProfileAction,
+  decideProjectAction,
   decideUserAction,
+  dealsBlockAction,
   dismissReportAction,
 } from '@/app/admin/actions';
 
@@ -39,8 +44,18 @@ export interface DecisionOption {
   restrictive: boolean;
 }
 
+const DECISION_ACTIONS = {
+  listing: decideListingAction,
+  user: decideUserAction,
+  deal: decideDealAction,
+  serviceProfile: decideServiceProfileAction,
+  project: decideProjectAction,
+  portfolioItem: decidePortfolioItemAction,
+  dealsBlock: dealsBlockAction,
+} satisfies Record<string, Action>;
+
 /**
- * Entscheidung über ein Inserat oder Konto. Die Begründung geht wörtlich an die betroffene Person
+ * Entscheidung über ein Inserat, einen Deal oder ein Konto. Die Begründung geht wörtlich an die betroffene Person
  * (Art. 17 DSA), die interne Notiz sieht nur das Team.
  */
 export function DecisionForm({
@@ -51,17 +66,20 @@ export function DecisionForm({
   reportId,
   defaultReason,
   stepUp,
+  hidden,
 }: {
+  /** Zusätzliche versteckte Felder (z. B. das Profil, zu dem ein Portfolio-Eintrag gehört) */
+  hidden?: Record<string, string>;
   /** Kritische Aktion (Kontosperre): Bestätigungscode abfragen, wenn die Sitzung 2FA nutzt */
   stepUp?: { enabled: boolean; maxAgeMinutes: number };
-  target: 'listing' | 'user';
+  target: keyof typeof DECISION_ACTIONS;
   id: string;
   options: DecisionOption[];
   version?: string;
   reportId?: string;
   defaultReason?: ReportReason;
 }) {
-  const [state, formAction] = useActionState(target === 'listing' ? decideListingAction : decideUserAction, initialFormState);
+  const [state, formAction] = useActionState(DECISION_ACTIONS[target], initialFormState);
   const [choice, setDecision] = useState(state.values?.decision ?? options[0]?.value ?? '');
   // Nach einer Entscheidung ändert sich der Status und damit die möglichen Maßnahmen
   const decision = options.some((o) => o.value === choice) ? choice : (options[0]?.value ?? '');
@@ -75,6 +93,9 @@ export function DecisionForm({
       <input type="hidden" name="id" value={id} />
       {version ? <input type="hidden" name="version" value={version} /> : null}
       {reportId ? <input type="hidden" name="reportId" value={reportId} /> : null}
+      {Object.entries(hidden ?? {}).map(([name, value]) => (
+        <input key={name} type="hidden" name={name} value={value} />
+      ))}
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">Maßnahme</legend>
         <div className="mt-2 space-y-2">

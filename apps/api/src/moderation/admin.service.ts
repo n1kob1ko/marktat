@@ -64,6 +64,16 @@ export class AdminService {
       this.prisma.listing.count({ where: { status: { not: 'DELETED' }, reports: { some: { status: { in: OPEN_STATUSES } } } } }),
       this.prisma.appeal.count({ where: { status: 'OPEN' } }),
     ]);
+    const [dealsActive, dealsPending, feedsPending, servicesActive, servicesPending, qualificationsOpen, projectsActive, projectsPending] = await Promise.all([
+      this.prisma.deal.count({ where: { status: 'ACTIVE', endsAt: { gt: now } } }),
+      this.prisma.deal.count({ where: { status: 'PENDING_REVIEW' } }),
+      this.prisma.dealFeed.count({ where: { status: 'PENDING' } }),
+      this.prisma.serviceProfile.count({ where: { status: 'ACTIVE' } }),
+      this.prisma.serviceProfile.count({ where: { status: 'PENDING_REVIEW' } }),
+      this.prisma.serviceQualification.count({ where: { status: 'CLAIMED', profile: { status: { not: 'DELETED' } } } }),
+      this.prisma.serviceProject.count({ where: { status: 'ACTIVE', expiresAt: { gt: now } } }),
+      this.prisma.serviceProject.count({ where: { status: 'PENDING_REVIEW' } }),
+    ]);
     const count = (status: string) => byStatus.find((g) => g.status === status)?._count ?? 0;
     const moderation: AdminDashboard['moderation'] = {
       listings: {
@@ -81,6 +91,9 @@ export class AdminService {
         reportedListings,
       },
       appeals: { open: openAppeals },
+      deals: { active: dealsActive, pendingReview: dealsPending, feedsPending },
+      services: { active: servicesActive, pendingReview: servicesPending, qualificationsOpen },
+      projects: { active: projectsActive, pendingReview: projectsPending },
     };
     if (viewer.role !== 'ADMIN') return { moderation, system: null };
 
@@ -241,6 +254,7 @@ export class AdminService {
       reportsReceived: await this.reports.summaries(reportRows),
       reportsMade: { total: made.reduce((sum, g) => sum + g._count, 0), abusive: made.find((g) => g.abusive)?._count ?? 0 },
       reportingBlockedUntil: user.reportingBlockedUntil?.toISOString() ?? null,
+      dealsBlockedAt: user.dealsBlockedAt?.toISOString() ?? null,
       decisions: decisions.map((d) => toAdminDecision(d)),
       deletion: user.deletion ? { status: user.deletion.status, requestedAt: user.deletion.requestedAt.toISOString() } : null,
     };

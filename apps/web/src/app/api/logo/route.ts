@@ -1,17 +1,10 @@
 import { getAccessToken } from '@/lib/auth';
 import { serverEnv } from '@/lib/env';
+import { sameOrigin } from '@/lib/same-origin';
 
 const TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const MAX_BYTES = 5 * 1024 * 1024;
 
-/** Nur Anfragen dieser Website (Schutz vor fremden Formularen, die das Sitzungs-Cookie mitschicken) */
-function sameOrigin(request: Request) {
-  const site = request.headers.get('sec-fetch-site');
-  if (site) return site === 'same-origin';
-  const origin = request.headers.get('origin');
-  // Öffentliche Adresse statt request.url (dahinter steht der Reverse-Proxy mit interner Adresse)
-  return origin !== null && origin === new URL(serverEnv.webUrl).origin;
-}
 
 function json(status: number, body: unknown) {
   return Response.json(body, { status });

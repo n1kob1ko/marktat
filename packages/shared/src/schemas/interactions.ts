@@ -46,7 +46,17 @@ const savedSearchLabelsSchema = z
   .max(20)
   .transform((labels) => labels.filter(Boolean));
 
+/** Welche Suche gespeichert wird (Phase 10: auch Deals und Anbieterprofile) */
+export const SAVED_SEARCH_KINDS = ['LISTINGS', 'DEALS', 'SERVICES'] as const;
+export type SavedSearchKind = (typeof SAVED_SEARCH_KINDS)[number];
+export const SAVED_SEARCH_KIND_LABELS: Record<SavedSearchKind, string> = { LISTINGS: 'Anzeigen', DEALS: 'Deals', SERVICES: 'Dienstleistungen' };
+/** Seite der Suche je Art – die Parameter sind dieselben wie in deren URL */
+export const SAVED_SEARCH_PATHS: Record<SavedSearchKind, string> = { LISTINGS: '/suche', DEALS: '/deals', SERVICES: '/dienstleistungen' };
+/** Deals und Anbieter: höchstens eine E-Mail je Suche und Tag (Sammelmail statt Benachrichtigungsflut) */
+export const SAVED_SEARCH_DIGEST_HOURS: Record<SavedSearchKind, number> = { LISTINGS: 0, DEALS: 24, SERVICES: 24 };
+
 export const createSavedSearchSchema = z.object({
+  kind: z.enum(SAVED_SEARCH_KINDS).default('LISTINGS'),
   name: savedSearchNameSchema,
   /** Parameter wie in der Such-URL; die API prüft sie mit derselben Logik wie die Suche. */
   params: z.record(z.string().max(40), z.string().max(500)).refine((p) => Object.keys(p).length <= 40, 'Zu viele Suchparameter.'),

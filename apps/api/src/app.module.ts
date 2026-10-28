@@ -29,6 +29,8 @@ import { PrivacyModule } from './privacy/privacy.module.js';
 import { BillingModule } from './billing/billing.module.js';
 import { StatsModule } from './stats/stats.module.js';
 import { DealersModule } from './dealers/dealers.module.js';
+import { DealsModule } from './deals/deals.module.js';
+import { ServicesModule } from './services/services.module.js';
 import { SeoModule } from './seo/seo.module.js';
 import { SecurityModule } from './security/security.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
@@ -65,6 +67,8 @@ import { MonitoringModule } from './monitoring/monitoring.module.js';
     BillingModule,
     StatsModule,
     DealersModule,
+    DealsModule,
+    ServicesModule,
     SeoModule,
     SecurityModule,
     MonitoringModule,
