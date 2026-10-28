@@ -72,3 +72,25 @@ export async function reportServiceProfileAction(_prev: FormState, formData: For
   }
   redirect(`/dienstleistungen/${profileId}?hinweis=gemeldet`);
 }
+
+export async function reportProjectAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const projectId = String(formData.get('projectId') ?? '');
+  if (!ENTITY_ID.test(projectId)) return { status: 'error', message: 'Diesen Projektauftrag gibt es nicht.' };
+  const values = { reason: String(formData.get('reason') ?? ''), details: String(formData.get('details') ?? '') };
+  const { token } = await requireUser(`/melden?projekt=${projectId}`);
+  const parsed = reportListingSchema.safeParse({
+    reason: values.reason || undefined,
+    details: values.details,
+    goodFaith: formData.get('goodFaith') === 'on' ? true : undefined,
+  });
+  if (!parsed.success) {
+    return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
+  }
+  try {
+    await api(`/projects/${projectId}/report`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values };
+    throw error;
+  }
+  redirect(`/dienstleistungen/projekte/${projectId}?hinweis=gemeldet`);
+}

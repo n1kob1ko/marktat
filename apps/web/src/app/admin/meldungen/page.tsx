@@ -84,7 +84,7 @@ async function Reports({ searchParams }: Pick<PageProps<'/admin/meldungen'>, 'se
                       {REPORT_REASON_LABELS[r.reason]}
                       <span className="font-normal text-ink-500"> · {REPORT_TARGET_LABELS[r.targetType]}</span>
                     </Link>
-                    <p className="mt-0.5 line-clamp-2 max-w-md text-ink-600">{r.listing ? r.listing.title : r.deal ? `Deal: ${r.deal.title}` : r.serviceProfile ? `Anbieterprofil: ${r.serviceProfile.title}` : r.details}</p>
+                    <p className="mt-0.5 line-clamp-2 max-w-md text-ink-600">{r.listing ? r.listing.title : r.deal ? `Deal: ${r.deal.title}` : r.serviceProfile ? `Anbieterprofil: ${r.serviceProfile.title}` : r.project ? `Projektauftrag: ${r.project.title}` : r.details}</p>
                   </td>
                   <td className={table.td} data-label="Status">
                     <span className="flex flex-wrap gap-1.5">

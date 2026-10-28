@@ -136,6 +136,7 @@ model User {
   dealFeeds              DealFeed[]
   serviceProfile         ServiceProfile?
   reviewedQualifications ServiceQualification[] @relation("QualificationReviewer")
+  serviceProjects        ServiceProject[]
 
   @@index([status])
   @@index([accountType, status])
@@ -189,6 +190,7 @@ model Location {
   listings        Listing[]
   dealerStores    DealerStore[]
   serviceProfiles ServiceProfile[]
+  serviceProjects ServiceProject[]
 
   @@unique([postalCode, place])
   @@index([postalCode])
@@ -367,12 +369,14 @@ model Conversation {
   /// Worum es geht: genau eines von Inserat, Anbieterprofil (Phase 10) bzw. Projektauftrag (Phase 10)
   listingId        String?         @map("listing_id")
   serviceProfileId String?         @map("service_profile_id")
+  projectId        String?         @map("project_id")
   buyerId          String          @map("buyer_id") @db.Uuid
   sellerId         String          @map("seller_id") @db.Uuid
   lastMessageAt    DateTime        @default(now()) @map("last_message_at")
   createdAt        DateTime        @default(now()) @map("created_at")
   listing          Listing?        @relation(fields: [listingId], references: [id], onDelete: Restrict)
   serviceProfile   ServiceProfile? @relation(fields: [serviceProfileId], references: [id], onDelete: Restrict)
+  project          ServiceProject? @relation(fields: [projectId], references: [id], onDelete: Restrict)
   buyer            User            @relation("ConversationBuyer", fields: [buyerId], references: [id], onDelete: Cascade)
   seller           User            @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   messages         Message[]
@@ -381,6 +385,7 @@ model Conversation {
   /// Je Inserat (bzw. Profil) und Interessent genau eine Unterhaltung
   @@unique([listingId, buyerId])
   @@unique([serviceProfileId, buyerId])
+  @@unique([projectId, buyerId])
   @@index([buyerId, lastMessageAt(sort: Desc)])
   @@index([sellerId, lastMessageAt(sort: Desc)])
   @@map("conversations")
@@ -451,6 +456,8 @@ enum ReportTarget {
   DEAL
   /// Anbieterprofil für Dienstleistungen (Phase 10)
   SERVICE_PROFILE
+  /// Projektauftrag (Phase 10)
+  PROJECT
 }
 
 enum ReportPriority {
@@ -477,6 +484,7 @@ model Report {
   conversationId   String?             @map("conversation_id")
   dealId           String?             @map("deal_id")
   serviceProfileId String?             @map("service_profile_id")
+  projectId        String?             @map("project_id")
   reason           ReportReason
   details          String?             @db.VarChar(1000)
   status           ReportStatus        @default(OPEN)
@@ -500,6 +508,7 @@ model Report {
   conversation     Conversation?       @relation(fields: [conversationId], references: [id], onDelete: SetNull)
   deal             Deal?               @relation(fields: [dealId], references: [id], onDelete: SetNull)
   serviceProfile   ServiceProfile?     @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
+  project          ServiceProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
   decision         ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
   events           ReportEvent[]
 
@@ -511,6 +520,7 @@ model Report {
   @@index([conversationId])
   @@index([dealId, status])
   @@index([serviceProfileId, status])
+  @@index([projectId, status])
   @@map("reports")
 }
 
@@ -567,6 +577,11 @@ enum ModerationAction {
   /// Einzelner Portfolio-Eintrag ausgeblendet (Eintrag in snapshot.portfolioItemId)
   PORTFOLIO_ITEM_HIDDEN
   PORTFOLIO_ITEM_RESTORED
+  /// Projektauftrag wegen eines Verstoßes deaktiviert (Status REJECTED)
+  PROJECT_REJECTED
+  /// Projektauftrag bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
+  PROJECT_HIDDEN
+  PROJECT_RESTORED
 }
 
 /// Rechtsgrundlage einer Maßnahme (Art. 17 Abs. 3 lit. d/e DSA)
@@ -586,6 +601,7 @@ model ModerationDecision {
   listingId        String?              @map("listing_id")
   dealId           String?              @map("deal_id")
   serviceProfileId String?              @map("service_profile_id")
+  projectId        String?              @map("project_id")
   moderatorId      String?              @map("moderator_id") @db.Uuid
   /// Art des Verstoßes (bei Freigaben leer)
   reason           ReportReason?
@@ -603,6 +619,7 @@ model ModerationDecision {
   listing          Listing?             @relation(fields: [listingId], references: [id], onDelete: SetNull)
   deal             Deal?                @relation(fields: [dealId], references: [id], onDelete: SetNull)
   serviceProfile   ServiceProfile?      @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
+  project          ServiceProject?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
   reverses         ModerationDecision?  @relation("DecisionReversal", fields: [reversesId], references: [id], onDelete: SetNull)
   reversedBy       ModerationDecision[] @relation("DecisionReversal")
   appeal           Appeal?
@@ -613,6 +630,7 @@ model ModerationDecision {
   @@index([listingId, createdAt(sort: Desc)])
   @@index([dealId, createdAt(sort: Desc)])
   @@index([serviceProfileId, createdAt(sort: Desc)])
+  @@index([projectId, createdAt(sort: Desc)])
   @@index([createdAt])
   @@map("moderation_decisions")
 }
@@ -665,6 +683,9 @@ enum NotificationType {
   PORTFOLIO_ITEM_HIDDEN
   PORTFOLIO_ITEM_RESTORED
   QUALIFICATION_REVIEWED
+  PROJECT_REJECTED
+  PROJECT_HIDDEN
+  PROJECT_RESTORED
 }
 
 /// Mitteilung im Konto (zusätzlich per E-Mail). Für Entscheidungen der Moderation, Einsprüche und Meldungen.
@@ -1301,6 +1322,7 @@ model ServiceCategory {
 
   profiles  ServiceProfileCategory[]
   portfolio ServicePortfolioItem[]
+  projects  ServiceProject[]
 
   @@index([groupSlug, sortOrder])
   @@map("service_categories")
@@ -1409,4 +1431,69 @@ model ServiceQualification {
   @@index([profileId])
   @@index([status])
   @@map("service_qualifications")
+}
+
+// ---------------------------------------------------------------------------
+// Projektaufträge (Phase 10): Jemand sucht für ein konkretes Vorhaben eine selbstständige Dienstleistung.
+// Kein Jobangebot und keine Ausschreibung: keine Gebote, keine öffentlichen Angebote, Kontakt nur über Nachrichten.
+// ---------------------------------------------------------------------------
+
+enum ServiceProjectStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  /// Von der Auftraggeber:in beendet (z. B. jemand gefunden)
+  CLOSED
+  PENDING_REVIEW
+  REJECTED
+  /// Von der Auftraggeber:in entfernt; die Zeile bleibt für bestehende Unterhaltungen und Entscheidungen
+  DELETED
+}
+
+enum ProjectBudgetType {
+  /// Pauschalbetrag für das Vorhaben
+  FIXED
+  /// Stundensatz
+  HOURLY
+  /// Noch offen bzw. nach Absprache
+  OPEN
+}
+
+model ServiceProject {
+  id           String               @id @default(cuid())
+  userId       String               @map("user_id") @db.Uuid
+  status       ServiceProjectStatus @default(DRAFT)
+  title        String               @db.VarChar(120)
+  description  String               @db.VarChar(5000)
+  categoryId   String               @map("category_id")
+  /// Ort der Arbeit (leer bei reiner Remote-Arbeit)
+  locationId   Int?                 @map("location_id")
+  remote       Boolean              @default(false)
+  budgetType   ProjectBudgetType    @default(OPEN) @map("budget_type")
+  /// Budget in Cent (Pauschale bzw. Stundensatz bis), leer bei „offen“
+  budgetCents  Int?                 @map("budget_cents")
+  /// Zeitrahmen in Worten, z. B. „bis Ende März“
+  timeframe    String?              @db.VarChar(160)
+  /// Sichtbar bis (ab Veröffentlichung 30 Tage, verlängerbar)
+  expiresAt    DateTime?            @map("expires_at")
+  publishedAt  DateTime?            @map("published_at")
+  confirmedAt  DateTime?            @map("confirmed_at")
+  closedAt     DateTime?            @map("closed_at")
+  reviewReason String?              @map("review_reason") @db.VarChar(300)
+  viewCount    Int                  @default(0) @map("view_count")
+  createdAt    DateTime             @default(now()) @map("created_at")
+  updatedAt    DateTime             @updatedAt @map("updated_at")
+
+  user          User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category      ServiceCategory      @relation(fields: [categoryId], references: [id])
+  location      Location?            @relation(fields: [locationId], references: [id])
+  conversations Conversation[]
+  reports       Report[]
+  decisions     ModerationDecision[]
+
+  @@index([status, expiresAt])
+  @@index([userId, status])
+  @@index([categoryId])
+  @@index([locationId])
+  @@map("service_projects")
 }

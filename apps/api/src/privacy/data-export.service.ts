@@ -39,6 +39,7 @@ export class DataExportService {
         include: {
           listing: { select: { id: true, title: true } },
           serviceProfile: { select: { id: true, headline: true } },
+          project: { select: { id: true, title: true } },
           buyer: { select: { displayName: true, status: true } },
           seller: { select: { displayName: true, status: true } },
           messages: { where: { senderId: id }, orderBy: { createdAt: 'asc' }, select: { body: true, createdAt: true, readAt: true } },
@@ -47,8 +48,8 @@ export class DataExportService {
         orderBy: { createdAt: 'asc' },
       }),
       this.prisma.userBlock.findMany({ where: { blockerId: id }, include: { blocked: { select: { displayName: true, status: true } } } }),
-      this.prisma.report.findMany({ where: { reporterId: id }, select: { targetType: true, reason: true, details: true, status: true, createdAt: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } }, orderBy: { createdAt: 'asc' } }),
-      this.prisma.moderationDecision.findMany({ where: { userId: id }, include: { appeal: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.report.findMany({ where: { reporterId: id }, select: { targetType: true, reason: true, details: true, status: true, createdAt: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } }, project: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.moderationDecision.findMany({ where: { userId: id }, include: { appeal: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } }, project: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
       this.prisma.notification.findMany({ where: { userId: id }, orderBy: { createdAt: 'asc' } }),
       this.prisma.auditLog.findMany({ where: { actorId: id }, select: { action: true, createdAt: true, ipPrefix: true }, orderBy: { createdAt: 'desc' }, take: ACTIVITY_LIMIT }),
       this.prisma.booking.findMany({
@@ -57,8 +58,8 @@ export class DataExportService {
         orderBy: { createdAt: 'asc' },
       }),
     ]);
-    // Händlerbereich und Dienstleistungen (Phase 10): Deals, Filialen, Produktfeeds, Anbieterprofil
-    const [deals, stores, feeds, serviceProfile] = await Promise.all([
+    // Händlerbereich und Dienstleistungen (Phase 10): Deals, Filialen, Produktfeeds, Anbieterprofil, Projektaufträge
+    const [deals, stores, feeds, serviceProfile, projects] = await Promise.all([
       this.prisma.deal.findMany({
         where: { merchantId: id, status: { not: 'DELETED' } },
         include: { category: { select: { name: true } }, priceRecords: { select: { priceCents: true, recordedAt: true }, orderBy: { recordedAt: 'asc' } } },
@@ -74,6 +75,11 @@ export class DataExportService {
           portfolio: { include: { category: { select: { name: true } } }, orderBy: { sortOrder: 'asc' } },
           qualifications: { orderBy: { createdAt: 'asc' } },
         },
+      }),
+      this.prisma.serviceProject.findMany({
+        where: { userId: id, status: { not: 'DELETED' } },
+        include: { category: { select: { name: true } }, location: { select: { postalCode: true, place: true } }, _count: { select: { conversations: true } } },
+        orderBy: { createdAt: 'asc' },
       }),
     ]);
     const name = (u: { displayName: string; status: string }) => (u.status === 'DELETED' ? 'Gelöschtes Konto' : u.displayName);
@@ -132,6 +138,7 @@ export class DataExportService {
         id: c.id,
         listing: c.listing,
         serviceProfile: c.serviceProfile ? { id: c.serviceProfile.id, headline: c.serviceProfile.headline } : null,
+        project: c.project ? { id: c.project.id, title: c.project.title } : null,
         myRole: c.buyerId === id ? 'Interessent' : 'Anbieter',
         partner: name(c.buyerId === id ? c.seller : c.buyer),
         startedAt: c.createdAt,
@@ -147,7 +154,9 @@ export class DataExportService {
               ? `Angebot „${r.deal?.title ?? 'gelöscht'}“`
               : r.targetType === 'SERVICE_PROFILE'
                 ? `Anbieterprofil „${r.serviceProfile?.headline ?? 'gelöscht'}“`
-                : 'Unterhaltung',
+                : r.targetType === 'PROJECT'
+                  ? `Projektauftrag „${r.project?.title ?? 'gelöscht'}“`
+                  : 'Unterhaltung',
         reason: REPORT_REASON_LABELS[r.reason],
         details: r.details,
         status: r.status,
@@ -158,6 +167,7 @@ export class DataExportService {
         listing: d.listing?.title ?? null,
         deal: d.deal?.title ?? null,
         serviceProfile: d.serviceProfile?.headline ?? null,
+        project: d.project?.title ?? null,
         reason: d.reason ? REPORT_REASON_LABELS[d.reason] : null,
         ground: d.ground,
         statement: d.statement,
@@ -226,6 +236,23 @@ export class DataExportService {
             qualifications: serviceProfile.qualifications.map((q) => ({ title: q.title, issuer: q.issuer, reference: q.reference, status: q.status, reviewedAt: q.reviewedAt })),
           }
         : null,
+      projects: projects.map((p) => ({
+        id: p.id,
+        status: p.status,
+        title: p.title,
+        description: p.description,
+        category: p.category.name,
+        location: p.location,
+        remote: p.remote,
+        budgetType: p.budgetType,
+        budgetCents: p.budgetCents,
+        timeframe: p.timeframe,
+        publishedAt: p.publishedAt,
+        expiresAt: p.expiresAt,
+        closedAt: p.closedAt,
+        receivedContacts: p._count.conversations,
+        createdAt: p.createdAt,
+      })),
       bookings: bookings.map((b) => ({
         product: b.product.name,
         listing: b.listing?.title ?? null,

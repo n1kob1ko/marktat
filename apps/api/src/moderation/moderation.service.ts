@@ -14,7 +14,7 @@ import {
   type UserDecisionInput,
 } from '@marktat/shared';
 import type { Prisma } from '../generated/prisma/client.js';
-import type { DealStatus, ListingStatus, ModerationAction, NotificationType, ServiceProfileStatus } from '../generated/prisma/enums.js';
+import type { DealStatus, ListingStatus, ModerationAction, NotificationType, ServiceProfileStatus, ServiceProjectStatus } from '../generated/prisma/enums.js';
 import { AuditService, type AuditAction } from '../audit/audit.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { DealSearchService } from '../deals/deal-search.service.js';
@@ -64,11 +64,23 @@ const SERVICE_PROFILE_ALLOWED_FROM: Record<ListingDecisionInput['decision'], Ser
   RESTORE: ['REJECTED', 'PENDING_REVIEW'],
 };
 
+const PROJECT_ACTIONS = {
+  REJECT: 'PROJECT_REJECTED',
+  HIDE: 'PROJECT_HIDDEN',
+  RESTORE: 'PROJECT_RESTORED',
+} as const satisfies Record<ListingDecisionInput['decision'], ModerationAction>;
+
+const PROJECT_ALLOWED_FROM: Record<ListingDecisionInput['decision'], ServiceProjectStatus[]> = {
+  REJECT: ['ACTIVE', 'PAUSED', 'CLOSED', 'PENDING_REVIEW'],
+  HIDE: ['ACTIVE', 'PAUSED'],
+  RESTORE: ['REJECTED', 'PENDING_REVIEW'],
+};
+
 /** Grund der Prüfung, solange die Moderation einen Deal ausgeblendet hat (wird nicht automatisch aufgehoben) */
 export const MODERATION_REVIEW_REASON = 'Vom Team bis zum Abschluss einer Prüfung ausgeblendet.';
 
 /** Einschränkende Entscheidungen zu einem Inhalt als Ganzem (Portfolio-Einträge werden einzeln betrachtet) */
-const RESTRICTIVE_CONTENT_ACTIONS: ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'SERVICE_PROFILE_REJECTED', 'SERVICE_PROFILE_HIDDEN'];
+const RESTRICTIVE_CONTENT_ACTIONS: ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'SERVICE_PROFILE_REJECTED', 'SERVICE_PROFILE_HIDDEN', 'PROJECT_REJECTED', 'PROJECT_HIDDEN'];
 
 const AUDIT_ACTIONS: Record<ModerationAction, AuditAction> = {
   LISTING_REJECTED: 'moderation.listing_rejected',
@@ -86,6 +98,9 @@ const AUDIT_ACTIONS: Record<ModerationAction, AuditAction> = {
   SERVICE_PROFILE_RESTORED: 'moderation.service_profile_restored',
   PORTFOLIO_ITEM_HIDDEN: 'moderation.portfolio_item_hidden',
   PORTFOLIO_ITEM_RESTORED: 'moderation.portfolio_item_restored',
+  PROJECT_REJECTED: 'moderation.project_rejected',
+  PROJECT_HIDDEN: 'moderation.project_hidden',
+  PROJECT_RESTORED: 'moderation.project_restored',
 };
 
 function dealBaseStatus(deal: { status: DealStatus; endsAt: Date }, now = new Date()): DealStatus {
@@ -407,6 +422,82 @@ export class ModerationService {
     };
   }
 
+  /** Projektauftrag ablehnen, bis zur Prüfung ausblenden oder freigeben (wie bei Anbieterprofilen) */
+  async decideProject(moderator: AuthUser, projectId: string, input: ListingDecisionInput, ip?: string) {
+    if (!ENTITY_ID.test(projectId)) throw new NotFoundException('Diesen Projektauftrag gibt es nicht.');
+    const action = PROJECT_ACTIONS[input.decision];
+    const { decision, closedReports } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM service_projects WHERE id = ${projectId} FOR UPDATE`;
+      const project = await tx.serviceProject.findUnique({ where: { id: projectId } });
+      if (!project || project.status === 'DELETED') throw new NotFoundException('Diesen Projektauftrag gibt es nicht.');
+      if (project.userId === moderator.id) throw new ForbiddenException('Über eigene Projektaufträge entscheidet jemand anderer aus dem Team.');
+      if (project.updatedAt.toISOString() !== new Date(input.version).toISOString()) {
+        throw new ConflictException('Der Auftrag wurde inzwischen geändert oder bereits moderiert. Bitte lade die Seite neu und prüfe den aktuellen Stand.');
+      }
+      if (!PROJECT_ALLOWED_FROM[input.decision].includes(project.status)) {
+        throw new ConflictException(`Diese Maßnahme ist für einen Auftrag mit Status „${project.status}“ nicht möglich.`);
+      }
+      const previous = await this.latestRestrictive(tx, { projectId });
+      const nextStatus: ServiceProjectStatus =
+        input.decision === 'REJECT' ? 'REJECTED' : input.decision === 'HIDE' ? 'PENDING_REVIEW' : this.restoredProjectStatus(previous?.snapshot);
+      await tx.serviceProject.update({
+        where: { id: projectId },
+        data: { status: nextStatus, reviewReason: input.decision === 'HIDE' ? MODERATION_REVIEW_REASON : null },
+      });
+      const decision = await tx.moderationDecision.create({
+        data: {
+          action,
+          userId: project.userId,
+          projectId,
+          moderatorId: moderator.id,
+          reason: input.decision === 'RESTORE' ? null : input.reason,
+          ground: input.decision === 'RESTORE' ? null : input.ground,
+          statement: input.statement,
+          internalNote: input.internalNote,
+          reversesId: input.decision === 'RESTORE' ? previous?.id : undefined,
+          snapshot: {
+            title: project.title,
+            description: project.description,
+            budgetType: project.budgetType,
+            budgetCents: project.budgetCents,
+            timeframe: project.timeframe,
+            reviewReason: project.reviewReason,
+            statusBefore: project.status,
+            version: project.updatedAt.toISOString(),
+          },
+        },
+      });
+      const reportStatus = input.decision === 'REJECT' ? 'RESOLVED' : input.decision === 'HIDE' ? 'IN_REVIEW' : 'DISMISSED';
+      const closedReports = await this.reports.closeWithDecision(tx, { projectId }, decision.id, moderator.id, reportStatus);
+      return { decision, closedReports };
+    });
+
+    this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'service_project', entityId: projectId, ip, metadata: { decisionId: decision.id, reason: decision.reason } });
+    await this.notifyDecision(decision.id);
+    if (closedReports.length) await this.reports.notifyReporters(closedReports, input.decision === 'REJECT' ? 'RESOLVED' : 'DISMISSED');
+    return this.adminDecision(decision.id);
+  }
+
+  /** Für Auftraggeber:in und Team: letzte Entscheidung bei ausgeblendeten Aufträgen */
+  async projectModerationInfo(project: { id: string; status: ServiceProjectStatus; updatedAt: Date }): Promise<ListingModerationInfo | null> {
+    if (project.status !== 'REJECTED' && project.status !== 'PENDING_REVIEW') return null;
+    const latest = await this.prisma.moderationDecision.findFirst({
+      where: { projectId: project.id, action: { in: ['PROJECT_REJECTED', 'PROJECT_HIDDEN', 'PROJECT_RESTORED'] } },
+      orderBy: { createdAt: 'desc' },
+      include: { appeal: { select: { status: true } } },
+    });
+    if (!latest || latest.action === 'PROJECT_RESTORED') return null;
+    return {
+      decisionId: latest.id,
+      action: latest.action,
+      reason: latest.reason,
+      statement: latest.statement,
+      createdAt: latest.createdAt.toISOString(),
+      appealStatus: latest.appeal?.status ?? null,
+      canResubmit: project.status === 'REJECTED' && latest.action === 'PROJECT_REJECTED' && project.updatedAt > latest.createdAt,
+    };
+  }
+
   /**
    * Händlerkonto für Deals sperren: alle Deals verschwinden sofort aus der Öffentlichkeit, das Konto bleibt sonst
    * nutzbar. Wie eine Kontosperre begründet und anfechtbar; aufheben nur Administratoren (oder per Einspruch).
@@ -577,20 +668,20 @@ export class ModerationService {
     });
 
     this.audit.log({ action: 'appeal.decided', actorId: reviewer.id, entityType: 'appeal', entityId: appealId, ip, metadata: { outcome: input.outcome, decisionId, sameReviewer } });
-    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, select: { userId: true, action: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } } });
+    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, select: { userId: true, action: true, listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } }, project: { select: { title: true } } } });
     if (reversal) {
       if (reversal.listingId) this.searchIndex.sync(reversal.listingId);
       else if (reversal.dealId) this.dealSearch.index.sync(reversal.dealId);
-      else if (reversal.serviceProfileId) {
+      else if (reversal.serviceProfileId || reversal.projectId) {
         // Postgres-Suche: nichts nachzuziehen
       } else if (reversal.action === 'DEALS_UNBLOCKED') this.dealSearch.syncMerchant(decision.userId);
       else this.searchIndex.syncSeller(decision.userId);
-      const entityType = reversal.listingId ? 'listing' : reversal.dealId ? 'deal' : reversal.serviceProfileId ? 'service_profile' : 'user';
+      const entityType = reversal.listingId ? 'listing' : reversal.dealId ? 'deal' : reversal.serviceProfileId ? 'service_profile' : reversal.projectId ? 'service_project' : 'user';
       this.audit.log({
         action: AUDIT_ACTIONS[reversal.action],
         actorId: reviewer.id,
         entityType,
-        entityId: reversal.listingId ?? reversal.dealId ?? reversal.serviceProfileId ?? decision.userId,
+        entityId: reversal.listingId ?? reversal.dealId ?? reversal.serviceProfileId ?? reversal.projectId ?? decision.userId,
         ip,
         metadata: { decisionId: reversal.id, appealId },
       });
@@ -601,7 +692,9 @@ export class ModerationService {
         ? `zum Angebot „${decision.deal.title}“`
         : decision.serviceProfile
           ? `zu deinem Anbieterprofil „${decision.serviceProfile.headline}“`
-          : 'zu deinem Konto';
+          : decision.project
+            ? `zu deinem Projektauftrag „${decision.project.title}“`
+            : 'zu deinem Konto';
     await this.notifications.notify({
       userId: decision.userId,
       type: 'APPEAL_DECIDED',
@@ -629,7 +722,7 @@ export class ModerationService {
   private async reverse(
     tx: Tx,
     reviewer: AuthUser,
-    original: { id: string; action: ModerationAction; userId: string; listingId: string | null; dealId: string | null; serviceProfileId: string | null; snapshot: Prisma.JsonValue },
+    original: { id: string; action: ModerationAction; userId: string; listingId: string | null; dealId: string | null; serviceProfileId: string | null; projectId: string | null; snapshot: Prisma.JsonValue },
     response: string,
   ) {
     const statement = `Nach Prüfung deines Einspruchs aufgehoben: ${response}`.slice(0, 2000);
@@ -691,6 +784,18 @@ export class ModerationService {
         },
       });
     }
+    if (original.projectId && (original.action === 'PROJECT_REJECTED' || original.action === 'PROJECT_HIDDEN')) {
+      await tx.$queryRaw`SELECT id FROM service_projects WHERE id = ${original.projectId} FOR UPDATE`;
+      const project = await tx.serviceProject.findUnique({ where: { id: original.projectId } });
+      const latest = await this.latestRestrictive(tx, { projectId: original.projectId });
+      if (!project || !['REJECTED', 'PENDING_REVIEW'].includes(project.status) || latest?.id !== original.id) return null;
+      await tx.serviceProject.update({ where: { id: project.id }, data: { status: this.restoredProjectStatus(original.snapshot), reviewReason: null } });
+      const decision = await tx.moderationDecision.create({
+        data: { action: 'PROJECT_RESTORED', userId: original.userId, projectId: project.id, moderatorId: reviewer.id, statement, reversesId: original.id },
+      });
+      await this.reports.closeWithDecision(tx, { projectId: project.id }, decision.id, reviewer.id, 'DISMISSED');
+      return decision;
+    }
     if (original.action === 'DEALS_BLOCKED') {
       const user = await tx.user.findUnique({ where: { id: original.userId }, select: { dealsBlockedAt: true } });
       const latest = await this.latestRestrictive(tx, { userId: original.userId, action: 'DEALS_BLOCKED' });
@@ -738,6 +843,12 @@ export class ModerationService {
     return before === 'PAUSED' || before === 'DRAFT' ? before : 'ACTIVE';
   }
 
+  /** Freigabe eines Auftrags: pausiert bzw. beendet bleibt so, sonst wieder sichtbar */
+  private restoredProjectStatus(snapshot: Prisma.JsonValue | undefined): ServiceProjectStatus {
+    const before = (snapshot as { statusBefore?: ServiceProjectStatus } | null)?.statusBefore;
+    return before === 'PAUSED' || before === 'CLOSED' || before === 'DRAFT' ? before : 'ACTIVE';
+  }
+
   /** Letzte noch nicht aufgehobene Ausblendung eines Portfolio-Eintrags */
   private latestPortfolioHide(tx: Tx, serviceProfileId: string, itemId: string) {
     return tx.moderationDecision.findFirst({
@@ -756,13 +867,14 @@ export class ModerationService {
   }
 
   /** Letzte einschränkende Entscheidung, die noch nicht aufgehoben wurde */
-  private latestRestrictive(tx: Tx, where: { listingId?: string; dealId?: string; serviceProfileId?: string; userId?: string; action?: ModerationAction }) {
+  private latestRestrictive(tx: Tx, where: { listingId?: string; dealId?: string; serviceProfileId?: string; projectId?: string; userId?: string; action?: ModerationAction }) {
     return tx.moderationDecision.findFirst({
       where: {
         ...(where.listingId ? { listingId: where.listingId } : {}),
         ...(where.dealId ? { dealId: where.dealId } : {}),
         ...(where.serviceProfileId ? { serviceProfileId: where.serviceProfileId } : {}),
-        ...(where.userId ? { userId: where.userId, listingId: null, dealId: null, serviceProfileId: null } : {}),
+        ...(where.projectId ? { projectId: where.projectId } : {}),
+        ...(where.userId ? { userId: where.userId, listingId: null, dealId: null, serviceProfileId: null, projectId: null } : {}),
         action: where.action ?? { in: RESTRICTIVE_CONTENT_ACTIONS },
         reversedBy: { none: {} },
       },
@@ -780,8 +892,8 @@ export class ModerationService {
 
   /** Begründung an die betroffene Person (Mitteilung im Konto und E-Mail) */
   private async notifyDecision(decisionId: string) {
-    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, include: { listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } } } });
-    const title = decision.listing?.title ?? decision.deal?.title ?? decision.serviceProfile?.headline;
+    const decision = await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id: decisionId }, include: { listing: { select: { title: true } }, deal: { select: { title: true } }, serviceProfile: { select: { headline: true } }, project: { select: { title: true } } } });
+    const title = decision.listing?.title ?? decision.deal?.title ?? decision.serviceProfile?.headline ?? decision.project?.title;
     const itemTitle = (decision.snapshot as { title?: string } | null)?.title ?? 'Eintrag';
     const texts: Record<ModerationAction, { type: NotificationType; title: string; intro: string }> = {
       LISTING_REJECTED: { type: 'LISTING_REJECTED', title: 'Deine Anzeige wurde deaktiviert', intro: `Wir haben deine Anzeige „${title}“ wegen eines Verstoßes deaktiviert. Sie ist nicht mehr öffentlich sichtbar.` },
@@ -819,6 +931,17 @@ export class ModerationService {
         title: 'Ein Portfolio-Eintrag ist wieder sichtbar',
         intro: `Der Eintrag „${itemTitle}“ in deinem Anbieterprofil „${title}“ ist wieder sichtbar.`,
       },
+      PROJECT_REJECTED: {
+        type: 'PROJECT_REJECTED',
+        title: 'Dein Projektauftrag wurde deaktiviert',
+        intro: `Wir haben deinen Projektauftrag „${title}“ wegen eines Verstoßes deaktiviert. Er ist nicht mehr öffentlich sichtbar.`,
+      },
+      PROJECT_HIDDEN: {
+        type: 'PROJECT_HIDDEN',
+        title: 'Dein Projektauftrag wird geprüft',
+        intro: `Dein Projektauftrag „${title}“ ist bis zum Abschluss einer Prüfung vorübergehend nicht öffentlich sichtbar.`,
+      },
+      PROJECT_RESTORED: { type: 'PROJECT_RESTORED', title: 'Dein Projektauftrag ist freigegeben', intro: `Wir haben deinen Projektauftrag „${title}“ geprüft und freigegeben.` },
     };
     const text = texts[decision.action];
     const restrictive = RESTRICTIVE_ACTIONS.includes(decision.action);

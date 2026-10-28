@@ -57,6 +57,11 @@ export default function ServicesPage({ searchParams }: PageProps<'/dienstleistun
             Profile von Menschen und Betrieben, die ihre Arbeit anbieten – von Webentwicklung bis Gartenpflege. Kontakt über die Nachrichten von MarktAT, ohne Provision. Es gibt
             keine Bewertungen; geprüft sind nur Qualifikationen mit dem Hinweis „von MarktAT geprüft“.
           </p>
+          <p className="mt-3 text-sm">
+            <Link href="/dienstleistungen/projekte" className="font-semibold text-brand-700 hover:underline">
+              Du suchst jemanden für ein Vorhaben? Zu den Projektaufträgen
+            </Link>
+          </p>
           <ul className="mt-4 flex flex-wrap gap-2" aria-label="Bereiche">
             {SERVICE_CATEGORY_GROUPS.map((group) => (
               <li key={group.slug}>
@@ -171,7 +176,14 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
           )}
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          <Link href="/dienstleistungen/projekte" className="group rounded-xl border border-line bg-surface p-4 hover:border-brand-300">
+            <p className="font-semibold text-ink-900">Projektaufträge</p>
+            <p className="mt-0.5 text-sm text-ink-600">Konkrete Vorhaben, für die jemand Unterstützung sucht – oder beschreibe selbst deinen Auftrag.</p>
+            <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
+              Zu den Aufträgen <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            </span>
+          </Link>
           <Link href={`/suche?kategorie=${related ?? 'marktplatz/dienstleistungen'}`} className="group rounded-xl border border-line bg-surface p-4 hover:border-brand-300">
             <p className="font-semibold text-ink-900">Inserate zu Dienstleistungen</p>
             <p className="mt-0.5 text-sm text-ink-600">Einzelne Angebote als Kleinanzeige im Marktplatz{related === 'jobs/freelance' ? ' bzw. unter Jobs › Freelance' : ''}.</p>

@@ -98,6 +98,14 @@ async function ReportDetail({ params, searchParams }: Pick<PageProps<'/admin/mel
                   </dd>
                 </>
               ) : null}
+              {report.project ? (
+                <>
+                  <dt className="text-ink-500">Projektauftrag</dt>
+                  <dd>
+                    <Link href={`/admin/dienstleistungen/projekte/${report.project.id}`} className="font-medium text-brand-700 hover:underline">{report.project.title}</Link>
+                  </dd>
+                </>
+              ) : null}
               <dt className="text-ink-500">Begründung</dt>
               <dd className="whitespace-pre-line text-ink-800">{report.details || <span className="text-ink-500">Keine Angaben.</span>}</dd>
               <dt className="text-ink-500">Meldende Person</dt>
@@ -210,6 +218,11 @@ async function ReportDetail({ params, searchParams }: Pick<PageProps<'/admin/mel
                   {report.serviceProfile ? (
                     <Link href={`/admin/dienstleistungen/${report.serviceProfile.id}`} className={buttonClasses({ size: 'sm', className: 'w-full' })}>
                       Anbieterprofil prüfen und entscheiden
+                    </Link>
+                  ) : null}
+                  {report.project ? (
+                    <Link href={`/admin/dienstleistungen/projekte/${report.project.id}`} className={buttonClasses({ size: 'sm', className: 'w-full' })}>
+                      Projektauftrag prüfen und entscheiden
                     </Link>
                   ) : null}
                   {report.reported && report.reported.status === 'ACTIVE' ? (

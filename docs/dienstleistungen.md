@@ -67,6 +67,27 @@ Profilbild und Portfolio-Bilder laufen über die bestehende Bildverarbeitung (Pr
 
 Datenexport (Art. 15/20 DSGVO) enthält Profil, Portfolio, Qualifikationen und Unterhaltungen zum Profil. Beim Löschen des Kontos werden Profil, Portfolio, Qualifikationen und alle Bilder entfernt.
 
+## Projektaufträge
+
+Unter `/dienstleistungen/projekte` beschreiben Privatpersonen und Betriebe ein konkretes Vorhaben (z. B. „Website umziehen“, „Stiegenhaus ausmalen“), für das sie eine selbstständige Dienstleistung suchen. Abgrenzung:
+
+| | Projektauftrag | Jobs (Inserat) | Anbieterprofil |
+|---|---|---|---|
+| Wer veröffentlicht | wer etwas erledigt haben will | Arbeitgeber:in | wer Leistungen anbietet |
+| Worum es geht | einmaliges Vorhaben, selbstständige Leistung | Anstellung | dauerhaftes Angebot |
+| Wer antwortet | nur Anbieter:innen mit sichtbarem Profil | alle | Kund:innen |
+
+**Keine Ausschreibung:** keine Gebote, keine öffentlichen Angebote, keine Vergabe und keine Zahlungen über MarktAT. Antworten laufen über die bestehenden Nachrichten (`conversations.project_id`, genau ein Bezug je Unterhaltung per CHECK-Constraint).
+
+- **Lebenszyklus**: Entwurf → Veröffentlichen mit Bestätigung („selbstständige Leistung, kein Arbeitsverhältnis“) → sichtbar für 30 Tage → Verlängern in den letzten 7 Tagen bzw. nach Ablauf → Pausieren / Fortsetzen / Beenden („jemand gefunden“) / Löschen (Status `DELETED`, bestehende Unterhaltungen bleiben lesbar).
+- **Schutz vor Flut und Spam**: höchstens 5 offene Aufträge je Konto, 50 insgesamt; höchstens 20 Anbieter:innen je Auftrag (Zählung unter Zeilensperre, gleichzeitige Anfragen überschreiten das nicht); Anlegen 10/Stunde; Blockieren wie bei allen Nachrichten.
+- **Felder**: Titel, Beschreibung, eine Kategorie (dieselben 5 Bereiche wie bei Profilen), Ort und/oder remote, Budget (Pauschal, Stundensatz bis, offen), Zeitraum (Freitext). Öffentlich nur PLZ und Ort.
+- **Suche** (PostgreSQL/PostGIS): Begriff, Bereich, Kategorie, PLZ bzw. Ort mit Umkreis, „nur remote“ (dann schränkt der Ort nicht ein), Sortierung nach Datum oder Entfernung. Abgelaufene, pausierte und Aufträge gesperrter Konten erscheinen nicht.
+- **Konto**: `/konto/projekte` (Liste mit Zahl der Anfragen) und `/konto/projekte/<id>` (Bearbeiten, Status, Löschen).
+- **Melden und Moderation**: `/melden?projekt=<id>`; Admin unter `/admin/dienstleistungen/projekte` (Deaktivieren, bis zur Prüfung ausblenden, Freigeben, mit Begründung, Versionsprüfung und Einspruch). Abgelehnte Aufträge können nach einer Überarbeitung erneut eingereicht werden. Audit-Log: `project.*`, `moderation.project_*`.
+- **API**: `GET /v1/projects`, `GET /v1/projects/:id`, `POST /v1/projects/:id/conversations`, `POST /v1/projects/:id/report`, `/v1/me/projects…`, `/v1/admin/projects…` (siehe Swagger).
+- **Datenschutz**: Export enthält eigene Aufträge und Unterhaltungen dazu; beim Löschen des Kontos werden Aufträge und deren Unterhaltungen entfernt.
+
 ## Offene Rechtsfragen (vor dem Start klären)
 
 - **Gewerberecht**: Privatpersonen dürfen nur Tätigkeiten anbieten, für die keine Gewerbeberechtigung nötig ist (Nachbarschaftshilfe, gelegentliche Tätigkeiten). Wo die Grenze liegt, sollte eine Fachperson für Gewerberecht in den Nutzungsbedingungen formulieren.
@@ -74,3 +95,4 @@ Datenexport (Art. 15/20 DSGVO) enthält Profil, Portfolio, Qualifikationen und U
 - **Impressum (§ 5 ECG)** für gewerbliche Profile: Reichen Firmenname, Anschrift, Firmenbuchnummer und UID aus dem Konto, oder sind Kammer/Aufsichtsbehörde zusätzlich nötig?
 - **Plattformarbeit**: Die EU-Plattformarbeitsrichtlinie betrifft Plattformen, die Arbeit organisieren. MarktAT vermittelt nur Kontakte und setzt keine Preise oder Aufträge fest; das sollte vor dem Start bestätigt werden.
 - **Haftung für Angaben**: Text zu „nicht geprüft“ und „Von MarktAT geprüft“ in den Nutzungsbedingungen.
+- **Scheinselbstständigkeit**: Projektaufträge sind für selbstständige Leistungen gedacht. Ob die Bestätigung beim Veröffentlichen und das Melden versteckter Arbeitsverhältnisse ausreichen oder zusätzliche Hinweise (z. B. zur Sozialversicherung) nötig sind, sollte eine Fachperson für Arbeitsrecht beurteilen.

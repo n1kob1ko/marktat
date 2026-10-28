@@ -10,6 +10,7 @@ const NAV = [
   { href: '/admin/inserate', label: 'Inserate', adminOnly: false },
   { href: '/admin/deals', label: 'Deals', adminOnly: false },
   { href: '/admin/dienstleistungen', label: 'Dienstleistungen', adminOnly: false },
+  { href: '/admin/dienstleistungen/projekte', label: 'Projektaufträge', adminOnly: false },
   { href: '/admin/einsprueche', label: 'Einsprüche', adminOnly: false },
   { href: '/admin/nutzer', label: 'Konten', adminOnly: true },
   { href: '/admin/monetarisierung', label: 'Monetarisierung', adminOnly: true },
@@ -24,7 +25,8 @@ export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
     <nav aria-label="Admin-Bereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
       <ul className="flex gap-1">
         {NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => {
-          const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href);
+          // Der genaueste passende Reiter ist aktiv (/admin/dienstleistungen/projekte vor /admin/dienstleistungen)
+          const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href) && !NAV.some((other) => other.href.length > item.href.length && other.href.startsWith(item.href) && pathname.startsWith(other.href));
           return (
             <li key={item.href} className="shrink-0">
               <Link

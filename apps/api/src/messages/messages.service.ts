@@ -18,6 +18,7 @@ import type {
   ReportUserInput,
   UnreadSummary,
 } from '@marktat/shared';
+import { PROJECT_MAX_CONTACTS } from '@marktat/shared';
 import type { AuthUser } from '../auth/auth.types.js';
 import { AuditService } from '../audit/audit.service.js';
 import { loadEnv } from '../config/env.js';
@@ -32,7 +33,7 @@ import { RealtimeService } from '../realtime/realtime.service.js';
 import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
 import { serviceProfileImageUrl } from '../services/service-images.js';
-import { isServiceProfilePublic, publicServiceProfileWhere } from '../services/visibility.js';
+import { isProjectPublic, isServiceProfilePublic, publicProjectWhere, publicServiceProfileWhere } from '../services/visibility.js';
 
 /** Grenzwerte gegen Spam und massenhaftes Anschreiben (je Konto, gilt über alle API-Instanzen). */
 export const MESSAGE_LIMITS = {
@@ -76,6 +77,9 @@ const conversationInclude = {
       user: { select: { id: true, status: true, deletedAt: true, accountType: true, logoKey: true } },
     },
   },
+  project: {
+    select: { id: true, title: true, status: true, expiresAt: true, user: { select: { status: true, deletedAt: true } } },
+  },
   buyer: { select: userSelect },
   seller: { select: userSelect },
   messages: { orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], take: 1 },
@@ -84,7 +88,9 @@ const conversationInclude = {
 type ConversationRow = Prisma.ConversationGetPayload<{ include: typeof conversationInclude }>;
 
 /** Worauf sich eine neue Unterhaltung bezieht */
-type Subject = { kind: 'listing'; id: string } | { kind: 'service'; id: string };
+type Subject = { kind: 'listing' | 'service' | 'project'; id: string };
+
+const SUBJECT_FIELD = { listing: 'listingId', service: 'serviceProfileId', project: 'projectId' } as const;
 type UserRow = ConversationRow['buyer'];
 
 const MESSAGE_EMAIL_JOB = 'message-email';
@@ -131,9 +137,17 @@ export class MessagesService implements OnModuleInit {
     return this.startWith(user, { kind: 'service', id: profileId }, body, ip, clientId);
   }
 
+  /**
+   * Antwort auf einen Projektauftrag. Nur mit eigenem, sichtbarem Anbieterprofil, und je Auftrag höchstens
+   * PROJECT_MAX_CONTACTS Anbieter:innen – so bekommt die Auftraggeber:in keine Flut an Anfragen.
+   */
+  startForProject(user: AuthUser, projectId: string, body: string, ip?: string, clientId?: string): Promise<{ conversationId: string; message: ChatMessage }> {
+    return this.startWith(user, { kind: 'project', id: projectId }, body, ip, clientId);
+  }
+
   private async startWith(user: AuthUser, subject: Subject, body: string, ip?: string, clientId?: string): Promise<{ conversationId: string; message: ChatMessage }> {
-    const sameSubject = (conversation: { listingId: string | null; serviceProfileId: string | null }) =>
-      subject.kind === 'listing' ? conversation.listingId === subject.id : conversation.serviceProfileId === subject.id;
+    const field = SUBJECT_FIELD[subject.kind];
+    const sameSubject = (conversation: { listingId: string | null; serviceProfileId: string | null; projectId: string | null }) => conversation[field] === subject.id;
     const previous = await this.previousSend(user.id, clientId);
     if (previous) {
       if (!sameSubject(previous.conversation)) throw new ConflictException(DUPLICATE_CLIENT_ID);
@@ -145,7 +159,9 @@ export class MessagesService implements OnModuleInit {
     const key =
       subject.kind === 'listing'
         ? { listingId_buyerId: { listingId: subject.id, buyerId: user.id } }
-        : { serviceProfileId_buyerId: { serviceProfileId: subject.id, buyerId: user.id } };
+        : subject.kind === 'service'
+          ? { serviceProfileId_buyerId: { serviceProfileId: subject.id, buyerId: user.id } }
+          : { projectId_buyerId: { projectId: subject.id, buyerId: user.id } };
     const existing = await this.prisma.conversation.findUnique({ where: key, select: { id: true } });
     if (!existing) await this.assertConversationLimit(user.id);
     await this.assertMessageLimit(user.id);
@@ -153,10 +169,17 @@ export class MessagesService implements OnModuleInit {
     let created: { conversationId: string; message: Message };
     try {
       created = await this.prisma.$transaction(async (tx) => {
+        if (subject.kind === 'project' && !existing) {
+          // Sperre auf den Auftrag: gleichzeitige Anfragen können die Höchstzahl nicht überschreiten
+          await tx.$queryRaw`SELECT id FROM service_projects WHERE id = ${subject.id} FOR UPDATE`;
+          if ((await tx.conversation.count({ where: { projectId: subject.id } })) >= PROJECT_MAX_CONTACTS) {
+            throw new ConflictException('Für diesen Auftrag gibt es schon viele Anfragen. Neue Anfragen sind nicht mehr möglich.');
+          }
+        }
         const conversation = await tx.conversation.upsert({
           where: key,
           create: {
-            ...(subject.kind === 'listing' ? { listingId: subject.id } : { serviceProfileId: subject.id }),
+            [field]: subject.id,
             buyerId: user.id,
             sellerId: ownerId,
           },
@@ -183,7 +206,7 @@ export class MessagesService implements OnModuleInit {
         entityType: 'conversation',
         entityId: conversationId,
         ip,
-        metadata: subject.kind === 'listing' ? { listingId: subject.id } : { serviceProfileId: subject.id },
+        metadata: { [field]: subject.id },
       });
     }
     await this.afterSend(message);
@@ -199,6 +222,18 @@ export class MessagesService implements OnModuleInit {
       if (!listing) throw new NotFoundException('Diese Anzeige ist nicht mehr verfügbar.');
       if (listing.sellerId === user.id) throw new BadRequestException('Das ist deine eigene Anzeige – du kannst dir nicht selbst schreiben.');
       return listing.sellerId;
+    }
+    if (subject.kind === 'project') {
+      const project = ENTITY_ID.test(subject.id)
+        ? await this.prisma.serviceProject.findFirst({ where: { id: subject.id, ...publicProjectWhere() }, select: { userId: true } })
+        : null;
+      if (!project) throw new NotFoundException('Dieser Projektauftrag ist nicht mehr verfügbar.');
+      if (project.userId === user.id) throw new BadRequestException('Das ist dein eigener Auftrag – du kannst dir nicht selbst schreiben.');
+      const ownProfile = await this.prisma.serviceProfile.findFirst({ where: { userId: user.id, ...publicServiceProfileWhere() }, select: { id: true } });
+      if (!ownProfile) {
+        throw new ForbiddenException('Auf Projektaufträge antworten können nur Anbieter:innen mit sichtbarem Anbieterprofil. Lege dein Profil unter „Konto › Dienstleistungen“ an.');
+      }
+      return project.userId;
     }
     const profile = ENTITY_ID.test(subject.id)
       ? await this.prisma.serviceProfile.findFirst({ where: { id: subject.id, ...publicServiceProfileWhere() }, select: { userId: true } })
@@ -346,6 +381,11 @@ export class MessagesService implements OnModuleInit {
   }
 
   /** Für die Seite eines Anbieterprofils: bestehende Unterhaltung der angemeldeten Person */
+  async conversationIdForProject(userId: string, projectId: string): Promise<string | null> {
+    const row = await this.prisma.conversation.findUnique({ where: { projectId_buyerId: { projectId, buyerId: userId } }, select: { id: true } });
+    return row?.id ?? null;
+  }
+
   async conversationIdForService(userId: string, serviceProfileId: string): Promise<string | null> {
     const row = await this.prisma.conversation.findUnique({ where: { serviceProfileId_buyerId: { serviceProfileId, buyerId: userId } }, select: { id: true } });
     return row?.id ?? null;
@@ -407,7 +447,7 @@ export class MessagesService implements OnModuleInit {
 
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
-      include: { listing: { select: { title: true } }, serviceProfile: { select: { headline: true } }, buyer: { select: userSelect }, seller: { select: userSelect } },
+      include: { listing: { select: { title: true } }, serviceProfile: { select: { headline: true } }, project: { select: { title: true } }, buyer: { select: userSelect }, seller: { select: userSelect } },
     });
     const recipient = await this.prisma.user.findUnique({ where: { id: recipientId } });
     const alreadyNotified = unread.length > pendingIds.length;
@@ -417,13 +457,15 @@ export class MessagesService implements OnModuleInit {
     }
     const sender = conversation.buyerId === recipientId ? conversation.seller : conversation.buyer;
     const senderName = displayName(sender);
-    const title = conversation.listing?.title ?? conversation.serviceProfile?.headline ?? 'Unterhaltung';
+    const title = conversation.listing?.title ?? conversation.serviceProfile?.headline ?? conversation.project?.title ?? 'Unterhaltung';
     const url = `${this.env.WEB_URL}/nachrichten/${conversation.id}`;
     const count = pendingIds.length;
     const toOwner = conversation.sellerId === recipientId;
     const intro = conversation.listing
       ? toOwner ? `zu deiner Anzeige „${title}“` : `zur Anzeige „${title}“`
-      : toOwner ? `zu deinem Anbieterprofil „${title}“` : `zum Anbieterprofil „${title}“`;
+      : conversation.project
+        ? toOwner ? `zu deinem Projektauftrag „${title}“` : `zum Projektauftrag „${title}“`
+        : toOwner ? `zu deinem Anbieterprofil „${title}“` : `zum Anbieterprofil „${title}“`;
     const text = [
       `Hallo ${recipient.displayName},`,
       '',
@@ -452,7 +494,7 @@ export class MessagesService implements OnModuleInit {
   /** Schon mit dieser Kennung gesendete Nachricht (erneutes Abschicken nach Doppelklick oder Verbindungsabbruch) */
   private previousSend(senderId: string, clientId?: string) {
     if (!clientId) return Promise.resolve(null);
-    return this.prisma.message.findFirst({ where: { senderId, clientId }, include: { conversation: { select: { listingId: true, serviceProfileId: true } } } });
+    return this.prisma.message.findFirst({ where: { senderId, clientId }, include: { conversation: { select: { listingId: true, serviceProfileId: true, projectId: true } } } });
   }
 
   /** Nach einem Fehler beim Speichern: Lag es an einer gleichzeitig gespeicherten Nachricht mit derselben Kennung? */
@@ -507,6 +549,7 @@ export class MessagesService implements OnModuleInit {
         OR: [
           { listing: { title: contains } },
           { serviceProfile: { headline: contains } },
+          { project: { title: contains } },
           { buyerId: userId, seller: { displayName: contains } },
           { sellerId: userId, buyer: { displayName: contains } },
         ],
@@ -544,6 +587,9 @@ export class MessagesService implements OnModuleInit {
         available,
       };
       subject = { kind: 'listing', id: listing.id, title: listing.title, imageUrl: listing.imageUrl, available, href: `/anzeige/${listing.id}` };
+    } else if (row.project) {
+      const project = row.project;
+      subject = { kind: 'project', id: project.id, title: project.title, imageUrl: null, available: isProjectPublic(project), href: `/dienstleistungen/projekte/${project.id}` };
     } else {
       const profile = row.serviceProfile!;
       const available = isServiceProfilePublic(profile);

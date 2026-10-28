@@ -18,7 +18,7 @@ import type { AuthUser } from '../auth/auth.types.js';
 import { publicDealWhere } from '../deals/deals.mapper.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { publicServiceProfileWhere } from '../services/visibility.js';
+import { publicProjectWhere, publicServiceProfileWhere } from '../services/visibility.js';
 import { decisionInclude, personSelect, reportSummaryInclude, toAdminDecision, toPerson, toReportSummary, type ReportWithRelations } from './moderation.mapper.js';
 import { NotificationsService } from './notifications.service.js';
 
@@ -86,6 +86,17 @@ export class ReportsService {
     return { id: report.id };
   }
 
+  /** Meldung eines Projektauftrags (z. B. verstecktes Jobangebot, Betrug, unzulässige Tätigkeit) */
+  async reportProject(user: AuthUser, projectId: string, input: ReportListingInput, ip?: string): Promise<{ id: string }> {
+    if (!ENTITY_ID.test(projectId)) throw new NotFoundException('Diesen Projektauftrag gibt es nicht.');
+    const project = await this.prisma.serviceProject.findFirst({ where: { id: projectId, ...publicProjectWhere() }, select: { id: true, userId: true } });
+    if (!project) throw new NotFoundException('Diesen Projektauftrag gibt es nicht (mehr).');
+    if (project.userId === user.id) throw new ForbiddenException('Deinen eigenen Auftrag kannst du nicht melden.');
+    const report = await this.create(user, { targetType: 'PROJECT', projectId: project.id, reportedId: project.userId, reason: input.reason, details: input.details });
+    this.audit.log({ action: 'project.reported', actorId: user.id, entityType: 'service_project', entityId: project.id, ip, metadata: { reportId: report.id, reason: input.reason } });
+    return { id: report.id };
+  }
+
   async reportConversation(user: AuthUser, conversation: { id: string; reportedId: string }, input: ReportUserInput, ip?: string) {
     const report = await this.create(user, {
       targetType: 'CONVERSATION',
@@ -105,8 +116,9 @@ export class ReportsService {
   private async create(
     user: AuthUser,
     data: {
-      targetType: 'LISTING' | 'CONVERSATION' | 'DEAL' | 'SERVICE_PROFILE';
+      targetType: 'LISTING' | 'CONVERSATION' | 'DEAL' | 'SERVICE_PROFILE' | 'PROJECT';
       listingId?: string;
+      projectId?: string;
       dealId?: string;
       serviceProfileId?: string;
       conversationId?: string;
@@ -137,7 +149,9 @@ export class ReportsService {
               ? { dealId: data.dealId }
               : data.serviceProfileId
                 ? { serviceProfileId: data.serviceProfileId }
-                : { conversationId: data.conversationId }),
+                : data.projectId
+                  ? { projectId: data.projectId }
+                  : { conversationId: data.conversationId }),
         },
         select: { id: true },
       });
@@ -149,7 +163,9 @@ export class ReportsService {
               ? 'Du hast dieses Angebot bereits gemeldet. Wir sehen es uns an.'
               : data.serviceProfileId
                 ? 'Du hast dieses Anbieterprofil bereits gemeldet. Wir sehen es uns an.'
-                : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
+                : data.projectId
+                  ? 'Du hast diesen Projektauftrag bereits gemeldet. Wir sehen ihn uns an.'
+                  : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
         );
       }
       const report = await tx.report.create({
@@ -191,7 +207,8 @@ export class ReportsService {
     const conversationIds = [...new Set(rows.flatMap((r) => (r.targetType === 'CONVERSATION' && r.conversationId ? [r.conversationId] : [])))];
     const dealIds = [...new Set(rows.flatMap((r) => (r.dealId ? [r.dealId] : [])))];
     const profileIds = [...new Set(rows.flatMap((r) => (r.serviceProfileId ? [r.serviceProfileId] : [])))];
-    const [byListing, byConversation, byDeal, byProfile] = await Promise.all([
+    const projectIds = [...new Set(rows.flatMap((r) => (r.projectId ? [r.projectId] : [])))];
+    const [byListing, byConversation, byDeal, byProfile, byProject] = await Promise.all([
       listingIds.length
         ? this.prisma.report.groupBy({ by: ['listingId'], where: { listingId: { in: listingIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
@@ -202,11 +219,15 @@ export class ReportsService {
       profileIds.length
         ? this.prisma.report.groupBy({ by: ['serviceProfileId'], where: { serviceProfileId: { in: profileIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
+      projectIds.length
+        ? this.prisma.report.groupBy({ by: ['projectId'], where: { projectId: { in: projectIds }, status: { in: OPEN_STATUSES } }, _count: true })
+        : [],
     ]);
     const listingCounts = new Map(byListing.map((g) => [g.listingId, g._count]));
     const conversationCounts = new Map(byConversation.map((g) => [g.conversationId, g._count]));
     const dealCounts = new Map(byDeal.map((g) => [g.dealId, g._count]));
     const profileCounts = new Map(byProfile.map((g) => [g.serviceProfileId, g._count]));
+    const projectCounts = new Map(byProject.map((g) => [g.projectId, g._count]));
     return rows.map((row) => {
       const open = row.listingId
         ? (listingCounts.get(row.listingId) ?? 0)
@@ -214,6 +235,8 @@ export class ReportsService {
           ? (dealCounts.get(row.dealId) ?? 0)
           : row.serviceProfileId
             ? (profileCounts.get(row.serviceProfileId) ?? 0)
+            : row.projectId
+            ? (projectCounts.get(row.projectId) ?? 0)
             : row.conversationId
             ? (conversationCounts.get(row.conversationId) ?? 0)
             : 0;
@@ -230,6 +253,8 @@ export class ReportsService {
         ? { dealId: report.dealId }
         : report.serviceProfileId
         ? { serviceProfileId: report.serviceProfileId }
+        : report.projectId
+        ? { projectId: report.projectId }
         : report.conversationId
         ? { conversationId: report.conversationId }
         : null;
@@ -284,7 +309,7 @@ export class ReportsService {
     }
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: report.conversationId! },
-      select: { listing: { select: { id: true, title: true } }, serviceProfile: { select: { id: true, headline: true } } },
+      select: { listing: { select: { id: true, title: true } }, serviceProfile: { select: { id: true, headline: true } }, project: { select: { id: true, title: true } } },
     });
     const rows = await this.prisma.message.findMany({
       where: { conversationId: report.conversationId!, createdAt: { lte: report.createdAt } },
@@ -300,7 +325,9 @@ export class ReportsService {
         ? { kind: 'listing', id: conversation.listing.id, title: conversation.listing.title }
         : conversation?.serviceProfile
           ? { kind: 'service', id: conversation.serviceProfile.id, title: conversation.serviceProfile.headline }
-          : null,
+          : conversation?.project
+            ? { kind: 'project', id: conversation.project.id, title: conversation.project.title }
+            : null,
       messages: rows
         .slice(0, REPORTED_MESSAGES_LIMIT)
         .reverse()
@@ -372,7 +399,7 @@ export class ReportsService {
     actorId: string,
     status: 'RESOLVED' | 'DISMISSED' | 'IN_REVIEW',
   ) {
-    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, serviceProfileId: true, conversationId: true, reason: true } });
+    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, serviceProfileId: true, projectId: true, conversationId: true, reason: true } });
     if (!open.length) return [];
     const final = status !== 'IN_REVIEW';
     await tx.report.updateMany({
@@ -387,7 +414,7 @@ export class ReportsService {
 
   /** Meldende Personen erfahren das Ergebnis (Art. 16 Abs. 5 DSA) – ohne Details zur betroffenen Person. */
   async notifyReporters(
-    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; serviceProfileId?: string | null; conversationId: string | null; reason: ReportReason }[],
+    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; serviceProfileId?: string | null; projectId?: string | null; conversationId: string | null; reason: ReportReason }[],
     outcome: 'RESOLVED' | 'DISMISSED',
   ) {
     const titles = new Map<string, string>();
@@ -403,10 +430,14 @@ export class ReportsService {
     if (profileIds.length) {
       for (const p of await this.prisma.serviceProfile.findMany({ where: { id: { in: profileIds } }, select: { id: true, headline: true } })) titles.set(p.id, p.headline);
     }
+    const projectIds = [...new Set(reports.flatMap((r) => (r.projectId ? [r.projectId] : [])))];
+    if (projectIds.length) {
+      for (const p of await this.prisma.serviceProject.findMany({ where: { id: { in: projectIds } }, select: { id: true, title: true } })) titles.set(p.id, p.title);
+    }
     const seen = new Set<string>();
     for (const report of reports) {
       if (!report.reporterId) continue;
-      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.serviceProfileId ?? report.conversationId}`;
+      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.serviceProfileId ?? report.projectId ?? report.conversationId}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const subject = report.listingId
@@ -415,7 +446,9 @@ export class ReportsService {
           ? `das Angebot „${titles.get(report.dealId) ?? 'Angebot'}“`
           : report.serviceProfileId
             ? `das Anbieterprofil „${titles.get(report.serviceProfileId) ?? 'Anbieterprofil'}“`
-            : 'eine Unterhaltung';
+            : report.projectId
+              ? `den Projektauftrag „${titles.get(report.projectId) ?? 'Projektauftrag'}“`
+              : 'eine Unterhaltung';
       const result =
         outcome === 'RESOLVED'
           ? 'Wir haben einen Verstoß festgestellt und Maßnahmen ergriffen.'

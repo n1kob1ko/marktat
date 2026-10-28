@@ -29,16 +29,19 @@ async function tokenOrFailure(): Promise<string | { ok: false; message: string; 
   return token ?? { ok: false, message: 'Deine Sitzung ist abgelaufen. Bitte melde dich neu an.', status: 401 };
 }
 
-/** Erste Nachricht von der Detailseite eines Inserats oder Anbieterprofils. Führt danach direkt in die Unterhaltung. */
+/** Erste Nachricht von der Detailseite eines Inserats, Anbieterprofils oder Projektauftrags. Führt danach direkt in die Unterhaltung. */
 export async function startConversationAction(_prev: FormState, formData: FormData): Promise<FormState> {
-  const listingId = String(formData.get('listingId') ?? '');
-  const serviceProfileId = String(formData.get('serviceProfileId') ?? '');
+  const subjects = [
+    { id: String(formData.get('projectId') ?? ''), page: '/dienstleistungen/projekte/', api: '/projects/', missing: 'Diesen Projektauftrag gibt es nicht.' },
+    { id: String(formData.get('serviceProfileId') ?? ''), page: '/dienstleistungen/', api: '/services/', missing: 'Dieses Anbieterprofil gibt es nicht.' },
+    { id: String(formData.get('listingId') ?? ''), page: '/anzeige/', api: '/listings/', missing: 'Diese Anzeige gibt es nicht.' },
+  ];
+  const subject = subjects.find((s) => s.id) ?? subjects[2]!;
   const body = String(formData.get('body') ?? '');
   const clientId = String(formData.get('clientId') ?? '') || undefined;
-  const service = Boolean(serviceProfileId);
-  const id = service ? serviceProfileId : listingId;
-  if (!ID_PATTERN.test(id)) return { status: 'error', message: service ? 'Dieses Anbieterprofil gibt es nicht.' : 'Diese Anzeige gibt es nicht.' };
-  const page = service ? `/dienstleistungen/${id}` : `/anzeige/${id}`;
+  const id = subject.id;
+  if (!ID_PATTERN.test(id)) return { status: 'error', message: subject.missing };
+  const page = `${subject.page}${id}`;
   const token = await getAccessToken();
   if (!token) redirect(`/anmelden?weiter=${encodeURIComponent(page)}&hinweis=nachricht`);
 
@@ -46,7 +49,7 @@ export async function startConversationAction(_prev: FormState, formData: FormDa
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values: { body } };
   let conversationId: string;
   try {
-    ({ conversationId } = await api<{ conversationId: string }>(service ? `/services/${id}/conversations` : `/listings/${id}/conversations`, {
+    ({ conversationId } = await api<{ conversationId: string }>(`${subject.api}${id}/conversations`, {
       method: 'POST',
       token,
       body: parsed.data,

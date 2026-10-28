@@ -9,6 +9,7 @@ const NAV = [
   { href: '/konto', label: 'Profil' },
   { href: '/konto/anzeigen', label: 'Meine Anzeigen' },
   { href: '/konto/dienstleistungen', label: 'Dienstleistungen' },
+  { href: '/konto/projekte', label: 'Projektaufträge' },
   { href: '/konto/leistungen', label: 'Leistungen' },
   { href: '/nachrichten', label: 'Nachrichten' },
   { href: '/konto/merkliste', label: 'Merkliste' },
@@ -47,7 +48,7 @@ function AccountNavList({
   showSecurity?: boolean;
   showDeals?: boolean;
 }) {
-  const items = [...NAV.slice(0, 3), ...(showDeals ? [DEALS] : []), ...NAV.slice(3), ...(showSecurity ? [SECURITY] : [])];
+  const items = [...NAV.slice(0, 4), ...(showDeals ? [DEALS] : []), ...NAV.slice(4), ...(showSecurity ? [SECURITY] : [])];
   return (
     <nav aria-label="Kontobereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
       <ul className="flex gap-1">

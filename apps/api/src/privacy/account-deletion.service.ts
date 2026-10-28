@@ -259,6 +259,7 @@ export class AccountDeletionService implements OnModuleInit {
       // Anbieterprofil mit Kategorien, Portfolio und Qualifikationen (Unterhaltungen dazu sind oben schon gelöscht;
       // Verweise aus Meldungen und Entscheidungen werden null, der Schnappschuss bleibt)
       await tx.serviceProfile.deleteMany({ where: { userId } });
+      await tx.serviceProject.deleteMany({ where: { userId } });
       // Eigene Meldungen bleiben für die Moderation, aber ohne Verweis auf die meldende Person
       await tx.report.updateMany({ where: { reporterId: userId }, data: { reporterId: null } });
       await tx.report.updateMany({ where: { assigneeId: userId }, data: { assigneeId: null } });

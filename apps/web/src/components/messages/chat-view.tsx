@@ -204,7 +204,7 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
               {partner.displayName}
             </span>
             <span className="block truncate text-xs text-ink-500">
-              {subject.kind === 'service' ? 'Anbieterprofil: ' : ''}
+              {subject.kind === 'service' ? 'Anbieterprofil: ' : subject.kind === 'project' ? 'Projektauftrag: ' : ''}
               {subject.title}
               {price ? ` · ${price}` : ''}
             </span>
@@ -216,7 +216,7 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
       {!subject.available ? (
         <p className="flex items-center gap-2 border-b border-line bg-warning-50 px-4 py-2 text-sm text-warning-700">
           <Info className="size-4 shrink-0" aria-hidden="true" />
-          {subject.kind === 'service' ? 'Dieses Anbieterprofil ist nicht mehr online.' : 'Diese Anzeige ist nicht mehr online.'} Ihr könnt trotzdem weiterschreiben.
+          {subject.kind === 'service' ? 'Dieses Anbieterprofil ist nicht mehr online.' : subject.kind === 'project' ? 'Dieser Projektauftrag ist nicht mehr online.' : 'Diese Anzeige ist nicht mehr online.'} Ihr könnt trotzdem weiterschreiben.
         </p>
       ) : null}
 

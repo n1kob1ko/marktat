@@ -274,7 +274,7 @@ export interface ConversationSummary {
   unreadCount: number;
 }
 
-export type ConversationSubjectKind = 'listing' | 'service';
+export type ConversationSubjectKind = 'listing' | 'service' | 'project';
 
 export interface ConversationSubject {
   kind: ConversationSubjectKind;
@@ -337,6 +337,7 @@ export interface ModerationDecisionView {
   deal: { id: string; title: string } | null;
   /** Phase 10: Entscheidung zu einem Anbieterprofil (bzw. einem seiner Portfolio-Einträge) */
   serviceProfile: { id: string; title: string } | null;
+  project: { id: string; title: string } | null;
   appeal: AppealView | null;
   /** Einspruch ist noch möglich (einschränkende Maßnahme, Frist offen, noch kein Einspruch) */
   canAppeal: boolean;
@@ -388,6 +389,7 @@ export interface AdminReportSummary {
   listing: { id: string; title: string; status: string } | null;
   deal: { id: string; title: string; status: string } | null;
   serviceProfile: { id: string; title: string; status: string } | null;
+  project: { id: string; title: string; status: string } | null;
   conversationId: string | null;
   reported: (PersonRef & { status: UserStatus }) | null;
   reporter: PersonRef | null;

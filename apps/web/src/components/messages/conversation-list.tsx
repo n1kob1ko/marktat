@@ -100,7 +100,11 @@ function ConversationItem({ item, active, href }: { item: ConversationSummary; a
           </time>
         </span>
         <span className="mt-0.5 block truncate text-xs text-ink-500">
-          {item.subject.kind === 'service' ? (item.role === 'seller' ? 'Dein Anbieterprofil: ' : 'Anbieterprofil: ') : item.role === 'seller' ? 'Deine Anzeige: ' : ''}
+          {item.subject.kind === 'service'
+            ? item.role === 'seller' ? 'Dein Anbieterprofil: ' : 'Anbieterprofil: '
+            : item.subject.kind === 'project'
+              ? item.role === 'seller' ? 'Dein Projektauftrag: ' : 'Projektauftrag: '
+              : item.role === 'seller' ? 'Deine Anzeige: ' : ''}
           {item.subject.title}
           {!item.subject.available ? ' · nicht mehr online' : ''}
         </span>

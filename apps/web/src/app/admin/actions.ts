@@ -175,6 +175,34 @@ export async function decideServiceProfileAction(_prev: FormState, formData: For
   redirect(`/admin/dienstleistungen/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-anbieter-freigegeben' : 'mod-anbieter-entschieden'}`);
 }
 
+/** Projektauftrag deaktivieren, bis zur Prüfung ausblenden oder freigeben */
+export async function decideProjectAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = listingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+    version: text(formData, 'version'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/dienstleistungen/projekte/${id}`);
+  try {
+    await api(`/admin/projects/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/dienstleistungen/projekte');
+  redirect(`/admin/dienstleistungen/projekte/${id}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-projekt-freigegeben' : 'mod-projekt-entschieden'}`);
+}
+
 /** Einzelnen Portfolio-Eintrag ausblenden bzw. wieder zeigen; zurück geht es zum Profil (verstecktes Feld profileId) */
 export async function decidePortfolioItemAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = String(formData.get('id') ?? '');

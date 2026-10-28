@@ -66,6 +66,9 @@ const ACTION_TONES: Record<ModerationAction, BadgeTone> = {
   SERVICE_PROFILE_RESTORED: 'success',
   PORTFOLIO_ITEM_HIDDEN: 'warning',
   PORTFOLIO_ITEM_RESTORED: 'success',
+  PROJECT_REJECTED: 'danger',
+  PROJECT_HIDDEN: 'warning',
+  PROJECT_RESTORED: 'success',
 };
 export function ActionBadge({ action }: { action: ModerationAction }) {
   return <Badge tone={ACTION_TONES[action]}>{MODERATION_ACTION_LABELS[action]}</Badge>;
@@ -191,6 +194,14 @@ export function DecisionList({ decisions, showUser = false }: { decisions: Admin
                   {typeof d.snapshot?.portfolioItemId === 'string' && typeof d.snapshot.title === 'string' ? (
                     <span className="text-ink-600"> · Portfolio-Eintrag „{d.snapshot.title}“</span>
                   ) : null}
+                </dd>
+              </>
+            ) : null}
+            {d.project ? (
+              <>
+                <dt className="text-ink-500">Projektauftrag</dt>
+                <dd>
+                  <Link href={`/admin/dienstleistungen/projekte/${d.project.id}`} className="text-brand-700 hover:underline">{d.project.title}</Link>
                 </dd>
               </>
             ) : null}
