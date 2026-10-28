@@ -88,19 +88,25 @@ export const dealsBlockSchema = z
 export type DealsBlockInput = z.infer<typeof dealsBlockSchema>;
 
 export interface AdminDealSummary extends MerchantDeal {
-  merchantStatus: UserStatus;
+  /** null bei Affiliate-Deals (kein Händlerkonto) */
+  merchantStatus: UserStatus | null;
   openReports: number;
   createdAt: string;
 }
 
 export interface AdminDealDetail {
   deal: DealDetail;
-  merchant: PersonRef & {
-    companyName: string | null;
-    status: UserStatus;
-    dealsBlockedAt: string | null;
-    eligibility: DealerEligibility;
-  };
+  /** Händlerkonto; null bei Affiliate-Deals */
+  merchant:
+    | (PersonRef & {
+        companyName: string | null;
+        status: UserStatus;
+        dealsBlockedAt: string | null;
+        eligibility: DealerEligibility;
+      })
+    | null;
+  /** Nur Affiliate-Deals: Programm, Feed und Artikelnummer im Netzwerk */
+  affiliate: { programId: string; programName: string; programStatus: string; networkName: string; feedName: string | null; externalId: string | null } | null;
   decisions: AdminDecision[];
   reports: AdminReportSummary[];
   /** Andere Deals desselben Händlers mit gleichem Titel (mögliche Doppelte) */

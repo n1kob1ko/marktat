@@ -245,6 +245,12 @@ export class ModerationService {
           ...(input.decision === 'RESTORE' && !deal.publishedAt && { publishedAt: new Date() }),
         },
       });
+      const reportStatus = input.decision === 'REJECT' ? 'RESOLVED' : input.decision === 'HIDE' ? 'IN_REVIEW' : 'DISMISSED';
+      // Affiliate-Deals gehören keinem Konto: keine Begründung an eine betroffene Person (Art. 17 DSA), nur Protokoll
+      if (!deal.merchantId) {
+        const closedReports = await this.reports.closeWithDecision(tx, { dealId }, null, moderator.id, reportStatus);
+        return { decision: null, closedReports };
+      }
       const decision = await tx.moderationDecision.create({
         data: {
           action,
@@ -271,12 +277,16 @@ export class ModerationService {
           },
         },
       });
-      const reportStatus = input.decision === 'REJECT' ? 'RESOLVED' : input.decision === 'HIDE' ? 'IN_REVIEW' : 'DISMISSED';
       const closedReports = await this.reports.closeWithDecision(tx, { dealId }, decision.id, moderator.id, reportStatus);
       return { decision, closedReports };
     });
 
     this.dealSearch.index.sync(dealId);
+    if (!decision) {
+      this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'deal', entityId: dealId, ip, metadata: { affiliate: true, reason: input.decision === 'RESTORE' ? null : input.reason, statement: input.statement } });
+      if (closedReports.length) await this.reports.notifyReporters(closedReports, input.decision === 'REJECT' ? 'RESOLVED' : 'DISMISSED');
+      return null;
+    }
     this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'deal', entityId: dealId, ip, metadata: { decisionId: decision.id, reason: decision.reason } });
     await this.notifyDecision(decision.id);
     if (closedReports.length) await this.reports.notifyReporters(closedReports, input.decision === 'REJECT' ? 'RESOLVED' : 'DISMISSED');

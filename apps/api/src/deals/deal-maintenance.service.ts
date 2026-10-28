@@ -66,6 +66,8 @@ export class DealMaintenanceService implements OnModuleInit {
     const due = await this.prisma.deal.findMany({
       where: {
         ...publicDealWhere(now),
+        // Nicht bei Affiliate-Deals: Abrufe der Tracking-Links zählten beim Netzwerk als Klicks (Klickbetrug)
+        source: { not: 'AFFILIATE' },
         url: { not: null },
         OR: [{ linkCheckedAt: null }, { linkCheckedAt: { lt: new Date(now.getTime() - LINK_RECHECK_MS) } }],
       },

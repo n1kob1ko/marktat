@@ -41,13 +41,17 @@ export class SafeFetchError extends Error {
 }
 
 export interface SafeFetchOptions {
-  method?: 'GET' | 'HEAD';
+  method?: 'GET' | 'HEAD' | 'POST';
+  /** Nur POST: Anfragetext (z. B. JSON) */
+  body?: string;
   maxBytes?: number;
   timeoutMs?: number;
   maxRedirects?: number;
   headers?: Record<string, string>;
   /** Nur Tests: lokale Testserver (http, 127.0.0.1) erlauben */
   allowPrivate?: boolean;
+  /** Längere Adressen erlauben (Feed-Downloads mit Spaltenliste); Standard 500 Zeichen */
+  maxUrlLength?: number;
 }
 
 export interface SafeFetchResponse {
@@ -77,19 +81,85 @@ function guardedLookup(allowPrivate: boolean) {
   };
 }
 
-function requestOnce(url: URL, options: Required<Pick<SafeFetchOptions, 'method' | 'maxBytes' | 'timeoutMs' | 'allowPrivate'>> & { headers: Record<string, string> }) {
-  return new Promise<SafeFetchResponse>((resolve, reject) => {
-    const client = url.protocol === 'https:' ? https : http;
-    const request = client.request(
-      url,
-      {
-        method: options.method,
-        headers: { 'User-Agent': USER_AGENT, Accept: '*/*', ...options.headers },
-        lookup: guardedLookup(options.allowPrivate) as never,
-        timeout: options.timeoutMs,
-        // Kein Proxy, keine Wiederverwendung von Verbindungen: jede Anfrage prüft ihre Zieladresse selbst
-        agent: false,
+type RequestSettings = Required<Pick<SafeFetchOptions, 'method' | 'maxBytes' | 'timeoutMs' | 'allowPrivate'>> & { headers: Record<string, string>; body?: string };
+
+/** Antwort als Datenstrom (große Feeds): Aufrufer liest und begrenzt selbst; Zeitlimit gilt bis zum Ende */
+export interface SafeStreamResponse {
+  status: number;
+  headers: http.IncomingHttpHeaders;
+  stream: http.IncomingMessage;
+  finalUrl: string;
+}
+
+function openRequest(url: URL, options: RequestSettings, onResponse: (response: http.IncomingMessage) => void, onError: (error: SafeFetchError) => void) {
+  const client = url.protocol === 'https:' ? https : http;
+  const request = client.request(
+    url,
+    {
+      method: options.method,
+      headers: {
+        'User-Agent': USER_AGENT,
+        Accept: '*/*',
+        ...(options.body !== undefined && { 'Content-Length': String(Buffer.byteLength(options.body)) }),
+        ...options.headers,
       },
+      lookup: guardedLookup(options.allowPrivate) as never,
+      timeout: options.timeoutMs,
+      // Kein Proxy, keine Wiederverwendung von Verbindungen: jede Anfrage prüft ihre Zieladresse selbst
+      agent: false,
+    },
+    onResponse,
+  );
+  const timer = setTimeout(() => request.destroy(new Error('Zeitüberschreitung')), options.timeoutMs);
+  timer.unref();
+  request.on('timeout', () => request.destroy(new Error('Zeitüberschreitung')));
+  request.on('error', (error: NodeJS.ErrnoException) => {
+    clearTimeout(timer);
+    onError(new SafeFetchError(error.code === 'EBLOCKED' ? error.message : `Nicht erreichbar: ${error.code ?? error.message}`, error.code !== 'EBLOCKED'));
+  });
+  request.on('close', () => clearTimeout(timer));
+  request.end(options.body);
+  return request;
+}
+
+/**
+ * Wie safeFetch, liefert die Antwort aber als Datenstrom (für große Produktfeeds). Weiterleitungen werden wie bei
+ * safeFetch einzeln geprüft. Der Aufrufer muss den Strom vollständig lesen oder mit destroy() abbrechen.
+ */
+export async function safeFetchStream(input: string, options: SafeFetchOptions = {}): Promise<SafeStreamResponse> {
+  const settings: RequestSettings = {
+    method: options.method ?? 'GET',
+    maxBytes: options.maxBytes ?? 1024 * 1024,
+    timeoutMs: options.timeoutMs ?? 10_000,
+    allowPrivate: options.allowPrivate ?? false,
+    headers: options.headers ?? {},
+    body: options.body,
+  };
+  const maxRedirects = options.maxRedirects ?? 3;
+  let current = input;
+  for (let hop = 0; ; hop++) {
+    const allowed = settings.allowPrivate ? /^https?:\/\//.test(current) : isSafeExternalUrl(current, options.maxUrlLength);
+    if (!allowed) throw new SafeFetchError('Adresse ist nicht erlaubt (nur öffentliche https-Adressen)', false);
+    const url = new URL(current);
+    const response = await new Promise<http.IncomingMessage>((resolve, reject) => {
+      openRequest(url, settings, resolve, reject);
+    });
+    const location = response.headers.location;
+    if (response.statusCode && response.statusCode >= 300 && response.statusCode < 400 && location) {
+      response.resume();
+      if (hop >= maxRedirects) throw new SafeFetchError('Zu viele Weiterleitungen', true);
+      current = new URL(location, current).toString();
+      continue;
+    }
+    return { status: response.statusCode ?? 0, headers: response.headers, stream: response, finalUrl: url.toString() };
+  }
+}
+
+function requestOnce(url: URL, options: RequestSettings) {
+  return new Promise<SafeFetchResponse>((resolve, reject) => {
+    openRequest(
+      url,
+      options,
       (response) => {
         const chunks: Buffer[] = [];
         let size = 0;
@@ -109,31 +179,24 @@ function requestOnce(url: URL, options: Required<Pick<SafeFetchOptions, 'method'
         response.on('close', () => (truncated ? done() : undefined));
         response.on('error', (error) => (truncated ? done() : reject(new SafeFetchError(error.message, true))));
       },
+      reject,
     );
-    const timer = setTimeout(() => request.destroy(new Error('Zeitüberschreitung')), options.timeoutMs);
-    timer.unref();
-    request.on('timeout', () => request.destroy(new Error('Zeitüberschreitung')));
-    request.on('error', (error: NodeJS.ErrnoException) => {
-      clearTimeout(timer);
-      reject(new SafeFetchError(error.code === 'EBLOCKED' ? error.message : `Nicht erreichbar: ${error.code ?? error.message}`, error.code !== 'EBLOCKED'));
-    });
-    request.on('close', () => clearTimeout(timer));
-    request.end();
   });
 }
 
 export async function safeFetch(input: string, options: SafeFetchOptions = {}): Promise<SafeFetchResponse> {
-  const settings = {
+  const settings: RequestSettings = {
     method: options.method ?? 'GET',
     maxBytes: options.maxBytes ?? 1024 * 1024,
     timeoutMs: options.timeoutMs ?? 10_000,
     allowPrivate: options.allowPrivate ?? false,
     headers: options.headers ?? {},
+    body: options.body,
   };
   const maxRedirects = options.maxRedirects ?? 3;
   let current = input;
   for (let hop = 0; ; hop++) {
-    const allowed = settings.allowPrivate ? /^https?:\/\//.test(current) : isSafeExternalUrl(current);
+    const allowed = settings.allowPrivate ? /^https?:\/\//.test(current) : isSafeExternalUrl(current, options.maxUrlLength);
     if (!allowed) throw new SafeFetchError('Adresse ist nicht erlaubt (nur öffentliche https-Adressen)', false);
     const response = await requestOnce(new URL(current), settings);
     const location = response.headers.location;

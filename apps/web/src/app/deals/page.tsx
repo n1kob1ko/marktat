@@ -11,6 +11,7 @@ import {
   hasActiveDealFilters,
   toDealSearchParams,
   parseDealSearchParams,
+  type AffiliatePromotionView,
   type DealSearchQuery,
   type DealSearchResult,
   type DealSort,
@@ -18,6 +19,7 @@ import {
 import { api } from '@/lib/api';
 import { getDealCategories } from '@/lib/data';
 import { dealChips } from '@/lib/deals';
+import { AffiliatePromotions } from '@/components/deals/affiliate-promotions';
 import { DealCard } from '@/components/deals/deal-card';
 import { DealFilters } from '@/components/deals/deal-filters';
 import { SortSelect } from '@/components/search/sort-select';
@@ -77,16 +79,16 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
   }
   const categories = await getDealCategories();
   const apiParams = new URLSearchParams(dealSearchHref(query).split('?')[1] ?? '');
-  let result: DealSearchResult | null = null;
-  try {
-    result = await api<DealSearchResult>(`/deals?${apiParams}`, { cache: 'no-store' });
-  } catch {
-    result = null;
-  }
+  // Aktionen & Gutscheine der Partnerprogramme nur auf der ungefilterten Startseite der Deals
+  const showPromotions = query.page === 1 && !hasActiveDealFilters(query) && !query.q;
+  const [result, promotions] = await Promise.all([
+    api<DealSearchResult>(`/deals?${apiParams}`, { cache: 'no-store' }).catch(() => null),
+    showPromotions ? api<AffiliatePromotionView[]>('/affiliate/promotions', { cache: 'no-store' }).catch(() => []) : Promise.resolve([]),
+  ]);
   if (result && query.page > 1 && result.totalPages > 0 && query.page > result.totalPages) redirect(dealSearchHref({ ...query, page: result.totalPages }));
 
   const location = result?.location ?? null;
-  const merchantName = query.merchantId ? result?.items[0]?.merchant.name : undefined;
+  const merchantName = query.merchantId ? result?.items[0]?.merchant?.name : undefined;
   const chips = dealChips(query, location, merchantName);
   const category = query.category ? dealCategoryBySlug(query.category) : undefined;
   const heading = query.q ? `Angebote für „${query.q}“` : (category?.name ?? 'Alle Angebote');
@@ -145,6 +147,7 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
         ) : null}
 
         <div className="mt-6">
+          <AffiliatePromotions promotions={promotions} />
           {!result ? (
             <p className="rounded-xl border border-line bg-surface p-6 text-ink-600" role="alert">
               Die Angebote sind gerade nicht erreichbar. Bitte versuche es gleich noch einmal.
@@ -167,8 +170,14 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
 
         <p className="mt-8 flex gap-2 text-xs leading-relaxed text-ink-500">
           <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-          Angebote stammen direkt von den Händlern, die sie hier eintragen. MarktAT verkauft nichts selbst und wickelt keine Zahlungen ab. Mit „Werbelink“ gekennzeichnete Links
-          können dem Händler oder Dritten eine Provision einbringen.
+          <span>
+            Angebote stammen von Händlern, die sie hier eintragen, oder – gekennzeichnet mit „Werbung“ – aus freigegebenen Partnerprogrammen (Awin); dafür erhält MarktAT
+            eventuell eine Provision. MarktAT verkauft nichts selbst und wickelt keine Zahlungen ab. Mit „Werbelink“ gekennzeichnete Links können dem Händler oder Dritten
+            eine Provision einbringen.{' '}
+            <Link href="/deals/werbung" className="font-semibold text-brand-700 hover:underline">
+              Mehr zu Werbung und Partnerangeboten
+            </Link>
+          </span>
         </p>
       </section>
     </div>

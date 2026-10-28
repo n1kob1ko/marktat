@@ -95,8 +95,13 @@ async function Deals({ searchParams }: Pick<PageProps<'/admin/deals'>, 'searchPa
                   </td>
                   <td className={table.td} data-label="Händler">
                     <span className="flex flex-wrap items-center gap-1.5">
-                      <Link href={`/admin/nutzer/${d.merchant.id}`} className="font-medium text-brand-700 hover:underline">{d.merchant.name}</Link>
-                      {d.merchantStatus !== 'ACTIVE' ? <UserStatusBadge status={d.merchantStatus} /> : null}
+                      {d.merchant ? (
+                        <Link href={`/admin/nutzer/${d.merchant.id}`} className="font-medium text-brand-700 hover:underline">{d.merchant.name}</Link>
+                      ) : (
+                        <span className="font-medium text-ink-800">{d.sellerName}</span>
+                      )}
+                      {d.affiliate ? <span className="text-xs text-ink-500">(Partnerprogramm {d.affiliate.networkName})</span> : null}
+                      {d.merchantStatus && d.merchantStatus !== 'ACTIVE' ? <UserStatusBadge status={d.merchantStatus} /> : null}
                     </span>
                   </td>
                   <td className={table.td} data-label="Geändert">{formatDateTime(d.updatedAt)}</td>

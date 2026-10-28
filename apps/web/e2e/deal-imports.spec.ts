@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { registerConfirmed, setRole } from './accounts';
+import { becomeStaff, registerConfirmed } from './accounts';
 import { completeMerchantProfile, expectNoHorizontalScroll, newPage, registerBusiness } from './merchant';
 
 /**
@@ -113,7 +113,7 @@ test('Händler importiert Deals per CSV, aktualisiert sie und reicht einen Feed 
   const moderator = await newPage(browser, testInfo);
   const moderatorEmail = `e2e-import-mod-${tag}@example.at`;
   await registerConfirmed(moderator.page, `E2E Mod ${tag}`, moderatorEmail);
-  setRole(moderatorEmail, 'MODERATOR');
+  await becomeStaff(moderator.page, moderatorEmail, 'MODERATOR');
   await moderator.page.goto('/admin/deals');
   await moderator.page.getByRole('link', { name: 'Produktfeeds' }).click();
   const feedCard = moderator.page.getByRole('listitem').filter({ hasText: `E2E Import ${tag}` });

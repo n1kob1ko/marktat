@@ -4,9 +4,11 @@
  * oder in eine unerwartete Umgebung (javascript:, data:, file: …).
  */
 export const EXTERNAL_URL_MAX_LENGTH = 500;
+/** Tracking-Links der Affiliate-Netzwerke (enthalten die Zieladresse) dürfen länger sein */
+export const AFFILIATE_URL_MAX_LENGTH = 1000;
 
-export function isSafeExternalUrl(value: string): boolean {
-  if (!value || value.length > EXTERNAL_URL_MAX_LENGTH || /\s/.test(value)) return false;
+export function isSafeExternalUrl(value: string, maxLength = EXTERNAL_URL_MAX_LENGTH): boolean {
+  if (!value || value.length > maxLength || /\s/.test(value)) return false;
   let url: URL;
   try {
     url = new URL(value);

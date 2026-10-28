@@ -3,6 +3,7 @@ import { Globe, ImageIcon, MapPin, Store } from 'lucide-react';
 import { cn } from '@marktat/ui';
 import { formatDate, type DealSummary } from '@marktat/shared';
 import { dealValidity, endsSoon } from '@/lib/deals';
+import { AdLabel } from './ad-label';
 import { DealPrice, DiscountBadge } from './deal-price';
 
 /**
@@ -20,13 +21,15 @@ export function DealCard({ deal, className }: { deal: DealSummary; className?: s
       )}
     >
       <div className="flex items-center gap-2 border-b border-line px-3 py-2">
-        {deal.merchant.logoUrl ? (
+        {deal.merchant?.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Logo kommt verarbeitet aus der API
           <img src={deal.merchant.logoUrl} alt="" width={24} height={24} className="size-6 shrink-0 rounded object-contain" loading="lazy" />
         ) : (
           <Store className="size-4.5 shrink-0 text-ink-400" aria-hidden="true" />
         )}
-        <span className="truncate text-xs font-semibold text-ink-700">{deal.merchant.name}</span>
+        <span className="truncate text-xs font-semibold text-ink-700">{deal.sellerName}</span>
+        {/* Affiliate-Deals: gut sichtbar als Werbung gekennzeichnet (§ 26 MedienG, § 6 ECG) */}
+        {deal.affiliate ? <AdLabel className="ml-auto" /> : null}
       </div>
       <div className="relative aspect-[4/3] bg-canvas">
         {deal.imageUrl ? (
@@ -65,9 +68,17 @@ export function DealCard({ deal, className }: { deal: DealSummary; className?: s
             ) : null}
           </li>
           <li className={cn(endsSoon(deal) && 'font-semibold text-accent-700')}>{dealValidity(deal)}</li>
-          {deal.lastVerifiedAt ? <li className="text-ink-500">Zuletzt geprüft am {formatDate(deal.lastVerifiedAt)}</li> : null}
+          {deal.lastVerifiedAt ? (
+            <li className="text-ink-500">
+              {deal.affiliate ? 'Datenstand vom' : 'Zuletzt geprüft am'} {formatDate(deal.lastVerifiedAt)}
+            </li>
+          ) : null}
         </ul>
-        {deal.isAffiliateLink ? <p className="text-[0.6875rem] font-semibold tracking-wide text-ink-500 uppercase">Werbelink</p> : null}
+        {deal.affiliate ? (
+          <p className="text-[0.6875rem] text-ink-500">Quelle: {deal.affiliate.networkName} · Provisionslink</p>
+        ) : deal.isAffiliateLink ? (
+          <p className="text-[0.6875rem] font-semibold tracking-wide text-ink-500 uppercase">Werbelink</p>
+        ) : null}
       </div>
     </article>
   );

@@ -6,6 +6,7 @@ import {
   type AdminDealSummary,
   type AssignDealMerchantInput,
   type Paginated,
+  AFFILIATE_NETWORK_LABELS,
 } from '@marktat/shared';
 import { Prisma } from '../generated/prisma/client.js';
 import { AuditService } from '../audit/audit.service.js';
@@ -96,7 +97,7 @@ export class AdminDealsService {
     return {
       items: rows.map((row) => ({
         ...toMerchantDeal(row, this.urls, now),
-        merchantStatus: row.merchant.status,
+        merchantStatus: row.merchant?.status ?? null,
         openReports: row._count.reports,
         createdAt: row.createdAt.toISOString(),
       })),
@@ -110,29 +111,47 @@ export class AdminDealsService {
     if (!ENTITY_ID.test(id)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
     const row = await this.prisma.deal.findUnique({
       where: { id },
-      include: { merchant: { select: { id: true, displayName: true, companyName: true, status: true, dealsBlockedAt: true } } },
+      include: {
+        merchant: { select: { id: true, displayName: true, companyName: true, status: true, dealsBlockedAt: true } },
+        affiliateProgram: { select: { id: true, name: true, network: true, status: true } },
+        affiliateFeed: { select: { name: true } },
+      },
     });
     if (!row || row.status === 'DELETED') throw new NotFoundException('Dieses Angebot gibt es nicht.');
     const [deal, decisions, reportRows, duplicates, eligibility] = await Promise.all([
       this.deals.findOne(id, viewer),
       this.prisma.moderationDecision.findMany({ where: { dealId: id }, include: decisionInclude, orderBy: { createdAt: 'desc' } }),
       this.prisma.report.findMany({ where: { dealId: id }, include: reportSummaryInclude, orderBy: { createdAt: 'desc' }, take: 50 }),
+      // Nur Händlerdeals: Feeds der Partnerprogramme haben oft Varianten mit gleichem Namen (Größe, Farbe)
       this.prisma.deal.findMany({
-        where: { merchantId: row.merchantId, id: { not: id }, status: { not: 'DELETED' }, title: { equals: row.title, mode: 'insensitive' } },
+        where: { merchantId: row.merchantId ?? '00000000-0000-0000-0000-000000000000', id: { not: id }, status: { not: 'DELETED' }, title: { equals: row.title, mode: 'insensitive' } },
         select: { id: true, title: true, status: true, startsAt: true, endsAt: true, lastVerifiedAt: true, availability: true },
         take: 20,
       }),
-      this.deals.eligibility(row.merchantId),
+      row.merchantId ? this.deals.eligibility(row.merchantId) : null,
     ]);
     return {
       deal,
-      merchant: {
-        ...toPerson(row.merchant)!,
-        companyName: row.merchant.companyName,
-        status: row.merchant.status,
-        dealsBlockedAt: row.merchant.dealsBlockedAt?.toISOString() ?? null,
-        eligibility,
-      },
+      merchant:
+        row.merchant && eligibility
+          ? {
+              ...toPerson(row.merchant)!,
+              companyName: row.merchant.companyName,
+              status: row.merchant.status,
+              dealsBlockedAt: row.merchant.dealsBlockedAt?.toISOString() ?? null,
+              eligibility,
+            }
+          : null,
+      affiliate: row.affiliateProgram
+        ? {
+            programId: row.affiliateProgram.id,
+            programName: row.affiliateProgram.name,
+            programStatus: row.affiliateProgram.status,
+            networkName: AFFILIATE_NETWORK_LABELS[row.affiliateProgram.network],
+            feedName: row.affiliateFeed?.name ?? null,
+            externalId: row.externalId,
+          }
+        : null,
       decisions: decisions.map((d) => toAdminDecision(d)),
       reports: await this.reports.summaries(reportRows),
       duplicates: duplicates.map((d) => ({ id: d.id, title: d.title, status: dealDisplayStatus(d) })),
@@ -152,6 +171,8 @@ export class AdminDealsService {
     if (!ENTITY_ID.test(id)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
     const deal = await this.prisma.deal.findUnique({ where: { id } });
     if (!deal || deal.status === 'DELETED') throw new NotFoundException('Dieses Angebot gibt es nicht.');
+    // Affiliate-Angebote gehören einem Partnerprogramm und nie einem MarktAT-Händlerkonto
+    if (deal.source === 'AFFILIATE') throw new ConflictException('Angebote aus Partnerprogrammen lassen sich keinem Händlerkonto zuordnen.');
     if (deal.merchantId === input.merchantId) throw new ConflictException('Das Angebot gehört bereits zu diesem Konto.');
     const target = await this.prisma.user.findUnique({ where: { id: input.merchantId }, select: { id: true, accountType: true, status: true } });
     if (!target || target.status === 'DELETED') throw new NotFoundException('Dieses Konto gibt es nicht.');

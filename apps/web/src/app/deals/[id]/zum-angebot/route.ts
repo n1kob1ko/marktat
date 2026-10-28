@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { isSafeExternalUrl } from '@marktat/shared';
+import { AFFILIATE_URL_MAX_LENGTH, isSafeExternalUrl } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { serverEnv } from '@/lib/env';
 
@@ -16,9 +16,11 @@ export async function GET(_request: NextRequest, { params }: RouteContext<'/deal
   if (!ENTITY_ID.test(id)) return NextResponse.redirect(fallback, 303);
   try {
     const { url } = await api<{ url: string }>(`/deals/${id}/click`, { method: 'POST', cache: 'no-store' });
-    if (!isSafeExternalUrl(url)) return NextResponse.redirect(fallback, 303);
+    // Affiliate-Deals: Tracking-Link des Netzwerks (länger, da mit Zieladresse)
+    if (!isSafeExternalUrl(url, AFFILIATE_URL_MAX_LENGTH)) return NextResponse.redirect(fallback, 303);
     const response = NextResponse.redirect(url, 303);
     response.headers.set('Referrer-Policy', 'origin');
+    response.headers.set('Cache-Control', 'no-store');
     response.headers.set('X-Robots-Tag', 'noindex, nofollow');
     return response;
   } catch {

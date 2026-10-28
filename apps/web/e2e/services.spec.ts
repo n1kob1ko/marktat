@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { registerConfirmed, setRole } from './accounts';
+import { becomeStaff, registerConfirmed } from './accounts';
 import { expectNoHorizontalScroll, newPage } from './merchant';
 
 /**
@@ -165,7 +165,7 @@ test('Anbieterprofil anlegen, finden, kontaktieren, melden und moderieren', asyn
   // --- Moderation: Qualifikation prüfen, Portfolio-Eintrag ausblenden ---
   const moderator = await newPage(browser, testInfo);
   await registerConfirmed(moderator.page, 'Mona Moderation', emails.moderator);
-  setRole(emails.moderator, 'MODERATOR');
+  await becomeStaff(moderator.page, emails.moderator, 'MODERATOR');
   const mod = moderator.page;
   await mod.goto(`/admin/dienstleistungen?q=${word}`);
   await expect(mod.locator('tr', { hasText: headline })).toContainText('1 Meldung(en)');

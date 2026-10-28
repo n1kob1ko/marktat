@@ -75,13 +75,14 @@ export const DEAL_IMAGE_RIGHTS_LABELS: Record<DealImageRights, string> = {
 };
 
 /** Woher ein Deal stammt */
-export const DEAL_SOURCES = ['MANUAL', 'CSV', 'FEED'] as const;
+export const DEAL_SOURCES = ['MANUAL', 'CSV', 'FEED', 'AFFILIATE'] as const;
 export type DealSource = (typeof DEAL_SOURCES)[number];
 
 export const DEAL_SOURCE_LABELS: Record<DealSource, string> = {
   MANUAL: 'Vom Händler eingetragen',
   CSV: 'Vom Händler per CSV-Datei importiert',
   FEED: 'Aus dem Produktfeed des Händlers',
+  AFFILIATE: 'Über ein Partnerprogramm (Affiliate-Netzwerk)',
 };
 
 export const DEAL_LINK_STATUSES = ['UNCHECKED', 'OK', 'BROKEN'] as const;

@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { expect, type Page } from '@playwright/test';
 import { waitForMailLink } from './mailpit';
+import { nextTotp } from './totp';
 
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 
@@ -55,4 +56,29 @@ export function setRole(email: string, role: 'ADMIN' | 'MODERATOR' | 'USER') {
   const custom = process.env.E2E_ROLE_COMMAND?.trim().split(/\s+/);
   if (custom?.length) execFileSync(custom[0]!, [...custom.slice(1), ...args], { stdio: 'pipe' });
   else execFileSync('pnpm', ['--filter', '@marktat/api', 'admin:role', '--', ...args], { cwd: REPO_ROOT, stdio: 'pipe' });
+}
+
+/**
+ * Rolle vergeben und – wenn die Umgebung 2FA für das Team verlangt (STAFF_MFA_REQUIRED, z. B. in der Generalprobe) –
+ * direkt einen Authenticator einrichten. Gibt den TOTP-Schlüssel zurück (für Bestätigungscodes) oder null ohne 2FA-Pflicht.
+ */
+export async function becomeStaff(page: Page, email: string, role: 'ADMIN' | 'MODERATOR'): Promise<string | null> {
+  setRole(email, role);
+  return ensureStaffMfa(page);
+}
+
+/** Für Konten, die ihre Rolle schon haben (z. B. im Admin-Bereich vergeben): 2FA einrichten, falls verlangt */
+export async function ensureStaffMfa(page: Page): Promise<string | null> {
+  await page.goto('/admin');
+  // Die Weiterleitung zur Einrichtung kommt beim Streamen erst nach dem Laden – auf eines von beiden warten
+  const device = page.getByLabel('Name des Geräts');
+  await expect(page.getByRole('heading', { level: 1, name: 'Moderation' }).or(device)).toBeVisible();
+  if (!(await device.isVisible())) return null;
+  await device.fill('E2E-Authenticator');
+  await page.getByRole('button', { name: 'Weiter' }).click();
+  const secret = (await page.getByLabel('Schlüssel zum manuellen Eingeben').textContent())!.replace(/\s/g, '');
+  await page.getByLabel('Code aus der App').fill(await nextTotp(secret));
+  await page.getByRole('button', { name: 'Bestätigen und aktivieren' }).click();
+  await expect(page.getByRole('heading', { name: 'Zwei-Faktor-Anmeldung: aktiv' })).toBeVisible();
+  return secret;
 }

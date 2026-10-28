@@ -25,7 +25,7 @@ const optionalText = (max: number, message?: string) =>
 export const externalUrlSchema = z
   .string()
   .trim()
-  .refine(isSafeExternalUrl, 'Bitte gib eine vollständige Adresse mit https:// ein (keine IP-Adressen oder internen Adressen).');
+  .refine((value) => isSafeExternalUrl(value), 'Bitte gib eine vollständige Adresse mit https:// ein (keine IP-Adressen oder internen Adressen).');
 
 const optionalUrl = externalUrlSchema
   .or(z.literal('').transform(() => null))

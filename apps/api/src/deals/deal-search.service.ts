@@ -14,14 +14,14 @@ import { GeoService, locationInclude, toLocationSummary } from '../geo/geo.servi
 import { MediaUrls } from '../images/media.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { createMeiliClient, SecondaryIndex } from '../search/secondary-index.js';
-import { dealInclude, dealVisibleSql, isDealPublic, merchantName, publicDealWhere, toDealSummary, type DealWithRelations } from './deals.mapper.js';
+import { dealInclude, dealJoinsSql, dealSellerName, dealSellerSql, dealVisibleSql, isDealPublic, publicDealWhere, toDealSummary, type DealWithRelations } from './deals.mapper.js';
 
 const BACKOFF_MS = 30_000;
 const MAINTENANCE_INTERVAL_MS = 60_000;
 const MAX_TOTAL_HITS = 5_000;
 /** Umkreissuche: so viele Deals mit Filiale im Umkreis gehen als Vorauswahl an Meilisearch, sonst PostgreSQL */
 const MAX_GEO_CANDIDATES = 2_000;
-export const DEAL_DOCUMENT_VERSION = 1;
+export const DEAL_DOCUMENT_VERSION = 2;
 
 const quote = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
@@ -44,7 +44,7 @@ export function toDealDocument(deal: DealWithRelations) {
     title: deal.title,
     brand: deal.brand ?? '',
     description: deal.description.slice(0, 1000),
-    merchantName: merchantName(deal.merchant),
+    merchantName: dealSellerName(deal),
     categoryName: deal.category.name,
     categorySlug: deal.category.slug,
     merchantId: deal.merchantId,
@@ -237,7 +237,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
       JOIN dealer_stores st ON st.id = ds.store_id AND st.deleted_at IS NULL
       JOIN locations loc ON loc.id = st.location_id
       JOIN deals dl ON dl.id = ds.deal_id
-      JOIN users mu ON mu.id = dl.merchant_id
+      ${dealJoinsSql()}
       WHERE ${dealVisibleSql()}
         AND ST_DWithin(loc.geom, ST_SetSRID(ST_MakePoint(${center.longitude}, ${center.latitude}), 4326)::geography, ${radiusKm * 1000})
       LIMIT ${limit}`;
@@ -253,7 +253,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     if (query.q) {
       for (const word of query.q.split(' ').slice(0, 10)) {
         const pattern = `%${escapeLike(word)}%`;
-        conditions.push(Prisma.sql`(dl.title ILIKE ${pattern} OR dl.description ILIKE ${pattern} OR dl.brand ILIKE ${pattern} OR dc.name ILIKE ${pattern} OR COALESCE(mu.company_name, mu.display_name) ILIKE ${pattern})`);
+        conditions.push(Prisma.sql`(dl.title ILIKE ${pattern} OR dl.description ILIKE ${pattern} OR dl.brand ILIKE ${pattern} OR dc.name ILIKE ${pattern} OR ${dealSellerSql} ILIKE ${pattern})`);
       }
     }
     if (query.category) conditions.push(Prisma.sql`dc.slug = ${query.category}`);
@@ -308,7 +308,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
       default:
         order = newest;
     }
-    const from = Prisma.sql`FROM deals dl JOIN users mu ON mu.id = dl.merchant_id JOIN deal_categories dc ON dc.id = dl.category_id WHERE ${Prisma.join(conditions, ' AND ')}`;
+    const from = Prisma.sql`FROM deals dl ${dealJoinsSql()} JOIN deal_categories dc ON dc.id = dl.category_id WHERE ${Prisma.join(conditions, ' AND ')}`;
     const offset = (query.page - 1) * query.pageSize;
     const [rows, count] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>`SELECT dl.id ${from} ORDER BY ${order} LIMIT ${query.pageSize} OFFSET ${offset}`,

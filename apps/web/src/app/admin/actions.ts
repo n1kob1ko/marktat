@@ -3,6 +3,9 @@
 import { revalidatePath, updateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import {
+  affiliateFeedReviewSchema,
+  affiliateManualSyncSchema,
+  affiliateProgramReviewSchema,
   appealDecisionSchema,
   assignDealMerchantSchema,
   changeRoleSchema,
@@ -437,4 +440,72 @@ export async function reviewDealFeedAction(_prev: FormState, formData: FormData)
   }
   revalidatePath('/admin/deals/feeds');
   return { status: 'success', message: 'Gespeichert.' };
+}
+
+// --- Partnerprogramme (Affiliate) -------------------------------------------------
+
+/** Programm freigeben, anhalten oder ablehnen (nur Administratoren, Freigabe mit 2FA-Bestätigung – prüft die API) */
+export async function reviewAffiliateProgramAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const kept = values(formData, ['note', 'defaultCategorySlug', 'allowImages', 'allowReferencePrices', 'allowVouchers']);
+  const decision = text(formData, 'decision');
+  const note = String(formData.get('note') ?? '');
+  const parsed = affiliateProgramReviewSchema.safeParse(
+    decision === 'APPROVE'
+      ? {
+          decision,
+          note,
+          allowImages: formData.get('allowImages') === 'on',
+          allowReferencePrices: formData.get('allowReferencePrices') === 'on',
+          allowVouchers: formData.get('allowVouchers') === 'on',
+          defaultCategorySlug: text(formData, 'defaultCategorySlug') ?? null,
+        }
+      : { decision, note },
+  );
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  const session = await requireStaff('/admin/affiliate');
+  const auth = await stepUpToken(formData, session.token);
+  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  try {
+    await api(`/admin/affiliate/programs/${id}/review`, { method: 'POST', token: auth.token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  updateTag('deals');
+  revalidatePath('/admin/affiliate');
+  return { status: 'success', message: 'Gespeichert.' };
+}
+
+/** Feed eines freigegebenen Programms aktivieren oder anhalten */
+export async function reviewAffiliateFeedAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  if (!ENTITY_ID.test(id)) return invalid;
+  const parsed = affiliateFeedReviewSchema.safeParse({ decision: text(formData, 'decision'), note: text(formData, 'note') });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die Angaben.', fieldErrors: zodFieldErrors(parsed.error.issues) };
+  const { token } = await requireStaff('/admin/affiliate');
+  try {
+    await api(`/admin/affiliate/feeds/${id}/review`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error);
+  }
+  updateTag('deals');
+  revalidatePath('/admin/affiliate');
+  return { status: 'success', message: 'Gespeichert.' };
+}
+
+/** Manuellen Abruf einreihen (nur Administratoren, prüft die API) */
+export async function affiliateSyncAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const feedId = text(formData, 'feedId');
+  if (feedId && !ENTITY_ID.test(feedId)) return invalid;
+  const parsed = affiliateManualSyncSchema.safeParse({ kind: text(formData, 'kind') ?? 'ALL', feedId });
+  if (!parsed.success) return invalid;
+  const { token } = await requireStaff('/admin/affiliate');
+  try {
+    await api('/admin/affiliate/sync', { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error);
+  }
+  revalidatePath('/admin/affiliate');
+  return { status: 'success', message: 'Abruf gestartet. Das Ergebnis erscheint in wenigen Minuten unter „Letzte Abrufe“.' };
 }
