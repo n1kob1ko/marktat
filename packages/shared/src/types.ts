@@ -220,8 +220,10 @@ export interface FavoriteItem {
 
 export interface SavedSearch {
   id: string;
+  /** Inserate, Deals oder Anbieterprofile (siehe SAVED_SEARCH_PATHS) */
+  kind: 'LISTINGS' | 'DEALS' | 'SERVICES';
   name: string;
-  /** Parameter der Such-URL (`/suche?…`) */
+  /** Parameter der Such-URL (`/suche?…`, `/deals?…` bzw. `/dienstleistungen?…`) */
   params: Record<string, string>;
   /** Lesbare Filter, z. B. [„Gebrauchtwagen“, „Preis bis € 20.000“] */
   labels: string[];
@@ -523,6 +525,10 @@ export interface AdminDashboard {
     listings: { active: number; paused: number; expired: number; pendingReview: number; rejected: number; draft: number };
     reports: { open: number; inReview: number; urgent: number; reportedListings: number };
     appeals: { open: number };
+    /** Phase 10: Deals, Anbieterprofile und Projektaufträge */
+    deals: { active: number; pendingReview: number; feedsPending: number };
+    services: { active: number; pendingReview: number; qualificationsOpen: number };
+    projects: { active: number; pendingReview: number };
   };
   /** Nur für Administratoren (Systemstatistiken) */
   system: {

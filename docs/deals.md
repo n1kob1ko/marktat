@@ -184,6 +184,10 @@ Der Abschnitt „Aktuelle Deals & Angebote“ zeigt höchstens 4 öffentlich sic
 - Ohne Deals erscheint eine Einladung an Händler statt Beispielprodukten.
 - Eine regionale Auswahl gibt es noch nicht. Die Startseite kennt keinen Standort der Besucher:innen, und eine Standortabfrage beim Laden wäre aufdringlich.
 
+## Merkliste und gespeicherte Suchen
+
+Deals lassen sich merken und als Suche speichern, mit höchstens einer Sammel-E-Mail am Tag. Details stehen in [nachrichten.md](nachrichten.md#deals-und-anbieterprofile-phase-10).
+
 ## Tests
 
 - `apps/api/test/deals.e2e-spec.ts` deckt ab:

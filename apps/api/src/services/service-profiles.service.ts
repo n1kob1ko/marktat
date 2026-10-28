@@ -286,14 +286,17 @@ export class ServiceProfilesService {
     const isOwner = viewer?.id === row.userId;
     const isStaff = viewer?.role === 'ADMIN' || viewer?.role === 'MODERATOR';
     if (!isServiceProfilePublic(row) && !isOwner && !isStaff) throw new NotFoundException('Dieses Anbieterprofil ist nicht mehr verfügbar.');
-    const conversation = viewer && !isOwner
-      ? await this.prisma.conversation.findUnique({ where: { serviceProfileId_buyerId: { serviceProfileId: id, buyerId: viewer.id } }, select: { id: true } })
-      : null;
+    const [conversation, favorite] = viewer && !isOwner
+      ? await Promise.all([
+          this.prisma.conversation.findUnique({ where: { serviceProfileId_buyerId: { serviceProfileId: id, buyerId: viewer.id } }, select: { id: true } }),
+          this.prisma.serviceFavorite.count({ where: { userId: viewer.id, profileId: id } }),
+        ])
+      : [null, 0];
     if (!isOwner && isServiceProfilePublic(row)) {
       // Rohes SQL: Aufrufe ändern das Profil nicht (updatedAt bleibt)
       await this.prisma.$executeRaw`UPDATE service_profiles SET view_count = view_count + 1 WHERE id = ${id}`;
     }
-    const detail = toServiceProfileDetail(row, this.urls, { privileged: isOwner || isStaff, isOwner, conversationId: conversation?.id ?? null });
+    const detail = toServiceProfileDetail(row, this.urls, { privileged: isOwner || isStaff, isOwner, conversationId: conversation?.id ?? null, isFavorite: favorite > 0 });
     return isOwner || isStaff ? this.withModeration(row, detail) : detail;
   }
 

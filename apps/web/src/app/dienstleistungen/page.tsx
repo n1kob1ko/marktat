@@ -8,6 +8,7 @@ import {
   SERVICE_CATEGORY_GROUPS,
   SERVICE_SORT_LABELS,
   hasActiveServiceFilters,
+  toServiceSearchParams,
   parseServiceSearchParams,
   serviceCategoryBySlug,
   serviceGroupBySlug,
@@ -22,6 +23,7 @@ import { ServiceCard } from '@/components/services/service-card';
 import { ServiceFilters } from '@/components/services/service-filters';
 import { SortSelect } from '@/components/search/sort-select';
 import { Pagination } from '@/components/pagination';
+import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -113,6 +115,10 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
 
   const sorts: ServiceSort[] = [...(query.q ? (['relevanz'] as const) : []), 'neueste', 'preis_auf', ...(location ? (['entfernung'] as const) : [])];
   const sortHrefs = Object.fromEntries(sorts.map((sort) => [sort, serviceSearchHref({ ...query, sort, page: 1 })]));
+  const saveParams = toServiceSearchParams({ ...query, page: 1 });
+  delete saveParams.pageSize;
+  const saveLabels = [...(query.q ? [`„${query.q}“`] : []), ...chips.map((chip) => chip.label)];
+  const saveName = (saveLabels.join(' · ') || heading).replace(/[„“]/g, '').slice(0, 80);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[18rem_1fr] lg:gap-8">
@@ -130,7 +136,12 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
               </p>
             ) : null}
           </div>
-          {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} labels={SERVICE_SORT_LABELS} /> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasActiveServiceFilters(query) ? (
+              <SaveSearchButton kind="SERVICES" params={saveParams} labels={saveLabels} defaultName={saveName} returnTo={serviceSearchHref({ ...query, page: 1 })} />
+            ) : null}
+            {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} labels={SERVICE_SORT_LABELS} /> : null}
+          </div>
         </div>
 
         {chips.length ? (
@@ -166,7 +177,7 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
             <>
               <ul aria-label="Anbieterprofile" className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {result.items.map((profile) => (
-                  <li key={profile.id} className="flex">
+                  <li key={profile.id} className="flex min-w-0">
                     <ServiceCard profile={profile} />
                   </li>
                 ))}

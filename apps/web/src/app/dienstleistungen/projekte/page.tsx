@@ -56,7 +56,7 @@ export default function ProjectsPage({ searchParams }: PageProps<'/dienstleistun
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/konto/projekte/neu" className={buttonClasses({ size: 'sm' })}>Auftrag beschreiben</Link>
-            <Link href="/suche?kategorie=jobs" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Stellenangebote unter Jobs</Link>
+            <Link href="/suche?bereich=jobs" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Stellenangebote unter Jobs</Link>
           </div>
         </Container>
       </section>

@@ -110,6 +110,8 @@ model User {
   listings               Listing[]
   auditLogs              AuditLog[]
   favorites              Favorite[]
+  dealFavorites          DealFavorite[]
+  serviceFavorites       ServiceFavorite[]
   savedSearches          SavedSearch[]
   buyerConversations     Conversation[]         @relation("ConversationBuyer")
   sellerConversations    Conversation[]         @relation("ConversationSeller")
@@ -339,28 +341,64 @@ model Favorite {
 
 /// Gespeicherte Suche: dieselben Parameter wie in der Such-URL (siehe docs/suche.md).
 model SavedSearch {
-  id             String    @id @default(cuid())
-  userId         String    @map("user_id") @db.Uuid
-  name           String    @db.VarChar(80)
+  id             String          @id @default(cuid())
+  userId         String          @map("user_id") @db.Uuid
+  /// Welche Suche: Inserate (/suche), Deals (/deals) oder Anbieterprofile (/dienstleistungen) – Phase 10
+  kind           SavedSearchKind @default(LISTINGS)
+  name           String          @db.VarChar(80)
   /// Kanonische Suchparameter (`toSearchParams`), ohne Seite
   params         Json
   /// Sortierter Query-String der Parameter: dieselbe Suche kann nicht doppelt gespeichert werden
-  queryKey       String    @map("query_key") @db.VarChar(2000)
+  queryKey       String          @map("query_key") @db.VarChar(2000)
   /// Lesbare Filter zur Anzeige im Konto, z. B. „Preis bis € 500“
-  labels         String[]  @default([])
+  labels         String[]        @default([])
   /// E-Mail bei neuen Treffern
-  notify         Boolean   @default(false)
+  notify         Boolean         @default(false)
   /// Neue Treffer werden ab diesem Zeitpunkt gesucht
-  lastCheckedAt  DateTime  @default(now()) @map("last_checked_at")
-  lastNotifiedAt DateTime? @map("last_notified_at")
-  createdAt      DateTime  @default(now()) @map("created_at")
-  updatedAt      DateTime  @updatedAt @map("updated_at")
-  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastCheckedAt  DateTime        @default(now()) @map("last_checked_at")
+  lastNotifiedAt DateTime?       @map("last_notified_at")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, queryKey])
+  @@unique([userId, kind, queryKey])
   @@index([userId, createdAt(sort: Desc)])
   @@index([notify, lastCheckedAt])
   @@map("saved_searches")
+}
+
+enum SavedSearchKind {
+  LISTINGS
+  DEALS
+  SERVICES
+}
+
+/// Gemerkte Deals (Phase 10); getrennt von der Merkliste für Inserate
+model DealFavorite {
+  userId    String   @map("user_id") @db.Uuid
+  dealId    String   @map("deal_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dealId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([dealId])
+  @@map("deal_favorites")
+}
+
+/// Gemerkte Anbieterprofile (Phase 10)
+model ServiceFavorite {
+  userId    String         @map("user_id") @db.Uuid
+  profileId String         @map("profile_id")
+  createdAt DateTime       @default(now()) @map("created_at")
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile   ServiceProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  @@id([userId, profileId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([profileId])
+  @@map("service_favorites")
 }
 
 /// Unterhaltung zwischen Interessent und Verkäufer zu genau einem Inserat.
@@ -1071,6 +1109,7 @@ model Deal {
   priceRecords DealPriceRecord[]
   reports      Report[]
   decisions    ModerationDecision[]
+  favorites    DealFavorite[]
   feed         DealFeed?            @relation(fields: [feedId], references: [id])
 
   @@unique([merchantId, externalId])
@@ -1368,6 +1407,7 @@ model ServiceProfile {
   conversations  Conversation[]
   reports        Report[]
   decisions      ModerationDecision[]
+  favorites      ServiceFavorite[]
 
   @@index([status, updatedAt(sort: Desc)])
   @@index([locationId])

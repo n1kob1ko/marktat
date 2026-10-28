@@ -93,6 +93,13 @@ export interface DealDetail extends DealSummary {
   reviewReason?: string | null;
 }
 
+export interface DealFavoriteItem {
+  deal: DealSummary;
+  /** false = abgelaufen, beendet, gelöscht oder Händler gesperrt */
+  available: boolean;
+  savedAt: string;
+}
+
 export interface DealSearchResult extends Paginated<DealSummary> {
   totalPages: number;
   location: LocationSummary | null;

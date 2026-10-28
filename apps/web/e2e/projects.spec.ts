@@ -31,7 +31,7 @@ test('Übersicht /dienstleistungen/projekte grenzt Aufträge von Jobs ab und pas
   await page.goto('/dienstleistungen/projekte');
   await expect(page.getByRole('heading', { level: 1, name: 'Projektaufträge' })).toBeVisible();
   await expect(page.getByText('Kein Jobangebot und keine Ausschreibung:')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Stellenangebote unter Jobs' })).toHaveAttribute('href', '/suche?kategorie=jobs');
+  await expect(page.getByRole('link', { name: 'Stellenangebote unter Jobs' })).toHaveAttribute('href', '/suche?bereich=jobs');
   await expectNoHorizontalScroll(page);
   // Von der Übersicht der Dienstleistungen erreichbar
   await page.goto('/dienstleistungen');

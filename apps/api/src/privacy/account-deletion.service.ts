@@ -243,6 +243,8 @@ export class AccountDeletionService implements OnModuleInit {
       // Unterhaltungen (und damit alle Nachrichten) beider Seiten – wie bisher beim Löschen eines Kontos
       await tx.conversation.deleteMany({ where: { OR: [{ buyerId: userId }, { sellerId: userId }] } });
       await tx.favorite.deleteMany({ where: { userId } });
+      await tx.dealFavorite.deleteMany({ where: { userId } });
+      await tx.serviceFavorite.deleteMany({ where: { userId } });
       await tx.savedSearch.deleteMany({ where: { userId } });
       await tx.userBlock.deleteMany({ where: { OR: [{ blockerId: userId }, { blockedId: userId }] } });
       await tx.notification.deleteMany({ where: { userId } });

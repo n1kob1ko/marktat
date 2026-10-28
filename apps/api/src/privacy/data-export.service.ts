@@ -59,7 +59,7 @@ export class DataExportService {
       }),
     ]);
     // Händlerbereich und Dienstleistungen (Phase 10): Deals, Filialen, Produktfeeds, Anbieterprofil, Projektaufträge
-    const [deals, stores, feeds, serviceProfile, projects] = await Promise.all([
+    const [deals, stores, feeds, serviceProfile, projects, dealFavorites, serviceFavorites] = await Promise.all([
       this.prisma.deal.findMany({
         where: { merchantId: id, status: { not: 'DELETED' } },
         include: { category: { select: { name: true } }, priceRecords: { select: { priceCents: true, recordedAt: true }, orderBy: { recordedAt: 'asc' } } },
@@ -81,6 +81,8 @@ export class DataExportService {
         include: { category: { select: { name: true } }, location: { select: { postalCode: true, place: true } }, _count: { select: { conversations: true } } },
         orderBy: { createdAt: 'asc' },
       }),
+      this.prisma.dealFavorite.findMany({ where: { userId: id }, include: { deal: { select: { title: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.serviceFavorite.findMany({ where: { userId: id }, include: { profile: { select: { headline: true } } }, orderBy: { createdAt: 'asc' } }),
     ]);
     const name = (u: { displayName: string; status: string }) => (u.status === 'DELETED' ? 'Gelöschtes Konto' : u.displayName);
 
@@ -133,7 +135,9 @@ export class DataExportService {
         images: l.images,
       })),
       favorites: favorites.map((f) => ({ listingId: f.listingId, title: f.listing.title, savedAt: f.createdAt })),
-      savedSearches: savedSearches.map((s) => ({ name: s.name, params: s.params, labels: s.labels, notify: s.notify, createdAt: s.createdAt })),
+      dealFavorites: dealFavorites.map((f) => ({ dealId: f.dealId, title: f.deal.title, savedAt: f.createdAt })),
+      serviceFavorites: serviceFavorites.map((f) => ({ profileId: f.profileId, headline: f.profile.headline, savedAt: f.createdAt })),
+      savedSearches: savedSearches.map((s) => ({ kind: s.kind, name: s.name, params: s.params, labels: s.labels, notify: s.notify, createdAt: s.createdAt })),
       conversations: conversations.map((c) => ({
         id: c.id,
         listing: c.listing,

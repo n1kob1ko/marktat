@@ -18,6 +18,7 @@ import { getAccessToken, getCurrentUser, isStaff } from '@/lib/auth';
 import { metaDescription } from '@/lib/seo';
 import { serviceAreaLabel, servicePriceLabel } from '@/lib/services';
 import { FlashMessage } from '@/components/flash-message';
+import { ItemFavoriteButton } from '@/components/favorites/item-favorite-button';
 import { ContactForm } from '@/components/messages/contact-form';
 
 async function loadProfile(id: string, token: string | null) {
@@ -254,6 +255,9 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
               </Link>
             ) : publicView ? (
               <ContactForm serviceProfileId={profile.id} sellerName={profile.provider.name} />
+            ) : null}
+            {!profile.isOwner && (publicView || profile.isFavorite) ? (
+              <ItemFavoriteButton kind="service" id={profile.id} title={profile.headline} initial={profile.isFavorite} className="mt-3" />
             ) : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
               MarktAT vermittelt nicht und nimmt keine Provision. Vertrag, Leistung und Bezahlung vereinbart ihr direkt miteinander. Zahle nie vorab an Unbekannte.

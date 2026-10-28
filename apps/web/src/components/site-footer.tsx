@@ -19,6 +19,8 @@ export function SiteFooter() {
               {VERTICAL_LABELS[v]}
             </FooterLink>
           ))}
+          <FooterLink href="/deals">Deals</FooterLink>
+          <FooterLink href="/dienstleistungen">Dienstleistungen</FooterLink>
         </FooterColumn>
         <FooterColumn title="Mitmachen">
           <FooterLink href="/inserieren">Inserat aufgeben</FooterLink>

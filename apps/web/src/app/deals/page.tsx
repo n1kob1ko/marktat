@@ -9,6 +9,7 @@ import {
   dealCategoryBySlug,
   dealSearchHref,
   hasActiveDealFilters,
+  toDealSearchParams,
   parseDealSearchParams,
   type DealSearchQuery,
   type DealSearchResult,
@@ -21,6 +22,7 @@ import { DealCard } from '@/components/deals/deal-card';
 import { DealFilters } from '@/components/deals/deal-filters';
 import { SortSelect } from '@/components/search/sort-select';
 import { Pagination } from '@/components/pagination';
+import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -91,6 +93,10 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
 
   const sorts: DealSort[] = [...(query.q ? (['relevanz'] as const) : []), 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', ...(location ? (['entfernung'] as const) : [])];
   const sortHrefs = Object.fromEntries(sorts.map((sort) => [sort, dealSearchHref({ ...query, sort, page: 1 })]));
+  const saveParams = toDealSearchParams({ ...query, page: 1 });
+  delete saveParams.pageSize;
+  const saveLabels = [...(query.q ? [`„${query.q}“`] : []), ...chips.map((chip) => chip.label)];
+  const saveName = (saveLabels.join(' · ') || heading).replace(/[„“]/g, '').slice(0, 80);
 
   return (
     <div className="grid gap-5 lg:grid-cols-[18rem_1fr] lg:gap-8">
@@ -108,7 +114,12 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
               </p>
             ) : null}
           </div>
-          {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} labels={DEAL_SORT_LABELS} /> : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {hasActiveDealFilters(query) ? (
+              <SaveSearchButton kind="DEALS" params={saveParams} labels={saveLabels} defaultName={saveName} returnTo={dealSearchHref({ ...query, page: 1 })} />
+            ) : null}
+            {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} labels={DEAL_SORT_LABELS} /> : null}
+          </div>
         </div>
 
         {chips.length ? (

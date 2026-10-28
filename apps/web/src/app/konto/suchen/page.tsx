@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Bell, BellOff, Pencil, Search } from 'lucide-react';
 import { Alert, buttonClasses, Card, Input, Skeleton } from '@marktat/ui';
-import { formatDate, type SavedSearch } from '@marktat/shared';
+import { formatDate, SAVED_SEARCH_KIND_LABELS, SAVED_SEARCH_PATHS, type SavedSearch } from '@marktat/shared';
+import { SAVED_SEARCH_NOTIFY_TEXT } from '@/lib/saved-searches';
 import { api } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { FlashMessage } from '@/components/flash-message';
@@ -47,7 +48,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
           <Search className="mx-auto size-8 text-ink-300" aria-hidden="true" />
           <p className="mt-3 font-semibold text-ink-900">Noch keine gespeicherten Suchen</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
-            Stell in der Suche deine Filter ein und tippe auf „Suche speichern“. Auf Wunsch bekommst du eine E-Mail, sobald etwas Neues dazukommt.
+            Stell in der Suche, bei den Deals oder bei den Dienstleistungen deine Filter ein und tippe auf „Suche speichern“. Auf Wunsch bekommst du eine E-Mail, sobald etwas Neues dazukommt.
           </p>
           <Link href="/suche" className={buttonClasses({ variant: 'outline', className: 'mt-5' })}>
             Zur Suche
@@ -56,7 +57,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
       ) : (
         <ul className="space-y-3">
           {searches.map((search) => {
-            const href = `/suche?${new URLSearchParams(search.params)}`;
+            const href = `${SAVED_SEARCH_PATHS[search.kind]}?${new URLSearchParams(search.params)}`;
             return (
               <li key={search.id}>
                 <Card className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between" data-testid="saved-search">
@@ -76,6 +77,9 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
                       </form>
                     ) : (
                       <div className="flex items-center gap-2">
+                        <span className="shrink-0 rounded-md bg-canvas px-2 py-0.5 text-xs font-semibold text-ink-700 ring-1 ring-line" data-testid="saved-search-kind">
+                          {SAVED_SEARCH_KIND_LABELS[search.kind]}
+                        </span>
                         <Link href={href} className="truncate font-semibold text-ink-900 hover:text-brand-700 hover:underline">
                           {search.name}
                         </Link>
@@ -100,7 +104,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
                     ) : null}
                     <p className="text-xs text-ink-500">
                       Gespeichert am {formatDate(search.createdAt)}
-                      {search.notify ? ' · E-Mail bei neuen Anzeigen' : ''}
+                      {search.notify ? ` · ${SAVED_SEARCH_NOTIFY_TEXT[search.kind]}` : ''}
                       {search.lastNotifiedAt ? ` · zuletzt benachrichtigt am ${formatDate(search.lastNotifiedAt)}` : ''}
                     </p>
                   </div>
@@ -116,7 +120,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
                         variant="outline"
                         size="sm"
                         aria-pressed={search.notify}
-                        title={search.notify ? 'E-Mail-Benachrichtigung ausschalten' : 'E-Mail bei neuen Anzeigen'}
+                        title={search.notify ? 'E-Mail-Benachrichtigung ausschalten' : SAVED_SEARCH_NOTIFY_TEXT[search.kind]}
                       >
                         {search.notify ? <Bell className="size-4 fill-current text-brand-700" aria-hidden="true" /> : <BellOff className="size-4" aria-hidden="true" />}
                         {search.notify ? 'Benachrichtigung an' : 'Benachrichtigung aus'}

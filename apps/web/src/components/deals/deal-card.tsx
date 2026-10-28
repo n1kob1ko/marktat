@@ -40,7 +40,7 @@ export function DealCard({ deal, className }: { deal: DealSummary; className?: s
         <DiscountBadge percent={deal.discountPercent} className="absolute top-2.5 left-2.5" />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
-        <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal text-ink-900">
+        <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal [overflow-wrap:anywhere] text-ink-900">
           <Link href={`/deals/${deal.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
             {deal.title}
           </Link>

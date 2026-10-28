@@ -119,6 +119,29 @@ test('Anbieterprofil anlegen, finden, kontaktieren, melden und moderieren', asyn
   await expect(visitor.getByTestId('portfolio')).toContainText('Sanierung Altbauwohnung');
   await expectNoHorizontalScroll(visitor);
 
+  // Merken (eigene Liste „Anbieter“ in der Merkliste)
+  await visitor.getByRole('button', { name: 'Merken' }).click();
+  await expect(visitor.getByRole('button', { name: 'Gemerkt' })).toHaveAttribute('aria-pressed', 'true');
+  // Erst weiter, wenn die Anfrage durch ist (der Knopf schaltet sofort um)
+  await expect(visitor.getByRole('button', { name: 'Gemerkt' })).not.toHaveAttribute('aria-busy');
+  await visitor.goto('/konto/merkliste?art=anbieter');
+  await expect(visitor.getByTestId('service-card').filter({ hasText: headline })).toBeVisible();
+  await expectNoHorizontalScroll(visitor);
+
+  // Suche speichern: tägliche Sammelmail statt Einzelmails
+  await visitor.goto(`/dienstleistungen?q=${word}`);
+  await visitor.getByRole('button', { name: 'Suche speichern' }).click();
+  const dialog = visitor.getByRole('dialog', { name: 'Suche speichern' });
+  await expect(dialog.getByText('Neue passende Anbieter per E-Mail schicken', { exact: false })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(dialog.getByText('höchstens einmal am Tag', { exact: false })).toBeVisible();
+  await visitor.goto('/konto/suchen');
+  const saved = visitor.getByTestId('saved-search').filter({ hasText: word });
+  await expect(saved.getByTestId('saved-search-kind')).toHaveText('Dienstleistungen');
+  await expect(saved.getByRole('link', { name: 'Suchen' })).toHaveAttribute('href', `/dienstleistungen?q=${word}`);
+
+  await visitor.goto(`/dienstleistungen/${profileId}`);
+
   // Kontakt über die bestehenden Nachrichten
   await visitor.getByLabel('Nachricht an Elli Elektro').fill('Hallo, könnten Sie nächste Woche einen E-Check bei mir in Graz machen?');
   await visitor.getByRole('button', { name: 'Nachricht senden' }).click();
@@ -184,6 +207,9 @@ test('Anbieterprofil anlegen, finden, kontaktieren, melden und moderieren', asyn
   await page.getByRole('button', { name: 'Profil löschen' }).click();
   await expect(page.getByText('Dein Anbieterprofil wurde gelöscht.', { exact: false })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Profil als Entwurf speichern' })).toBeVisible();
+  // Gelöschte Profile verschwinden aus der Merkliste
+  await visitor.goto('/konto/merkliste?art=anbieter');
+  await expect(visitor.getByText('Noch keine Anbieter gemerkt')).toBeVisible();
 
   await moderator.context.close();
   await client.context.close();

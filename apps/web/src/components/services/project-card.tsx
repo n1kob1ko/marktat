@@ -21,7 +21,7 @@ export function ProjectCard({ project, className }: { project: ServiceProjectSum
       <p className="flex items-center gap-1.5 text-xs font-semibold text-accent-700">
         <ClipboardList className="size-3.5" aria-hidden="true" /> Projektauftrag · {project.category.name}
       </p>
-      <h3 className="line-clamp-2 font-sans text-base leading-snug font-semibold tracking-normal text-ink-900">
+      <h3 className="line-clamp-2 font-sans text-base leading-snug font-semibold tracking-normal [overflow-wrap:anywhere] text-ink-900">
         <Link href={`/dienstleistungen/projekte/${project.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
           {project.title}
         </Link>

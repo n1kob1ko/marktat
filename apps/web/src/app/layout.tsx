@@ -1,10 +1,12 @@
 import type { Metadata, Viewport } from 'next';
+import { Suspense } from 'react';
 import { serverEnv } from '@/lib/env';
 import '@fontsource-variable/inter';
 import '@fontsource-variable/bricolage-grotesque';
 import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
+import { AreaNav, AreaNavList } from '@/components/area-nav';
 
 export const metadata: Metadata = {
   metadataBase: new URL(serverEnv.webUrl),
@@ -13,7 +15,7 @@ export const metadata: Metadata = {
     template: '%s | MarktAT',
   },
   description:
-    'Kostenlos inserieren und Schnäppchen finden: Marktplatz, Auto & Motor, Immobilien und Jobs in ganz Österreich.',
+    'Kostenlos inserieren und finden: Marktplatz, Auto & Motor, Immobilien, Jobs, Deals und Dienstleistungen in ganz Österreich.',
   applicationName: 'MarktAT',
   openGraph: { type: 'website', locale: 'de_AT', siteName: 'MarktAT' },
   // Vor dem offiziellen Start nicht indexieren (ALLOW_INDEXING, siehe next.config.ts)
@@ -37,6 +39,9 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           Zum Inhalt springen
         </a>
         <SiteHeader />
+        <Suspense fallback={<AreaNavList active={null} />}>
+          <AreaNav />
+        </Suspense>
         <main id="inhalt" className="flex-1">
           {children}
         </main>

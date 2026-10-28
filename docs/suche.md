@@ -124,4 +124,4 @@ direkt in PostgreSQL (Textsuche mit `ILIKE`, Umkreis mit PostGIS `ST_DWithin`). 
 - Der PostgreSQL-Fallback kennt keine Tippfehler und sortiert „Relevanz“ nur grob (Titeltreffer zuerst).
 - Meilisearch liefert höchstens 10.000 Treffer je Suche (`maxTotalHits`); bei 24 je Seite sind das über 400 Seiten.
 - Die Entfernung bezieht sich auf Ortsmittelpunkte (siehe [geodaten.md](geodaten.md)).
-- Gespeicherte Suchen und Benachrichtigungen sind nicht Teil von Phase 4.
+- Gespeicherte Suchen und Benachrichtigungen kamen in Phase 5 dazu (siehe [nachrichten.md](nachrichten.md)), für Deals und Anbieter in Phase 10.

@@ -30,9 +30,12 @@ export class ServiceSearchService {
     return this.search(query);
   }
 
-  async search(query: ServiceSearchQuery): Promise<ServiceSearchResult> {
+  /** `publishedAfter`/`publishedUntil`: nur erstmals in diesem Zeitraum veröffentlichte Profile (gespeicherte Suchen) */
+  async search(query: ServiceSearchQuery, options: { publishedAfter?: Date; publishedUntil?: Date } = {}): Promise<ServiceSearchResult> {
     const center = await this.resolveCenter(query);
     const conditions: Prisma.Sql[] = [Prisma.sql`sp.status = 'ACTIVE'`, Prisma.sql`u.status = 'ACTIVE'`, Prisma.sql`u.deleted_at IS NULL`];
+    if (options.publishedAfter) conditions.push(Prisma.sql`sp.published_at > ${options.publishedAfter}`);
+    if (options.publishedUntil) conditions.push(Prisma.sql`sp.published_at <= ${options.publishedUntil}`);
     if (query.q) {
       for (const word of query.q.split(' ').slice(0, 10)) {
         const pattern = `%${escapeLike(word)}%`;

@@ -50,6 +50,20 @@ async function Dashboard() {
         </div>
       </section>
 
+      <section aria-labelledby="areas-heading" className="space-y-4">
+        <h3 id="areas-heading" className="font-sans text-lg font-semibold tracking-normal text-ink-950">Deals und Dienstleistungen</h3>
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+          <StatCard label="Deals in Prüfung" value={moderation.deals.pendingReview} href="/admin/deals" tone="attention" />
+          <StatCard label="Feeds zur Freigabe" value={moderation.deals.feedsPending} href="/admin/deals/feeds?status=PENDING" tone="attention" />
+          <StatCard label="Anbieterprofile in Prüfung" value={moderation.services.pendingReview} href="/admin/dienstleistungen" tone="attention" />
+          <StatCard label="Qualifikationen offen" value={moderation.services.qualificationsOpen} hint="Nachweis noch nicht geprüft" href="/admin/dienstleistungen" tone="attention" />
+          <StatCard label="Projektaufträge in Prüfung" value={moderation.projects.pendingReview} href="/admin/dienstleistungen/projekte" tone="attention" />
+          <StatCard label="Aktive Deals" value={moderation.deals.active} />
+          <StatCard label="Aktive Anbieterprofile" value={moderation.services.active} />
+          <StatCard label="Offene Projektaufträge" value={moderation.projects.active} />
+        </div>
+      </section>
+
       {system ? (
         <>
           <section aria-labelledby="users-heading" className="space-y-4">

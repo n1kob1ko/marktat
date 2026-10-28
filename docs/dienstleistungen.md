@@ -63,9 +63,17 @@ Profilbild und Portfolio-Bilder laufen über die bestehende Bildverarbeitung (Pr
 - Admin-Liste `/admin/dienstleistungen` mit Filtern: in Prüfung/gemeldet/Qualifikation offen, gemeldet, Qualifikationen, Status. Die E-Mail-Adresse sehen nur Administrator:innen.
 - Alle Schritte stehen im Audit-Log (`service_profile.*`, `moderation.service_profile_*`, `moderation.portfolio_item_*`).
 
+## Merkliste und gespeicherte Suchen
+
+Anbieterprofile lassen sich merken und als Suche speichern, mit höchstens einer Sammel-E-Mail am Tag. Details stehen in [nachrichten.md](nachrichten.md#deals-und-anbieterprofile-phase-10).
+
+## Navigation
+
+Unter dem Kopf steht auf jeder Seite die Bereichsleiste mit sechs Bereichen: Marktplatz, Auto & Motor, Immobilien, Jobs, Deals und Dienstleistungen (`components/area-nav.tsx`). Die vier Kleinanzeigen-Bereiche verlinken wie bisher auf `/suche?bereich=…`, alte Adressen bleiben gültig. Auf dem Smartphone lässt sich die Leiste seitlich wischen, die Seite selbst scrollt nicht seitlich.
+
 ## Datenschutz
 
-Datenexport (Art. 15/20 DSGVO) enthält Profil, Portfolio, Qualifikationen und Unterhaltungen zum Profil. Beim Löschen des Kontos werden Profil, Portfolio, Qualifikationen und alle Bilder entfernt.
+Datenexport (Art. 15/20 DSGVO) enthält Profil, Portfolio, Qualifikationen, Unterhaltungen zum Profil sowie gemerkte Deals und Anbieter. Beim Löschen des Kontos werden Profil, Portfolio, Qualifikationen und alle Bilder entfernt.
 
 ## Projektaufträge
 

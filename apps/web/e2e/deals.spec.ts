@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { registerConfirmed } from './accounts';
 import { expectNoHorizontalScroll, newPage, registerBusiness, viennaDay } from './merchant';
 
 /**
@@ -101,12 +102,46 @@ test('Händler veröffentlicht einen Deal mit Filiale; er ist auffindbar, pausie
   await expect(cta).toHaveAttribute('rel', /sponsored|nofollow/);
   await expectNoHorizontalScroll(visitor.page);
 
+  // Merken und Suche speichern (Phase 10, Schritt 5): eigene Liste neben den Anzeigen, Mail höchstens einmal am Tag
+  await registerConfirmed(visitor.page, 'Dora Dealfan', `e2e-deals-fan-${tag}@example.at`);
+  await visitor.page.goto(`/deals/${dealId}`);
+  const merken = visitor.page.getByRole('button', { name: 'Merken' });
+  await merken.click();
+  await expect(visitor.page.getByRole('button', { name: 'Gemerkt' })).toHaveAttribute('aria-pressed', 'true');
+  // Erst weiter, wenn die Anfrage durch ist (der Knopf schaltet sofort um)
+  await expect(visitor.page.getByRole('button', { name: 'Gemerkt' })).not.toHaveAttribute('aria-busy');
+  await visitor.page.goto('/konto/merkliste?art=deals');
+  await expect(visitor.page.getByRole('link', { name: 'Deals', exact: true }).and(visitor.page.locator('[aria-current="page"]'))).toBeVisible();
+  await expect(visitor.page.getByRole('article').filter({ hasText: title })).toBeVisible();
+  await visitor.page.goto('/konto/merkliste');
+  await expect(visitor.page.getByText('0 gemerkte Anzeigen')).toBeVisible();
+
+  await visitor.page.goto(`/deals?q=${word}`);
+  await visitor.page.getByRole('button', { name: 'Suche speichern' }).click();
+  const dialog = visitor.page.getByRole('dialog', { name: 'Suche speichern' });
+  await expect(dialog.getByText('höchstens einmal am Tag', { exact: false })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Speichern' }).click();
+  await expect(dialog.getByText('Neue passende Deals bekommst du gesammelt', { exact: false })).toBeVisible();
+  await dialog.getByRole('link', { name: 'Gespeicherte Suchen' }).click();
+  const saved = visitor.page.getByTestId('saved-search').filter({ hasText: word });
+  await expect(saved.getByTestId('saved-search-kind')).toHaveText('Deals');
+  await expect(saved.getByRole('link', { name: 'Suchen' })).toHaveAttribute('href', `/deals?q=${word}`);
+  await expect(saved).toContainText('höchstens eine E-Mail am Tag mit neuen Deals');
+  await expectNoHorizontalScroll(visitor.page);
+
   // Pausieren: nicht mehr öffentlich
   await page.goto(`/konto/deals/${dealId}`);
   await page.getByRole('button', { name: 'Pausieren' }).click();
   await expect(page.getByText('Das Angebot ist pausiert und nicht mehr öffentlich sichtbar.')).toBeVisible();
   await visitor.page.goto(`/deals?q=${word}`);
   await expect(visitor.page.getByRole('article').filter({ hasText: title })).toHaveCount(0);
+  // In der Merkliste bleibt der pausierte Deal ausgegraut stehen und lässt sich entfernen
+  await visitor.page.goto('/konto/merkliste?art=deals');
+  const gone = visitor.page.getByTestId('favorite-unavailable').filter({ hasText: title });
+  await expect(gone).toBeVisible();
+  await gone.getByRole('button', { name: /von der Merkliste entfernen/ }).click();
+  await expect(visitor.page).toHaveURL(/art=deals&hinweis=entfernt/);
+  await expect(visitor.page.getByText('Noch keine Deals gemerkt')).toBeVisible();
 
   // Löschen
   await page.getByRole('button', { name: 'Löschen' }).click();

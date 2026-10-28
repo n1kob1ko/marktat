@@ -95,7 +95,7 @@ export async function resetData(prisma: PrismaService) {
   await dealSearch?.index.flush();
   await jobs?.drain().catch(() => jobs?.clear());
   await prisma.$executeRawUnsafe(
-    'TRUNCATE error_events, audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, saved_searches, listing_images, listing_view_days, payments, bookings, stripe_events, deal_price_records, deal_stores, deal_imports, deals, deal_feeds, dealer_stores, service_qualifications, service_portfolio_items, service_profile_categories, service_projects, service_profiles, listings, users CASCADE',
+    'TRUNCATE error_events, audit_logs, notifications, appeals, report_events, reports, moderation_decisions, account_deletions, user_blocks, messages, conversations, favorites, deal_favorites, service_favorites, saved_searches, listing_images, listing_view_days, payments, bookings, stripe_events, deal_price_records, deal_stores, deal_imports, deals, deal_feeds, dealer_stores, service_qualifications, service_portfolio_items, service_profile_categories, service_projects, service_profiles, listings, users CASCADE',
   );
   await restoreBillingDefaults(prisma);
   await searchIndex?.clear();

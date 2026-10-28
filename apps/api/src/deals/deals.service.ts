@@ -373,7 +373,8 @@ export class DealsService {
       take: 200,
       select: { priceCents: true, recordedAt: true },
     });
-    const detail = toDealDetail(deal, this.urls, { priceRecords, viewerId: viewer?.id, webUrl: loadEnv().WEB_URL });
+    const favorite = viewer && !isOwner ? await this.prisma.dealFavorite.count({ where: { userId: viewer.id, dealId: id } }) : 0;
+    const detail = toDealDetail(deal, this.urls, { priceRecords, viewerId: viewer?.id, isFavorite: favorite > 0, webUrl: loadEnv().WEB_URL });
     if (isOwner || isStaff) {
       detail.moderation = await this.moderation.dealModerationInfo(deal);
       detail.reviewReason = deal.reviewReason;

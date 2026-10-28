@@ -79,7 +79,16 @@ export interface ServiceProfileDetail extends ServiceProfileSummary {
   isOwner: boolean;
   /** Bestehende Unterhaltung der angemeldeten Person */
   conversationId: string | null;
+  /** Auf der Merkliste der angemeldeten Person */
+  isFavorite: boolean;
   moderation: ListingModerationInfo | null;
+}
+
+export interface ServiceFavoriteItem {
+  profile: ServiceProfileSummary;
+  /** false = pausiert, gelöscht, gesperrt oder in Prüfung */
+  available: boolean;
+  savedAt: string;
 }
 
 export interface ServiceSearchResult extends Paginated<ServiceProfileSummary> {

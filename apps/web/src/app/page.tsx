@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { ArrowRight, Briefcase, Car, Camera, House, MessageCircle, ShieldCheck, ShoppingBag, Store, Tag } from 'lucide-react';
+import { ArrowRight, Briefcase, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { VERTICAL_SLUGS } from '@marktat/shared';
 import { SearchHero } from '@/components/search-hero';
@@ -14,10 +14,12 @@ import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
 
 const VERTICAL_TILES = [
-  { slug: VERTICAL_SLUGS.MARKETPLACE, title: 'Marktplatz', text: 'Elektronik, Möbel, Mode und mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
-  { slug: VERTICAL_SLUGS.VEHICLES, title: 'Auto & Motor', text: 'Gebrauchtwagen, Motorräder, Zubehör', icon: Car, tone: 'bg-accent-50 text-accent-700' },
-  { slug: VERTICAL_SLUGS.REAL_ESTATE, title: 'Immobilien', text: 'Wohnungen und Häuser mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a]' },
-  { slug: VERTICAL_SLUGS.JOBS, title: 'Jobs', text: 'Vollzeit, Teilzeit, Lehrstellen', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a]' },
+  { slug: VERTICAL_SLUGS.MARKETPLACE, href: `/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`, title: 'Marktplatz', text: 'Elektronik, Möbel, Mode und mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
+  { slug: VERTICAL_SLUGS.VEHICLES, href: `/suche?bereich=${VERTICAL_SLUGS.VEHICLES}`, title: 'Auto & Motor', text: 'Gebrauchtwagen, Motorräder, Zubehör', icon: Car, tone: 'bg-accent-50 text-accent-700' },
+  { slug: VERTICAL_SLUGS.REAL_ESTATE, href: `/suche?bereich=${VERTICAL_SLUGS.REAL_ESTATE}`, title: 'Immobilien', text: 'Wohnungen und Häuser mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a]' },
+  { slug: VERTICAL_SLUGS.JOBS, href: `/suche?bereich=${VERTICAL_SLUGS.JOBS}`, title: 'Jobs', text: 'Vollzeit, Teilzeit, Lehrstellen', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a]' },
+  { slug: 'deals', href: '/deals', title: 'Deals', text: 'Aktuelle Angebote von Händlern', icon: Percent, tone: 'bg-[#fdf0ec] text-[#9a3b1c]' },
+  { slug: 'dienstleistungen', href: '/dienstleistungen', title: 'Dienstleistungen', text: 'Freelancer, Handwerk, Nachhilfe', icon: Wrench, tone: 'bg-[#ecf6f4] text-[#1f6656]' },
 ];
 
 export default function HomePage() {
@@ -46,11 +48,11 @@ export default function HomePage() {
       </section>
 
       <Container className="-mt-8 relative z-10">
-        <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4">
           {VERTICAL_TILES.map((tile) => (
             <li key={tile.slug}>
               <Link
-                href={`/suche?bereich=${tile.slug}`}
+                href={tile.href}
                 className="group flex h-full flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-card)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] sm:flex-row sm:items-center sm:p-5"
               >
                 <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tile.tone}`}>

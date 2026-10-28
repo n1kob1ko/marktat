@@ -4,11 +4,15 @@ import Link from 'next/link';
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
 import { BellPlus, Bookmark, X } from 'lucide-react';
 import { Alert, Button, Checkbox, Field, Input, buttonClasses } from '@marktat/ui';
+import type { SavedSearchKind } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
+import { SAVED_SEARCH_NOTIFY_LABEL } from '@/lib/saved-searches';
 import { saveSearchAction } from '@/app/konto/suchen/actions';
 import { SubmitButton } from '@/components/submit-button';
 
 interface SaveSearchButtonProps {
+  /** Anzeigen (Standard), Deals oder Anbieterprofile */
+  kind?: SavedSearchKind;
   /** Kanonische Such-Parameter (ohne Seite) */
   params: Record<string, string>;
   /** Kurzbeschreibung der Filter für die Liste „Gespeicherte Suchen“ */
@@ -30,7 +34,7 @@ export function SaveSearchButton(props: SaveSearchButtonProps) {
   );
 }
 
-function SaveSearchDialog({ params, labels, defaultName, returnTo, onClose }: SaveSearchButtonProps & { onClose: () => void }) {
+function SaveSearchDialog({ kind = 'LISTINGS', params, labels, defaultName, returnTo, onClose }: SaveSearchButtonProps & { onClose: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [state, action] = useActionState(saveSearchAction, initialFormState);
   const titleId = useId();
@@ -73,6 +77,7 @@ function SaveSearchDialog({ params, labels, defaultName, returnTo, onClose }: Sa
         </div>
       ) : (
         <form action={action} className="space-y-4 p-5">
+          <input type="hidden" name="kind" value={kind} />
           <input type="hidden" name="params" value={JSON.stringify(params)} />
           <input type="hidden" name="labels" value={JSON.stringify(labels)} />
           <input type="hidden" name="returnTo" value={returnTo} />
@@ -104,7 +109,7 @@ function SaveSearchDialog({ params, labels, defaultName, returnTo, onClose }: Sa
             label={
               <>
                 <BellPlus className="mr-1 inline size-4 align-text-bottom text-brand-700" aria-hidden="true" />
-                Per E-Mail benachrichtigen, wenn neue passende Anzeigen erscheinen
+                {SAVED_SEARCH_NOTIFY_LABEL[kind]}
               </>
             }
           />

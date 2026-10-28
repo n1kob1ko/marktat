@@ -32,14 +32,14 @@ export function ServiceCard({ profile, className }: { profile: ServiceProfileSum
           )}
         </span>
         <div className="min-w-0 flex-1">
-          <h3 className="line-clamp-2 font-sans text-base leading-snug font-semibold tracking-normal text-ink-900">
+          <h3 className="line-clamp-2 font-sans text-base leading-snug font-semibold tracking-normal [overflow-wrap:anywhere] text-ink-900">
             <Link href={`/dienstleistungen/${profile.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
               {profile.headline}
             </Link>
           </h3>
           <p className="mt-0.5 truncate text-sm text-ink-600">
             {profile.provider.name}
-            <span className="text-ink-400"> · {profile.provider.business ? 'Unternehmen' : 'Privatperson'}</span>
+            <span className="text-ink-500"> · {profile.provider.business ? 'Unternehmen' : 'Privatperson'}</span>
           </p>
         </div>
       </div>

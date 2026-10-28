@@ -54,3 +54,44 @@ export async function removeFavoriteAction(formData: FormData) {
   revalidatePath('/konto/merkliste');
   redirect('/konto/merkliste?hinweis=entfernt');
 }
+
+export type FavoriteKind = 'deal' | 'service';
+
+const KIND_PATHS: Record<FavoriteKind, string> = { deal: 'deals', service: 'services' };
+const KIND_LOGIN: Record<FavoriteKind, string> = {
+  deal: 'Bitte melde dich an, um Deals zu merken.',
+  service: 'Bitte melde dich an, um Anbieter zu merken.',
+};
+
+/** Merken auf der Detailseite eines Deals oder Anbieterprofils (getrennte Listen in der Merkliste) */
+export async function setItemFavoriteAction(kind: FavoriteKind, id: string, favorite: boolean): Promise<FavoriteResult> {
+  if (!(kind in KIND_PATHS) || !ID_PATTERN.test(id)) return { ok: false, reason: 'error', message: 'Diesen Eintrag gibt es nicht.' };
+  const token = await getAccessToken();
+  if (!token) return { ok: false, reason: 'login', message: KIND_LOGIN[kind] };
+  try {
+    await api(`/me/favorites/${KIND_PATHS[kind]}/${id}`, { method: favorite ? 'PUT' : 'DELETE', token });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return { ok: false, reason: 'login', message: KIND_LOGIN[kind] };
+    const message = error instanceof ApiError ? error.message : 'Das hat nicht geklappt. Bitte versuche es erneut.';
+    return { ok: false, reason: 'error', message };
+  }
+  return { ok: true, favorite };
+}
+
+/** „Entfernen“ für Deals und Anbieter in der Merkliste (funktioniert auch ohne JavaScript) */
+export async function removeItemFavoriteAction(formData: FormData) {
+  const kind = String(formData.get('kind') ?? '');
+  const id = String(formData.get('id') ?? '');
+  const tab = kind === 'deal' ? 'deals' : 'anbieter';
+  const back = `/konto/merkliste?art=${tab}`;
+  const { token } = await requireUser(back);
+  if ((kind === 'deal' || kind === 'service') && ID_PATTERN.test(id)) {
+    try {
+      await api(`/me/favorites/${KIND_PATHS[kind]}/${id}`, { method: 'DELETE', token });
+    } catch {
+      redirect(`${back}&fehler=aktion`);
+    }
+  }
+  revalidatePath('/konto/merkliste');
+  redirect(`${back}&hinweis=entfernt`);
+}

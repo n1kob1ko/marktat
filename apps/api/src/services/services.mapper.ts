@@ -129,7 +129,7 @@ function toPortfolioItem(profile: ServiceProfileDetailRow, item: ServiceProfileD
 export function toServiceProfileDetail(
   profile: ServiceProfileDetailRow,
   urls: MediaUrls,
-  options: { privileged: boolean; isOwner: boolean; conversationId: string | null },
+  options: { privileged: boolean; isOwner: boolean; conversationId: string | null; isFavorite?: boolean },
 ): ServiceProfileDetail {
   const { user } = profile;
   const business = user.accountType === 'BUSINESS';
@@ -155,6 +155,7 @@ export function toServiceProfileDetail(
     publishedAt: profile.publishedAt?.toISOString() ?? null,
     isOwner: options.isOwner,
     conversationId: options.conversationId,
+    isFavorite: options.isFavorite ?? false,
     moderation: null,
   };
 }

@@ -16,6 +16,6 @@ import { AdminServicesController, MyServiceProfileController, ServicesController
   imports: [GeoModule, ImagesModule, MessagesModule, ModerationModule],
   controllers: [ServicesController, MyServiceProfileController, AdminServicesController, ProjectsController, MyProjectsController, AdminProjectsController],
   providers: [ServiceProfilesService, ServiceSearchService, AdminServicesService, ProjectsService, AdminProjectsService],
-  exports: [ServiceProfilesService],
+  exports: [ServiceProfilesService, ServiceSearchService],
 })
 export class ServicesModule {}

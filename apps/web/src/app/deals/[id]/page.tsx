@@ -19,6 +19,7 @@ import { getAccessToken, getCurrentUser, isStaff } from '@/lib/auth';
 import { dealValidity, endsSoon, referenceExplanation } from '@/lib/deals';
 import { metaDescription } from '@/lib/seo';
 import { FlashMessage } from '@/components/flash-message';
+import { ItemFavoriteButton } from '@/components/favorites/item-favorite-button';
 import { DealPrice, DiscountBadge } from '@/components/deals/deal-price';
 
 async function loadDeal(id: string, token: string | null) {
@@ -251,6 +252,7 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 </p>
               </>
             ) : null}
+            {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
               Kauf und Bezahlung erfolgen direkt beim Händler. MarktAT ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
               bzw. im Online-Shop.
