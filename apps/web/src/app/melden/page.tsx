@@ -79,7 +79,7 @@ async function ReportDeal({ dealId }: { dealId: string }) {
         <Link href={`/deals/${deal.id}`} className="font-semibold text-brand-700 hover:underline">
           {deal.title}
         </Link>{' '}
-        von {deal.merchant.name}
+        von {deal.sellerName}
       </p>
       <Card className="mt-6 p-5 sm:p-7">
         {deal.isOwner ? <Alert tone="info">Das ist dein eigenes Angebot. Du kannst es bearbeiten oder löschen, aber nicht melden.</Alert> : <ReportListingForm dealId={deal.id} />}

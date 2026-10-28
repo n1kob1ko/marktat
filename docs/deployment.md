@@ -3,6 +3,10 @@
 > Stand 27.10.2026 (Phase 9): Alles ist vorbereitet und lokal geprobt. **Es gibt noch keinen Server und keine Domain**;
 > online ist nichts. Buchungen, Kosten und die Freigabe zur Veröffentlichung entscheidet Niko.
 > Preise unten sind recherchierte Listenpreise vom 27.10.2026, vor einer Buchung beim Anbieter prüfen.
+>
+> **Anleitung zum Durchklicken (Windows + Server, wo genau was eingetragen wird): [online-start.md](online-start.md).**
+> Stand 28.10.2026: Phase 10 (Deals, Importe, Feeds, Dienstleistungen, Projekte) und die Partnerangebote über Awin
+> ([affiliate.md](affiliate.md)) laufen mit dieser Architektur ohne zusätzliche Dienste.
 
 ## Überblick
 
@@ -105,7 +109,10 @@ etwa 10 €/Monat.
    - `DEPLOY_SSH_KEY` – privater Schlüssel (`ssh-keygen -t ed25519 -f marktat-deploy -N ""`, Inhalt von `marktat-deploy`)
    - `DEPLOY_KNOWN_HOSTS` – Ausgabe von `ssh-keyscan -t ed25519 <server-ip>` (nach dem Einrichten des Servers)
 7. **Betreiberangaben** für Impressum, Datenschutz und Kontakt, siehe [rechtliches.md](rechtliches.md#was-niko-liefern-muss).
-8. Optional **Überwachung**: kostenloses Konto bei einem externen Uptime-Dienst, Prüfung auf
+8. Optional, erst nach dem Online-Start: **Awin-Publisher-Konto** für Partnerangebote (kostenlos, kein
+   Advertiser-Tarif), Partnerschaften und Schlüssel, siehe [affiliate.md](affiliate.md). Bis dahin bleibt
+   `AWIN_ENABLED=false`.
+9. Optional **Überwachung**: kostenloses Konto bei einem externen Uptime-Dienst, Prüfung auf
    `https://<API_DOMAIN>/v1/health/ready` und `https://<WEB_DOMAIN>/` alle 5 Minuten, Alarm per E-Mail.
 
 ## Ersteinrichtung (einmalig)
@@ -193,7 +200,7 @@ Wiederherstellung einmal im Quartal auf der Generalprobe üben (siehe unten).
 D=/opt/marktat/current/deploy.sh
 $D compose exec api pnpm admin:role -- --email <adresse> --role ADMIN|MODERATOR|USER
 $D compose exec api pnpm admin:mfa-reset -- --email <adresse>
-$D compose exec api pnpm search:reindex
+$D compose exec api pnpm search:reindex      # Inserate und Deals
 $D compose ps
 ```
 
@@ -220,8 +227,14 @@ Versanddienst (`http://127.0.0.1:8026`), ein S3-Ersatz statt R2. Danach Browser-
 ```bash
 E2E_BASE_URL=https://marktat.localhost MAILPIT_URL=http://127.0.0.1:8026 E2E_IGNORE_HTTPS_ERRORS=true \
 E2E_ROLE_COMMAND="docker compose -p marktat-probe exec -T api pnpm --silent admin:role --" \
-pnpm --filter @marktat/web exec playwright test core-flows interactions security monetization category-fields
+pnpm --filter @marktat/web exec playwright test core-flows interactions security monetization category-fields \
+  deals deal-imports services projects moderation integration affiliate
 ```
+
+Team-Konten in den Tests richten die 2FA selbst ein, wenn die Umgebung sie verlangt (`STAFF_MFA_REQUIRED=true`, wie
+online). Der volle Ablauf der Partnerangebote braucht den lokalen Awin-Testserver und läuft deshalb nur in der
+Entwicklungsumgebung ([affiliate.md](affiliate.md#tests)); in der Probe prüft `affiliate` die Admin-Seite im
+ausgeschalteten Zustand.
 
 Die Suchtests brauchen Demo-Inserate und laufen deshalb nur lokal gegen die Entwicklungsumgebung. Der Test
 „Admin verwaltet Preise“ erwartet einen Admin ohne 2FA und scheitert in der Probe erwartungsgemäß an der 2FA-Pflicht.
@@ -250,6 +263,17 @@ Ergebnisse mit Datum in diesem Abschnitt festhalten. Lokale Proben zählen nicht
 - [ ] Handy (iOS Safari, Android Chrome): Startseite, Inserieren mit Kamera-Foto, Nachrichten
 - [ ] `https://<WEB_DOMAIN>/robots.txt` sperrt alles; Header `X-Robots-Tag: noindex`
 - [ ] SPF/DKIM/DMARC „pass“ in einer empfangenen E-Mail (Original anzeigen)
+- [ ] Deals: Händler legt einen Deal mit Bild und Filiale an, er erscheint unter `/deals` und in der Umkreissuche,
+      „Zum Angebot“ leitet weiter, Deal-Bild liegt in `marktat-prod`
+- [ ] CSV-Import: Vorlage laden, Datei mit Fehlerzeile hochladen, Vorschau zeigt den Fehler, Übernahme legt an
+- [ ] Produktfeed: Händler reicht einen Feed ein, Admin gibt frei, der erste Abruf läuft (Admin → Deals → Produktfeeds)
+- [ ] Freelancerprofil: anlegen, veröffentlichen, in `/dienstleistungen` finden, Anfrage senden
+- [ ] Projektauftrag: anlegen, finden, Angebot abgeben, melden
+- [ ] Admin-Moderation: Meldung zu Deal, Profil und Projekt bearbeiten (mit 2FA)
+- [ ] Hintergrundprozesse: Admin → System zeigt die Warteschlange ohne Fehler; nach einer Stunde Linkprüfung und
+      Feed-Abruf im Protokoll; E-Mail zu einer ungelesenen Nachricht kommt an
+- [ ] Partnerprogramme: `/admin/affiliate` zeigt „aus (AWIN_ENABLED=false)“ ohne Fehler; erst nach Teil C von
+      [online-start.md](online-start.md): erster Abruf, Programm freigeben, Angebot mit „Werbung“ auf `/deals`
 
 ## Bekannte Grenzen
 

@@ -55,6 +55,15 @@ export function checkProductionEnv(env: Env, raw: Record<string, string | undefi
   else if (!new URL(env.REDIS_URL).password) errors.push('REDIS_URL ohne Passwort.');
   if (!env.MEILI_URL) warnings.push('MEILI_URL fehlt – die Suche läuft dann nur über PostgreSQL.');
 
+  // Awin: nur mit vollständigen Zugangsdaten und nur gegen die offiziellen Adressen
+  if (env.AWIN_ENABLED) {
+    for (const name of ['AWIN_PUBLISHER_ID', 'AWIN_API_TOKEN', 'AWIN_FEED_API_KEY'] as const) {
+      if (!env[name]) errors.push(`${name} fehlt (AWIN_ENABLED=true).`);
+    }
+    if (env.AWIN_API_URL !== 'https://api.awin.com') errors.push('AWIN_API_URL ist nur für Tests änderbar.');
+    if (env.AWIN_PRODUCTDATA_URL !== 'https://productdata.awin.com') errors.push('AWIN_PRODUCTDATA_URL ist nur für Tests änderbar.');
+  }
+
   // Supabase-Schlüssel müssen mit dem JWT-Secret signiert sein und die richtige Rolle tragen
   if (env.SUPABASE_JWT_SECRET) {
     for (const [name, role] of [

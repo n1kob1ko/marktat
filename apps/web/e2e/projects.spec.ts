@@ -1,5 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
-import { registerConfirmed, setRole } from './accounts';
+import { becomeStaff, registerConfirmed } from './accounts';
 import { expectNoHorizontalScroll, newPage } from './merchant';
 
 /**
@@ -159,7 +159,7 @@ test('Projektauftrag beschreiben, finden, beantworten, melden und moderieren', a
 
   const moderator = await newPage(browser, testInfo);
   await registerConfirmed(moderator.page, 'Mona Moderation', emails.moderator);
-  setRole(emails.moderator, 'MODERATOR');
+  await becomeStaff(moderator.page, emails.moderator, 'MODERATOR');
   const mod = moderator.page;
   await mod.goto(`/admin/dienstleistungen/projekte?q=${word}`);
   await expect(mod.getByRole('link', { name: 'Projektaufträge', exact: true })).toHaveAttribute('aria-current', 'page');

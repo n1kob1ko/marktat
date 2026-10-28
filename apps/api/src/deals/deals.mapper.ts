@@ -1,7 +1,9 @@
 import {
+  AFFILIATE_NETWORK_LABELS,
   DEAL_VERIFY_DAYS,
   displayHost,
   lowestRecordedPrice,
+  type DealAffiliateInfo,
   type DealDetail,
   type DealDisplayStatus,
   type DealStoreView,
@@ -20,10 +22,19 @@ export const dealInclude = {
   merchant: {
     select: { id: true, displayName: true, companyName: true, logoKey: true, accountType: true, status: true, deletedAt: true, dealsBlockedAt: true },
   },
+  affiliateProgram: { select: { id: true, network: true, name: true, status: true, membership: true, allowImages: true } },
+  affiliateFeed: { select: { id: true, status: true } },
   stores: {
     where: { store: { deletedAt: null } },
     include: { store: { include: { location: { include: locationInclude } } } },
   },
+} satisfies Prisma.DealInclude;
+
+/** Felder für isDealPublic ohne die übrigen Relationen */
+export const dealVisibilityInclude = {
+  merchant: { select: { status: true, deletedAt: true, accountType: true, dealsBlockedAt: true } },
+  affiliateProgram: { select: { status: true, membership: true } },
+  affiliateFeed: { select: { status: true } },
 } satisfies Prisma.DealInclude;
 
 export type DealWithRelations = Prisma.DealGetPayload<{ include: typeof dealInclude }>;
@@ -35,7 +46,9 @@ export function verifiedSince(now = new Date()) {
 
 /**
  * Öffentlich sichtbar: aktiv, begonnen, nicht abgelaufen, in den letzten DEAL_VERIFY_DAYS bestätigt, nicht ausverkauft,
- * Link nicht als defekt erkannt, Händler aktiv, gewerblich und nicht für Deals gesperrt.
+ * Link nicht als defekt erkannt – und je nach Herkunft:
+ * - Händlerdeal: Händler aktiv, gewerblich und nicht für Deals gesperrt
+ * - Affiliate-Deal: Programm vom Team freigegeben, Partnerschaft im Netzwerk aktiv, Feed aktiv
  * Dieselbe Regel gilt in SQL (dealVisibleSql) und im Suchindex.
  */
 export function publicDealWhere(now = new Date()): Prisma.DealWhereInput {
@@ -47,22 +60,54 @@ export function publicDealWhere(now = new Date()): Prisma.DealWhereInput {
     lastVerifiedAt: { gt: verifiedSince(now) },
     availability: { not: 'SOLD_OUT' },
     linkStatus: { not: 'BROKEN' },
-    merchant: { status: 'ACTIVE', deletedAt: null, accountType: 'BUSINESS', dealsBlockedAt: null },
+    // In AND, damit Aufrufer eigene OR-Bedingungen ergänzen können
+    AND: [
+      {
+        OR: [
+          { merchant: { is: { status: 'ACTIVE', deletedAt: null, accountType: 'BUSINESS', dealsBlockedAt: null } } },
+          { source: 'AFFILIATE', affiliateProgram: { is: { status: 'APPROVED', membership: 'JOINED' } }, affiliateFeed: { is: { status: 'ACTIVE' } } },
+        ],
+      },
+    ],
   };
 }
 
-/** SQL-Gegenstück zu publicDealWhere; Tabellen: dl (deals), mu (users als Händler) */
+/** Verknüpfungen für dealVisibleSql: dl (deals), mu (Händlerkonto), ap (Partnerprogramm), af (Feed des Netzwerks) */
+export function dealJoinsSql(): Prisma.Sql {
+  return Prisma.sql`LEFT JOIN users mu ON mu.id = dl.merchant_id
+    LEFT JOIN affiliate_programs ap ON ap.id = dl.affiliate_program_id
+    LEFT JOIN affiliate_feeds af ON af.id = dl.affiliate_feed_id`;
+}
+
+/** Anbietername in SQL (Händlerkonto bzw. Programm) */
+export const dealSellerSql = Prisma.sql`COALESCE(mu.company_name, mu.display_name, ap.name)`;
+
+/** SQL-Gegenstück zu publicDealWhere (mit dealJoinsSql) */
 export function dealVisibleSql(): Prisma.Sql {
   return Prisma.sql`dl.status = 'ACTIVE' AND dl.deleted_at IS NULL
     AND dl.starts_at <= (now() AT TIME ZONE 'UTC') AND dl.ends_at > (now() AT TIME ZONE 'UTC')
     AND dl.last_verified_at > ((now() AT TIME ZONE 'UTC') - ${`${DEAL_VERIFY_DAYS} days`}::interval)
     AND dl.availability <> 'SOLD_OUT' AND dl.link_status <> 'BROKEN'
-    AND mu.status = 'ACTIVE' AND mu.deleted_at IS NULL AND mu.account_type = 'BUSINESS' AND mu.deals_blocked_at IS NULL`;
+    AND (
+      (mu.id IS NOT NULL AND mu.status = 'ACTIVE' AND mu.deleted_at IS NULL AND mu.account_type = 'BUSINESS' AND mu.deals_blocked_at IS NULL)
+      OR (dl.source = 'AFFILIATE' AND ap.status = 'APPROVED' AND ap.membership = 'JOINED' AND af.status = 'ACTIVE')
+    )`;
 }
 
-type VisibilityFields = Pick<DealWithRelations, 'status' | 'deletedAt' | 'startsAt' | 'endsAt' | 'lastVerifiedAt' | 'availability' | 'linkStatus'> & {
-  merchant: Pick<DealWithRelations['merchant'], 'status' | 'deletedAt' | 'accountType' | 'dealsBlockedAt'>;
+type VisibilityFields = Pick<DealWithRelations, 'status' | 'deletedAt' | 'startsAt' | 'endsAt' | 'lastVerifiedAt' | 'availability' | 'linkStatus' | 'source'> & {
+  merchant: Pick<NonNullable<DealWithRelations['merchant']>, 'status' | 'deletedAt' | 'accountType' | 'dealsBlockedAt'> | null;
+  affiliateProgram: Pick<NonNullable<DealWithRelations['affiliateProgram']>, 'status' | 'membership'> | null;
+  affiliateFeed: Pick<NonNullable<DealWithRelations['affiliateFeed']>, 'status'> | null;
 };
+
+/** Anbieter darf gezeigt werden (Händlerkonto bzw. freigegebenes Programm mit aktiver Partnerschaft) */
+export function isDealOwnerVisible(deal: Omit<VisibilityFields, 'status' | 'deletedAt' | 'startsAt' | 'endsAt' | 'lastVerifiedAt' | 'availability' | 'linkStatus'>): boolean {
+  if (deal.source === 'AFFILIATE') {
+    return deal.affiliateProgram?.status === 'APPROVED' && deal.affiliateProgram.membership === 'JOINED' && deal.affiliateFeed?.status === 'ACTIVE';
+  }
+  const merchant = deal.merchant;
+  return Boolean(merchant && merchant.status === 'ACTIVE' && !merchant.deletedAt && merchant.accountType === 'BUSINESS' && !merchant.dealsBlockedAt);
+}
 
 export function isDealPublic(deal: VisibilityFields, now = new Date()): boolean {
   return (
@@ -74,10 +119,7 @@ export function isDealPublic(deal: VisibilityFields, now = new Date()): boolean 
     deal.lastVerifiedAt > verifiedSince(now) &&
     deal.availability !== 'SOLD_OUT' &&
     deal.linkStatus !== 'BROKEN' &&
-    deal.merchant.status === 'ACTIVE' &&
-    !deal.merchant.deletedAt &&
-    deal.merchant.accountType === 'BUSINESS' &&
-    !deal.merchant.dealsBlockedAt
+    isDealOwnerVisible(deal)
   );
 }
 
@@ -94,8 +136,20 @@ export function dealDisplayStatus(
   return 'ACTIVE';
 }
 
-export function merchantName(merchant: Pick<DealWithRelations['merchant'], 'companyName' | 'displayName'>) {
+export function merchantName(merchant: Pick<NonNullable<DealWithRelations['merchant']>, 'companyName' | 'displayName'>) {
   return merchant.companyName ?? merchant.displayName;
+}
+
+/** Anbieter eines Deals: Händlerkonto bzw. Händler laut Affiliate-Netzwerk */
+export function dealSellerName(deal: Pick<DealWithRelations, 'merchant' | 'affiliateProgram'>): string {
+  if (deal.merchant) return merchantName(deal.merchant);
+  return deal.affiliateProgram?.name ?? 'Unbekannter Händler';
+}
+
+export function dealAffiliateInfo(deal: Pick<DealWithRelations, 'source' | 'affiliateProgram'>): DealAffiliateInfo | null {
+  if (deal.source !== 'AFFILIATE' || !deal.affiliateProgram) return null;
+  const network = deal.affiliateProgram.network;
+  return { network, networkName: AFFILIATE_NETWORK_LABELS[network], advertiserName: deal.affiliateProgram.name };
 }
 
 function distanceKm(a: { latitude: number; longitude: number }, b: { latitude: number; longitude: number }) {
@@ -121,6 +175,11 @@ function storeViews(deal: DealWithRelations, center: Center): DealStoreView[] {
 }
 
 function imageUrl(deal: DealWithRelations, urls: MediaUrls, variant: 'thumb' | 'large', now: Date) {
+  // Affiliate: Bild des Händlers unverändert über die API (nur wenn das Programm Bilder erlaubt)
+  if (deal.source === 'AFFILIATE') {
+    if (!deal.externalImageUrl || !deal.affiliateProgram?.allowImages) return null;
+    return urls.url('deal', `deals/${deal.id}/partner-image`, deal.id, deal.externalImageUrl, 'large', false);
+  }
   if (!deal.imageKey) return null;
   return urls.url('deal', `deals/${deal.id}/image`, deal.id, deal.imageKey, variant, !isDealPublic(deal, now));
 }
@@ -135,7 +194,9 @@ export function toDealSummary(deal: DealWithRelations, urls: MediaUrls, center: 
     imageUrl: imageUrl(deal, urls, 'thumb', now),
     channel: deal.channel,
     category: { slug: deal.category.slug, name: deal.category.name },
-    merchant: { id: deal.merchant.id, name: merchantName(deal.merchant), logoUrl: logoUrl(deal.merchant) },
+    merchant: deal.merchant ? { id: deal.merchant.id, name: merchantName(deal.merchant), logoUrl: logoUrl(deal.merchant) } : null,
+    affiliate: dealAffiliateInfo(deal),
+    sellerName: dealSellerName(deal),
     priceCents: deal.priceCents,
     unitPriceText: deal.unitPriceText,
     referencePriceCents: deal.discountPercent !== null ? deal.referencePriceCents : null,
@@ -145,7 +206,8 @@ export function toDealSummary(deal: DealWithRelations, urls: MediaUrls, center: 
     startsAt: deal.startsAt.toISOString(),
     endsAt: deal.endsAt.toISOString(),
     lastVerifiedAt: deal.lastVerifiedAt?.toISOString() ?? null,
-    urlHost: deal.url ? displayHost(deal.url) : null,
+    // Affiliate: Ziel ist der Tracking-Link des Netzwerks – angezeigt wird stattdessen der Händler (affiliate)
+    urlHost: deal.url && deal.source !== 'AFFILIATE' ? displayHost(deal.url) : null,
     isAffiliateLink: deal.isAffiliateLink,
     storeCount: stores.length,
     nearestStore: nearest
@@ -164,10 +226,12 @@ export function toDealDetail(
   const records = options.priceRecords;
   const changed = records.findIndex((record) => record.priceCents !== deal.priceCents);
   const currentSince = changed > 0 ? records[changed - 1]!.recordedAt : null;
+  const largeImageUrl = imageUrl(deal, urls, 'large', now);
+  const affiliate = dealAffiliateInfo(deal);
   return {
     ...toDealSummary(deal, urls, options.center ?? null, now),
     description: deal.description,
-    largeImageUrl: imageUrl(deal, urls, 'large', now),
+    largeImageUrl,
     url: deal.url,
     brand: deal.brand,
     gtin: deal.gtin,
@@ -175,18 +239,18 @@ export function toDealDetail(
     referencePriceSource: deal.discountPercent !== null ? deal.referencePriceSource : null,
     referencePriceEvidenceUrl: deal.discountPercent !== null ? deal.referencePriceEvidenceUrl : null,
     imageRights: deal.imageKey ? deal.imageRights : null,
-    imageCredit: deal.imageKey ? deal.imageCredit : null,
+    imageCredit: deal.imageKey ? deal.imageCredit : affiliate && largeImageUrl ? `Produktbild: ${affiliate.advertiserName} (über ${affiliate.networkName})` : null,
     stores: storeViews(deal, options.center ?? null),
     priceHistory: records.slice(0, 20).map((record) => ({ priceCents: record.priceCents, recordedAt: record.recordedAt.toISOString() })),
     lowestRecordedPrice30d: currentSince ? lowestRecordedPrice(records, currentSince) : null,
     source: deal.source,
     publishedAt: deal.publishedAt?.toISOString() ?? null,
     status: dealDisplayStatus(deal, now),
-    isOwner: options.viewerId === deal.merchantId,
+    isOwner: deal.merchantId !== null && options.viewerId === deal.merchantId,
     isFavorite: options.isFavorite ?? false,
     linkStatus: deal.linkStatus,
     relatedCategoryPath: deal.category.relatedCategoryPath,
-    merchantProfileUrl: `${options.webUrl}/haendler/${deal.merchantId}`,
+    merchantProfileUrl: deal.merchantId ? `${options.webUrl}/haendler/${deal.merchantId}` : null,
   };
 }
 

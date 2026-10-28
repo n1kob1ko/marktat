@@ -2,6 +2,9 @@
 
 Phase 10, Schritt 1. Händler stellen eigene Angebote ein, online, im Geschäft oder beides. MarktAT verkauft nichts selbst. Es gibt keinen Warenkorb und keine Zahlung, nur einen gekennzeichneten Link zum Händler.
 
+Es gibt drei streng getrennte Herkünfte: Händler-Deals (Formular, CSV), eigene Produktfeeds der Händler und zentrale
+Partnerangebote über Affiliate-Netzwerke (`source = AFFILIATE`, ohne Händlerkonto, siehe [affiliate.md](affiliate.md)).
+
 ## Datenmodell
 
 Deals sind **keine Inserate**. Preis-, Händler-, Link- und Ablaufregeln unterscheiden sich zu stark.
@@ -152,7 +155,8 @@ Gefilterte Seiten sind `noindex`.
 - die Antwort hat `noindex`, robots.txt sperrt den Pfad
 - Links sind `rel="sponsored nofollow noopener"`
 
-Affiliate-Links markiert der Händler selbst. Sie erscheinen als „Werbelink“.
+Affiliate-Links markiert der Händler selbst. Sie erscheinen als „Werbelink“. Zentrale Partnerangebote (Awin) sind
+dagegen als „Werbung“ gekennzeichnet und führen auf den Tracking-Link des Netzwerks ([affiliate.md](affiliate.md)).
 
 ## Bilder
 

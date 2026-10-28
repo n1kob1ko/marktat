@@ -20,7 +20,6 @@ import {
   type DealImportRowResult,
   type DealImportSummary,
   type DealImportView,
-  type DealSource,
   type ParsedTable,
 } from '@marktat/shared';
 import type { Deal, DealImport, Prisma } from '../generated/prisma/client.js';
@@ -48,7 +47,7 @@ export interface ImportPlan {
 }
 
 export interface ApplyOptions {
-  source: Exclude<DealSource, 'MANUAL'>;
+  source: 'CSV' | 'FEED';
   importId: string;
   feedId?: string;
   publish: boolean;
@@ -495,7 +494,8 @@ export class DealImportService {
     const counts = { ...emptyCounts(), ...(row.counts as Partial<DealImportCounts>) };
     return {
       id: row.id,
-      source: row.source,
+      // Importe gibt es nur für Händlerkonten (CSV, eigener Feed); Affiliate-Abrufe protokolliert affiliate_sync_runs
+      source: row.source as Exclude<typeof row.source, 'AFFILIATE'>,
       feedId: row.feedId,
       fileName: row.fileName,
       status: row.status,

@@ -1,5 +1,5 @@
 import { expect, test, type Browser, type BrowserContextOptions, type Page, type TestInfo } from '@playwright/test';
-import { PASSWORD, publishBike, registerConfirmed, setRole, signInHere } from './accounts';
+import { becomeStaff, ensureStaffMfa, PASSWORD, publishBike, registerConfirmed, signInHere } from './accounts';
 import { waitForMail } from './mailpit';
 
 /**
@@ -58,7 +58,7 @@ test('Melden, moderieren, Einspruch und Sperre – mit getrennten Rollen', async
   await registerConfirmed(moderator.page, 'Moritz Moderation', emails.moderator);
   const admin = await newPage(browser, testInfo);
   await registerConfirmed(admin.page, 'Adele Admin', emails.admin);
-  setRole(emails.admin, 'ADMIN');
+  await becomeStaff(admin.page, emails.admin, 'ADMIN');
 
   // --- Ohne Rolle gibt es den Admin-Bereich nicht ---
   await expectNotFound(reporter.page, '/admin');
@@ -98,6 +98,7 @@ test('Melden, moderieren, Einspruch und Sperre – mit getrennten Rollen', async
   await expect(reporter.page.getByText(/bereits gemeldet/)).toBeVisible();
 
   // --- Moderation: Warteschlange, Meldung, Entscheidung mit Begründung ---
+  await ensureStaffMfa(moderator.page);
   await moderator.page.goto('/admin');
   await expect(moderator.page.getByRole('link', { name: 'Konten' })).toHaveCount(0);
   await expect(moderator.page.getByText('Systemstatistiken')).toHaveCount(0);

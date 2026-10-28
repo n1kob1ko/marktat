@@ -8,3 +8,4 @@ export * from './types.js';
 export * from './admin.js';
 export * from './import.js';
 export * from './feeds.js';
+export * from './affiliate.js';

@@ -25,7 +25,7 @@ async function expectNoViolations(page: Page, label: string) {
 
 test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ page }) => {
   test.setTimeout(180_000);
-  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-freizeit/fahrraeder', '/deals', '/deals?q=notebook', '/dienstleistungen', '/dienstleistungen?bereich=it-digital', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
+  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-freizeit/fahrraeder', '/deals', '/deals?q=notebook', '/deals/werbung', '/dienstleistungen', '/dienstleistungen?bereich=it-digital', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await expectNoViolations(page, path);
   }
@@ -33,7 +33,7 @@ test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({
 
 test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im Bild', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const path of ['/', '/suche?q=rad', '/deals', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
+  for (const path of ['/', '/suche?q=rad', '/deals', '/deals/werbung', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await page.waitForLoadState('networkidle').catch(() => undefined);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
@@ -73,7 +73,7 @@ test('Admin-Bereich ohne automatisch erkennbare WCAG-Verstöße', async ({ page 
   const email = `a11y-admin-${testInfo.project.name}-${Date.now()}@example.test`;
   await registerConfirmed(page, 'Admin Barrierefrei', email);
   setRole(email, 'ADMIN');
-  for (const adminPath of ['/admin', '/admin/meldungen', '/admin/einsprueche', '/admin/inserate', '/admin/nutzer', '/admin/protokoll', '/admin/system', '/admin/monetarisierung', '/admin/monetarisierung/buchungen', '/admin/deals', '/admin/dienstleistungen', '/admin/dienstleistungen/projekte']) {
+  for (const adminPath of ['/admin', '/admin/meldungen', '/admin/einsprueche', '/admin/inserate', '/admin/nutzer', '/admin/protokoll', '/admin/system', '/admin/monetarisierung', '/admin/monetarisierung/buchungen', '/admin/deals', '/admin/affiliate', '/admin/dienstleistungen', '/admin/dienstleistungen/projekte']) {
     await page.goto(adminPath);
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     await expectNoViolations(page, adminPath);

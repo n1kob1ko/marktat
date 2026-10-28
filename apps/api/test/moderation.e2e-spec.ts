@@ -338,8 +338,8 @@ describe('Moderation und Admin-Bereich', () => {
       expect(res.body.action).toBe('ACCOUNT_SUSPENDED');
       await request(server()).post(`/v1/admin/users/${target.id}/decisions`).set(moderator.auth).send({ decision: 'SUSPEND', reason: 'FRAUD', ground: 'TERMS', statement }).expect(409);
 
-      await searchIndex.flush();
-      expect(await indexedIds(searchIndex)).not.toContain(listing.id);
+      // Die Sperre aktualisiert den Suchindex im Hintergrund
+      await expect.poll(() => indexedIds(searchIndex)).not.toContain(listing.id);
       await request(server()).get(`/v1/listings/${listing.id}`).expect(404);
       const me = await request(server()).get('/v1/me').set(target.auth).expect(200);
       expect(me.body).toMatchObject({ status: 'SUSPENDED', suspension: { decisionId: res.body.id, statement } });
@@ -398,7 +398,8 @@ describe('Moderation und Admin-Bereich', () => {
 
       const messages = await request(server()).get(`/v1/admin/reports/${reportId}/messages`).set(moderator.auth).expect(200);
       expect(messages.body.messages).toEqual([expect.objectContaining({ author: 'reported', body: 'Zahl bitte vorab per Gutschein.' })]);
-      expect(await prisma.auditLog.count({ where: { action: 'report.messages_viewed', actorId: moderator.id } })).toBe(1);
+      // Das Protokoll wird ohne Warten geschrieben
+      await expect.poll(() => prisma.auditLog.count({ where: { action: 'report.messages_viewed', actorId: moderator.id } })).toBe(1);
       const history = await request(server()).get(`/v1/admin/reports/${reportId}`).set(moderator.auth).expect(200);
       expect(history.body.events.at(-1)).toMatchObject({ type: 'NOTE', note: 'Nachrichten der Unterhaltung eingesehen', actor: { id: moderator.id } });
 

@@ -123,6 +123,34 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('true')
       .transform((v) => v === 'true'),
+    /**
+     * Zentrale Affiliate-Deals über Awin (nur Publisher-Konto, kein Advertiser-Tarif). Aus, bis Publisher-Konto,
+     * Partnerschaften und Schlüssel vorliegen (docs/affiliate.md). Schlüssel nur in der .env des Servers.
+     */
+    AWIN_ENABLED: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((v) => v === 'true'),
+    /** Publisher-ID (Zahl, im Awin-Konto oben links) */
+    AWIN_PUBLISHER_ID: z
+      .string()
+      .regex(/^\d{1,12}$/, 'AWIN_PUBLISHER_ID besteht nur aus Ziffern.')
+      .optional()
+      .or(z.literal('').transform(() => undefined)),
+    /** Token der Awin-API (https://ui.awin.com/awin-api) – für Programme, Aktionen und Gutscheine */
+    AWIN_API_TOKEN: z.string().min(8).optional().or(z.literal('').transform(() => undefined)),
+    /** Schlüssel für Produktfeeds (Toolbox → Create-a-Feed: Teil „apikey/…“ der Download-Adresse) */
+    AWIN_FEED_API_KEY: z.string().min(8).optional().or(z.literal('').transform(() => undefined)),
+    /** Nur für Tests änderbar (Testserver) */
+    AWIN_API_URL: z.string().url().default('https://api.awin.com'),
+    AWIN_PRODUCTDATA_URL: z.string().url().default('https://productdata.awin.com'),
+    /** Region der Aktionen und Programme (ISO-Ländercode) */
+    AWIN_REGION: z
+      .string()
+      .regex(/^[A-Z]{2}$/)
+      .default('AT'),
+    /** Höchstzahl übernommener Produkte je Feed (Speicher, Suchindex, Moderation) */
+    AWIN_MAX_PRODUCTS_PER_FEED: z.coerce.number().int().min(1).max(100_000).default(5000),
     /** Nur Tests: ausgehende Abrufe an lokale Testserver (http, 127.0.0.1) erlauben. In Produktion verboten. */
     OUTBOUND_ALLOW_PRIVATE: z
       .enum(['true', 'false'])

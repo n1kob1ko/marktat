@@ -20,6 +20,7 @@ import { dealValidity, endsSoon, referenceExplanation } from '@/lib/deals';
 import { metaDescription } from '@/lib/seo';
 import { FlashMessage } from '@/components/flash-message';
 import { ItemFavoriteButton } from '@/components/favorites/item-favorite-button';
+import { AdLabel } from '@/components/deals/ad-label';
 import { DealPrice, DiscountBadge } from '@/components/deals/deal-price';
 
 async function loadDeal(id: string, token: string | null) {
@@ -35,9 +36,9 @@ export async function generateMetadata({ params }: PageProps<'/deals/[id]'>): Pr
   const [{ id }, token] = await Promise.all([params, getAccessToken()]);
   const deal = await loadDeal(id, token).catch(() => null);
   if (!deal) return { title: 'Angebot nicht gefunden', robots: { index: false } };
-  const description = metaDescription(deal.description, `${deal.title} bei ${deal.merchant.name} für ${formatPriceCents(deal.priceCents)} – ${dealValidity(deal)}`);
+  const description = metaDescription(deal.description, `${deal.title} bei ${deal.sellerName} für ${formatPriceCents(deal.priceCents)} – ${dealValidity(deal)}`);
   return {
-    title: `${deal.title} – Angebot von ${deal.merchant.name}`,
+    title: `${deal.title} – Angebot von ${deal.sellerName}`,
     description,
     alternates: { canonical: `/deals/${deal.id}` },
     // Nur aktuelle Angebote gehören in Suchmaschinen
@@ -107,8 +108,9 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
 
           <Card className="p-5 sm:p-7">
             <div className="flex flex-wrap items-center gap-2">
+              {deal.affiliate ? <AdLabel className="py-1 text-xs" /> : null}
               <Badge tone="accent">Angebot</Badge>
-              <Badge tone="brand">Gewerblicher Händler</Badge>
+              <Badge tone="brand">{deal.affiliate ? `Partnerangebot über ${deal.affiliate.networkName}` : 'Gewerblicher Händler'}</Badge>
               {deal.availability !== 'UNKNOWN' ? <Badge tone="neutral">{DEAL_AVAILABILITY_LABELS[deal.availability]}</Badge> : null}
               {!publicView ? <Badge tone="warning">{DEAL_STATUS_LABELS[deal.status]}</Badge> : null}
             </div>
@@ -159,13 +161,15 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 <div className="flex items-center gap-1.5">
                   <RefreshCw className="size-4 shrink-0 text-ink-500" aria-hidden="true" />
                   <dt className="sr-only">Zuletzt geprüft</dt>
-                  <dd>Zuletzt vom Händler bestätigt am {formatDate(deal.lastVerifiedAt)}</dd>
+                  <dd>
+                    {deal.affiliate ? `Datenstand laut Produktfeed vom ${formatDate(deal.lastVerifiedAt)}` : `Zuletzt vom Händler bestätigt am ${formatDate(deal.lastVerifiedAt)}`}
+                  </dd>
                 </div>
               ) : null}
               <div className="flex items-center gap-1.5">
                 <BadgeCheck className="size-4 shrink-0 text-ink-500" aria-hidden="true" />
                 <dt className="sr-only">Herkunft</dt>
-                <dd>{DEAL_SOURCE_LABELS[deal.source]}</dd>
+                <dd>{deal.affiliate ? `Quelle: Produktfeed von ${deal.affiliate.advertiserName} über ${deal.affiliate.networkName}` : DEAL_SOURCE_LABELS[deal.source]}</dd>
               </div>
             </dl>
 
@@ -199,7 +203,9 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
           {deal.priceHistory.length > 1 ? (
             <Card className="p-5 sm:p-7">
               <h2 className="font-sans text-lg font-semibold tracking-normal">Erfasste Preise</h2>
-              <p className="mt-1 text-sm text-ink-600">Preise, die der Händler hier eingetragen hat – keine Marktpreise und keine Schätzung.</p>
+              <p className="mt-1 text-sm text-ink-600">
+                {deal.affiliate ? 'Preise laut Produktfeed, wie MarktAT sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
+              </p>
               <table className="mt-4 w-full text-left text-sm">
                 <thead className="text-xs text-ink-500">
                   <tr>
@@ -223,7 +229,7 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
         <aside className="space-y-4">
           <Card className="p-5">
             <div className="flex items-center gap-3">
-              {deal.merchant.logoUrl ? (
+              {deal.merchant?.logoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)
                 <img src={deal.merchant.logoUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-full border border-line bg-surface object-contain" />
               ) : (
@@ -232,8 +238,8 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 </span>
               )}
               <div className="min-w-0">
-                <p className="truncate font-semibold text-ink-900">{deal.merchant.name}</p>
-                <p className="text-sm text-ink-500">Gewerblicher Händler</p>
+                <p className="truncate font-semibold text-ink-900">{deal.sellerName}</p>
+                <p className="text-sm text-ink-500">{deal.affiliate ? `Online-Shop · Daten über ${deal.affiliate.networkName}` : 'Gewerblicher Händler'}</p>
               </div>
             </div>
             {online && deal.url && publicView ? (
@@ -247,8 +253,9 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                   Zum Angebot <ExternalLink className="size-4.5" aria-hidden="true" />
                 </a>
                 <p className="mt-2 text-center text-xs text-ink-500">
-                  Weiter zu {deal.urlHost}
-                  {deal.isAffiliateLink ? ' · Werbelink: Der Händler oder Dritte erhalten eventuell eine Provision.' : ''}
+                  {deal.affiliate
+                    ? `Weiter zum Shop von ${deal.affiliate.advertiserName} · Werbung: MarktAT erhält bei einem Kauf eventuell eine Provision von ${deal.affiliate.networkName}. Der Preis ändert sich dadurch nicht.`
+                    : `Weiter zu ${deal.urlHost}${deal.isAffiliateLink ? ' · Werbelink: Der Händler oder Dritte erhalten eventuell eine Provision.' : ''}`}
                 </p>
               </>
             ) : null}
@@ -257,13 +264,22 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
               Kauf und Bezahlung erfolgen direkt beim Händler. MarktAT ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
               bzw. im Online-Shop.
             </p>
-            <Link href={`/haendler/${deal.merchant.id}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
-              <Store className="size-4" aria-hidden="true" /> Händlerprofil
-            </Link>
-            <br />
-            <Link href={`/deals?haendler=${deal.merchant.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
-              Alle Angebote dieses Händlers
-            </Link>
+            {deal.merchant ? (
+              <>
+                <Link href={`/haendler/${deal.merchant.id}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                  <Store className="size-4" aria-hidden="true" /> Händlerprofil
+                </Link>
+                <br />
+                <Link href={`/deals?haendler=${deal.merchant.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                  Alle Angebote dieses Händlers
+                </Link>
+              </>
+            ) : (
+              <p className="mt-3 text-xs leading-relaxed text-ink-500">
+                {deal.sellerName} ist kein Händlerkonto bei MarktAT. Das Angebot stammt aus dem Produktfeed des Händlers, den wir über das Partnerprogramm von{' '}
+                {deal.affiliate?.networkName} beziehen. <Link href="/deals/werbung" className="font-semibold text-brand-700 hover:underline">So finanziert sich MarktAT</Link>
+              </p>
+            )}
           </Card>
           {deal.relatedCategoryPath ? (
             <Link href={`/suche?kategorie=${deal.relatedCategoryPath}`} className="block rounded-xl border border-line bg-surface p-4 text-sm text-ink-700 hover:border-brand-300">

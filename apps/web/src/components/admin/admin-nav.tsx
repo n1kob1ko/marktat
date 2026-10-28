@@ -9,6 +9,7 @@ const NAV = [
   { href: '/admin/meldungen', label: 'Meldungen', adminOnly: false },
   { href: '/admin/inserate', label: 'Inserate', adminOnly: false },
   { href: '/admin/deals', label: 'Deals', adminOnly: false },
+  { href: '/admin/affiliate', label: 'Affiliate', adminOnly: false },
   { href: '/admin/dienstleistungen', label: 'Dienstleistungen', adminOnly: false },
   { href: '/admin/dienstleistungen/projekte', label: 'Projektaufträge', adminOnly: false },
   { href: '/admin/einsprueche', label: 'Einsprüche', adminOnly: false },

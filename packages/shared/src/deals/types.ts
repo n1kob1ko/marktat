@@ -1,4 +1,5 @@
 import type { LocationSummary, Paginated, ListingModerationInfo } from '../types.js';
+import type { AffiliateNetwork } from './affiliate.js';
 import type { DealAvailability, DealChannel, DealDisplayStatus, DealImageRights, DealLinkStatus, DealSource, ReferencePriceType } from './enums.js';
 
 /** Antwort-Typen des Deal-Bereichs. Datumsfelder als ISO-8601-Strings. */
@@ -15,6 +16,15 @@ export interface DealMerchant {
   /** Firmenname (bzw. Anzeigename) */
   name: string;
   logoUrl: string | null;
+}
+
+/** Herkunft eines zentralen Affiliate-Deals: Händler laut Netzwerk, nie ein MarktAT-Händlerkonto */
+export interface DealAffiliateInfo {
+  network: AffiliateNetwork;
+  /** z. B. „Awin“ */
+  networkName: string;
+  /** Name des Händlers (Advertiser) laut Netzwerk */
+  advertiserName: string;
 }
 
 export interface DealStoreView {
@@ -35,7 +45,12 @@ export interface DealSummary {
   imageUrl: string | null;
   channel: DealChannel;
   category: { slug: string; name: string };
-  merchant: DealMerchant;
+  /** Händlerkonto bei MarktAT; null bei Affiliate-Deals */
+  merchant: DealMerchant | null;
+  /** Nur Affiliate-Deals: Händler und Datenquelle (Kennzeichnung „Werbung“) */
+  affiliate: DealAffiliateInfo | null;
+  /** Wer das Angebot anbietet (Firmenname des Händlerkontos bzw. Händler laut Netzwerk) */
+  sellerName: string;
   priceCents: number;
   unitPriceText: string | null;
   /** Nur mit zulässiger Grundlage; sonst null */
@@ -87,7 +102,8 @@ export interface DealDetail extends DealSummary {
   isFavorite: boolean;
   linkStatus: DealLinkStatus;
   relatedCategoryPath: string | null;
-  merchantProfileUrl: string;
+  /** Händlerseite bei MarktAT; null bei Affiliate-Deals */
+  merchantProfileUrl: string | null;
   /** Nur für Händler und Team */
   moderation?: DealModerationInfo | null;
   reviewReason?: string | null;

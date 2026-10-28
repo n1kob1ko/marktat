@@ -118,6 +118,15 @@ jobs:
       - name: Playwright-Browser installieren
         run: pnpm --filter @marktat/web exec playwright install --with-deps chromium
       - name: API und Web starten
+        # Partnerangebote gegen den Awin-Testserver aus e2e/fake-awin.ts (startet affiliate.spec.ts) – keine echten Schlüssel
+        env:
+          AWIN_ENABLED: 'true'
+          AWIN_PUBLISHER_ID: '123456'
+          AWIN_API_TOKEN: e2e-api-token-0123456789
+          AWIN_FEED_API_KEY: e2e-feed-key-0123456789
+          AWIN_API_URL: http://127.0.0.1:4599
+          AWIN_PRODUCTDATA_URL: http://127.0.0.1:4599
+          OUTBOUND_ALLOW_PRIVATE: 'true'
         run: |
           (cd apps/api && nohup pnpm start > ../../api.log 2>&1 &)
           (cd apps/web && nohup pnpm start > ../../web.log 2>&1 &)
@@ -131,6 +140,8 @@ jobs:
           cat api.log web.log
           exit 1
       - run: pnpm --filter @marktat/web test:e2e
+        env:
+          E2E_AWIN_FAKE_PORT: '4599'
       - if: failure()
         run: cat api.log web.log
       - if: failure()

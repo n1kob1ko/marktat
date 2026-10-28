@@ -1017,6 +1017,8 @@ enum DealSource {
   MANUAL
   CSV
   FEED
+  /// Zentral über ein Affiliate-Netzwerk (Awin): gehört keinem MarktAT-Händlerkonto, sondern einem freigegebenen Partnerprogramm
+  AFFILIATE
 }
 
 enum DealLinkStatus {
@@ -1027,15 +1029,16 @@ enum DealLinkStatus {
 
 /// Kategorien der Deals (Seed aus DEAL_CATEGORIES in @marktat/shared)
 model DealCategory {
-  id                  String  @id @default(cuid())
-  slug                String  @unique
-  name                String  @unique
+  id                  String             @id @default(cuid())
+  slug                String             @unique
+  name                String             @unique
   icon                String?
-  sortOrder           Int     @default(0) @map("sort_order")
-  isActive            Boolean @default(true) @map("is_active")
+  sortOrder           Int                @default(0) @map("sort_order")
+  isActive            Boolean            @default(true) @map("is_active")
   /// Verwandte Kategorie der Kleinanzeigen (Pfad), z. B. für „Ähnliche Kleinanzeigen“
-  relatedCategoryPath String? @map("related_category_path")
+  relatedCategoryPath String?            @map("related_category_path")
   deals               Deal[]
+  affiliatePrograms   AffiliateProgram[]
 
   @@map("deal_categories")
 }
@@ -1045,7 +1048,12 @@ model DealCategory {
 model Deal {
   id                        String              @id @default(cuid())
   slug                      String
-  merchantId                String              @map("merchant_id") @db.Uuid
+  /// Händlerkonto bei MarktAT; leer nur bei Affiliate-Deals (Herkunft AFFILIATE, siehe CHECK deals_owner_check)
+  merchantId                String?             @map("merchant_id") @db.Uuid
+  /// Partnerprogramm im Affiliate-Netzwerk (nur Herkunft AFFILIATE)
+  affiliateProgramId        String?             @map("affiliate_program_id")
+  /// Produktfeed des Netzwerks, aus dem der Deal zuletzt kam
+  affiliateFeedId           String?             @map("affiliate_feed_id")
   categoryId                String              @map("category_id")
   title                     String              @db.VarChar(120)
   description               String              @default("") @db.VarChar(3000)
@@ -1055,7 +1063,7 @@ model Deal {
   /// Stabile Angebots-/Artikelnummer des Händlers: Importe aktualisieren darüber statt Doppelte anzulegen
   externalId                String?             @map("external_id") @db.VarChar(100)
   channel                   DealChannel
-  url                       String?             @db.VarChar(500)
+  url                       String?             @db.VarChar(1000)
   isAffiliateLink           Boolean             @default(false) @map("is_affiliate_link")
   /// Aktueller Angebotspreis in Cent (inkl. USt.)
   priceCents                Int                 @map("price_cents")
@@ -1086,6 +1094,8 @@ model Deal {
   imageHeight               Int?                @map("image_height")
   imageRights               DealImageRights?    @map("image_rights")
   imageCredit               String?             @map("image_credit") @db.VarChar(120)
+  /// Nur Affiliate-Deals: Produktbild des Händlers laut Feed – wird unverändert über die API weitergereicht, nie kopiert
+  externalImageUrl          String?             @map("external_image_url") @db.VarChar(1000)
   source                    DealSource          @default(MANUAL)
   /// Prüfsumme der importierten Werte (unveränderte Zeilen werden übersprungen)
   contentHash               String?             @map("content_hash") @db.VarChar(64)
@@ -1103,17 +1113,22 @@ model Deal {
   updatedAt                 DateTime            @updatedAt @map("updated_at")
   deletedAt                 DateTime?           @map("deleted_at")
 
-  merchant     User                 @relation(fields: [merchantId], references: [id])
-  category     DealCategory         @relation(fields: [categoryId], references: [id])
-  stores       DealStore[]
-  priceRecords DealPriceRecord[]
-  reports      Report[]
-  decisions    ModerationDecision[]
-  favorites    DealFavorite[]
-  feed         DealFeed?            @relation(fields: [feedId], references: [id])
+  merchant         User?                @relation(fields: [merchantId], references: [id], onDelete: Restrict)
+  affiliateProgram AffiliateProgram?    @relation(fields: [affiliateProgramId], references: [id], onDelete: Restrict)
+  affiliateFeed    AffiliateFeed?       @relation(fields: [affiliateFeedId], references: [id], onDelete: SetNull)
+  category         DealCategory         @relation(fields: [categoryId], references: [id])
+  stores           DealStore[]
+  priceRecords     DealPriceRecord[]
+  reports          Report[]
+  decisions        ModerationDecision[]
+  favorites        DealFavorite[]
+  feed             DealFeed?            @relation(fields: [feedId], references: [id])
 
   @@unique([merchantId, externalId])
   @@unique([merchantId, clientRequestId])
+  /// Ein Produkt je Partnerprogramm (stabile Artikelnummer aus dem Feed) – keine Doppelten
+  @@unique([affiliateProgramId, externalId])
+  @@index([affiliateFeedId])
   @@index([status, endsAt])
   @@index([status, publishedAt(sort: Desc)])
   @@index([merchantId, status])
@@ -1536,4 +1551,185 @@ model ServiceProject {
   @@index([categoryId])
   @@index([locationId])
   @@map("service_projects")
+}
+
+// ---------------------------------------------------------------------------
+// Zentrale Affiliate-Deals (Awin-Publisher, weitere Netzwerke später). Getrennt von Händlerkonten:
+// Angebote gehören einem Partnerprogramm, nie einem MarktAT-Händler. Regeln: docs/affiliate.md
+// ---------------------------------------------------------------------------
+
+enum AffiliateNetwork {
+  AWIN
+}
+
+/// Unsere Freigabe eines Programms (erst APPROVED erscheint öffentlich)
+enum AffiliateProgramStatus {
+  PENDING
+  APPROVED
+  PAUSED
+  REJECTED
+}
+
+/// Teilnahme am Programm laut Netzwerk (nur JOINED darf beworben werden)
+enum AffiliateMembership {
+  JOINED
+  NOT_JOINED
+  PENDING
+  SUSPENDED
+  UNKNOWN
+}
+
+enum AffiliateFeedStatus {
+  /// Neu in der Feedliste, noch nicht freigegeben
+  PENDING
+  ACTIVE
+  PAUSED
+  /// Mehrere Fehlschläge in Folge – wird nicht mehr abgerufen, bis das Team ihn fortsetzt
+  FAILING
+  /// Nicht mehr in der Feedliste des Netzwerks
+  REMOVED
+}
+
+enum AffiliateSyncKind {
+  FEED_LIST
+  FEED
+  PROMOTIONS
+}
+
+enum AffiliateSyncStatus {
+  RUNNING
+  SUCCESS
+  /// Teilweise übernommen (z. B. Zeilen übersprungen, Höchstzahl erreicht)
+  PARTIAL
+  FAILED
+}
+
+enum AffiliatePromotionType {
+  PROMOTION
+  VOUCHER
+}
+
+/// Partnerprogramm (Advertiser) in einem Affiliate-Netzwerk
+model AffiliateProgram {
+  id                   String                 @id @default(cuid())
+  network              AffiliateNetwork
+  /// ID des Advertisers im Netzwerk
+  externalId           String                 @map("external_id") @db.VarChar(40)
+  name                 String                 @db.VarChar(120)
+  region               String?                @db.VarChar(10)
+  membership           AffiliateMembership    @default(UNKNOWN)
+  membershipCheckedAt  DateTime?              @map("membership_checked_at")
+  status               AffiliateProgramStatus @default(PENDING)
+  /// Dokumentation der Freigabe: Programmbedingungen geprüft, Besonderheiten (Pflicht bei Freigabe)
+  approvalNote         String?                @map("approval_note") @db.VarChar(1000)
+  reviewedById         String?                @map("reviewed_by_id") @db.Uuid
+  approvedAt           DateTime?              @map("approved_at")
+  /// Produktbilder des Händlers dürfen gezeigt werden (laut Programmbedingungen)
+  allowImages          Boolean                @default(false) @map("allow_images")
+  /// UVP aus dem Feed darf als Vergleichspreis gezeigt werden (Quelle wird angegeben)
+  allowReferencePrices Boolean                @default(false) @map("allow_reference_prices")
+  /// Gutscheincodes dürfen veröffentlicht werden
+  allowVouchers        Boolean                @default(false) @map("allow_vouchers")
+  defaultCategoryId    String?                @map("default_category_id")
+  lastSyncAt           DateTime?              @map("last_sync_at")
+  lastError            String?                @map("last_error") @db.VarChar(500)
+  createdAt            DateTime               @default(now()) @map("created_at")
+  updatedAt            DateTime               @updatedAt @map("updated_at")
+
+  defaultCategory DealCategory?        @relation(fields: [defaultCategoryId], references: [id])
+  feeds           AffiliateFeed[]
+  deals           Deal[]
+  promotions      AffiliatePromotion[]
+  syncRuns        AffiliateSyncRun[]
+
+  @@unique([network, externalId])
+  @@index([status])
+  @@map("affiliate_programs")
+}
+
+/// Produktfeed eines Programms. Die Download-Adresse enthält den API-Schlüssel und wird deshalb nie gespeichert.
+model AffiliateFeed {
+  id                  String              @id @default(cuid())
+  programId           String              @map("program_id")
+  externalId          String              @map("external_id") @db.VarChar(40)
+  name                String              @db.VarChar(200)
+  language            String?             @db.VarChar(10)
+  vertical            String?             @db.VarChar(60)
+  status              AffiliateFeedStatus @default(PENDING)
+  approvalNote        String?             @map("approval_note") @db.VarChar(1000)
+  reviewedById        String?             @map("reviewed_by_id") @db.Uuid
+  approvedAt          DateTime?           @map("approved_at")
+  /// „Last Imported“ laut Feedliste des Netzwerks
+  networkUpdatedAt    DateTime?           @map("network_updated_at")
+  /// Stand, der zuletzt vollständig übernommen wurde (gleich = kein erneuter Download)
+  processedUpdatedAt  DateTime?           @map("processed_updated_at")
+  listedAt            DateTime?           @map("listed_at")
+  lastFetchedAt       DateTime?           @map("last_fetched_at")
+  nextFetchAt         DateTime?           @map("next_fetch_at")
+  lastError           String?             @map("last_error") @db.VarChar(500)
+  consecutiveFailures Int                 @default(0) @map("consecutive_failures")
+  productCount        Int                 @default(0) @map("product_count")
+  createdAt           DateTime            @default(now()) @map("created_at")
+  updatedAt           DateTime            @updatedAt @map("updated_at")
+
+  program  AffiliateProgram   @relation(fields: [programId], references: [id], onDelete: Cascade)
+  deals    Deal[]
+  syncRuns AffiliateSyncRun[]
+
+  @@unique([programId, externalId])
+  @@index([status, nextFetchAt])
+  @@map("affiliate_feeds")
+}
+
+/// Protokoll jedes Abrufs (Feedliste, Feed, Aktionen) mit Zählern und Fehlern – Grundlage der Admin-Übersicht
+model AffiliateSyncRun {
+  id            String              @id @default(cuid())
+  network       AffiliateNetwork
+  kind          AffiliateSyncKind
+  status        AffiliateSyncStatus @default(RUNNING)
+  programId     String?             @map("program_id")
+  feedId        String?             @map("feed_id")
+  /// Zähler: angelegt, aktualisiert, unverändert, beendet, übersprungen je Grund
+  stats         Json                @default("{}")
+  error         String?             @db.VarChar(1000)
+  /// Manuell gestartet von (leer = Zeitplan)
+  triggeredById String?             @map("triggered_by_id") @db.Uuid
+  startedAt     DateTime            @default(now()) @map("started_at")
+  finishedAt    DateTime?           @map("finished_at")
+
+  program AffiliateProgram? @relation(fields: [programId], references: [id], onDelete: SetNull)
+  feed    AffiliateFeed?    @relation(fields: [feedId], references: [id], onDelete: SetNull)
+
+  @@index([startedAt(sort: Desc)])
+  @@index([kind, status, startedAt(sort: Desc)])
+  @@index([feedId, startedAt(sort: Desc)])
+  @@map("affiliate_sync_runs")
+}
+
+/// Aktion oder Gutschein eines Programms (Awin Publisher Offers API)
+model AffiliatePromotion {
+  id          String                 @id @default(cuid())
+  programId   String                 @map("program_id")
+  externalId  String                 @map("external_id") @db.VarChar(40)
+  type        AffiliatePromotionType
+  title       String                 @db.VarChar(200)
+  description String                 @default("") @db.VarChar(2000)
+  terms       String?                @db.VarChar(2000)
+  /// Nur gespeichert, wenn das Programm Gutscheincodes erlaubt
+  voucherCode String?                @map("voucher_code") @db.VarChar(80)
+  /// Tracking-Link des Netzwerks
+  url         String                 @db.VarChar(1000)
+  startsAt    DateTime?              @map("starts_at")
+  endsAt      DateTime?              @map("ends_at")
+  /// Zuletzt in der Antwort des Netzwerks enthalten; fehlt sie, wird die Aktion ausgeblendet
+  lastSeenAt  DateTime               @map("last_seen_at")
+  hiddenAt    DateTime?              @map("hidden_at")
+  createdAt   DateTime               @default(now()) @map("created_at")
+  updatedAt   DateTime               @updatedAt @map("updated_at")
+
+  program AffiliateProgram @relation(fields: [programId], references: [id], onDelete: Cascade)
+
+  @@unique([programId, externalId])
+  @@index([hiddenAt, endsAt])
+  @@map("affiliate_promotions")
 }

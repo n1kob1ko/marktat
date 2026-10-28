@@ -446,7 +446,7 @@ export interface DealImportCounts {
 
 export interface DealImportView {
   id: string;
-  source: DealSource;
+  source: Exclude<DealSource, 'AFFILIATE'>;
   feedId: string | null;
   fileName: string | null;
   status: DealImportStatus;

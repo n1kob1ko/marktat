@@ -72,7 +72,7 @@ async function AdminDeal({ params, searchParams }: Pick<PageProps<'/admin/deals/
   }
   const { deal, merchant, decisions, reports, duplicates } = detail;
   const openReports = reports.filter((r) => r.status === 'OPEN' || r.status === 'IN_REVIEW');
-  const own = merchant.id === user.id;
+  const own = merchant?.id === user.id;
   const isAdmin = user.role === 'ADMIN';
   const stepUp = { enabled: user.security?.level === 'aal2', maxAgeMinutes: user.security?.stepUpMaxAgeMinutes ?? 10 };
   const rows: [string, React.ReactNode][] = [
@@ -204,6 +204,23 @@ async function AdminDeal({ params, searchParams }: Pick<PageProps<'/admin/deals/
         </div>
 
         <aside className="space-y-4">
+          {detail.affiliate ? (
+            <Section title="Partnerprogramm">
+              <div className="space-y-1 text-sm">
+                <p className="flex flex-wrap items-center gap-2">
+                  <span className="font-semibold text-ink-900">{detail.affiliate.programName}</span>
+                  <Badge tone="neutral">Werbung · {detail.affiliate.networkName}</Badge>
+                </p>
+                <p className="text-ink-600">Kein Händlerkonto bei MarktAT – Angebot aus dem Produktfeed{detail.affiliate.feedName ? ` „${detail.affiliate.feedName}“` : ''}.</p>
+                {detail.affiliate.externalId ? <p className="text-ink-500">Artikelnummer: {detail.affiliate.externalId}</p> : null}
+                <p className="text-ink-500">Entscheidungen hier gelten nur für dieses Produkt; ein neuer Feedstand hebt sie nicht auf.</p>
+                <p>
+                  <Link href="/admin/affiliate" className="font-semibold text-brand-700 hover:underline">Zur Affiliate-Übersicht</Link>
+                </p>
+              </div>
+            </Section>
+          ) : null}
+          {merchant ? (
           <Section title="Händler">
             <div className="space-y-1 text-sm">
               <p className="flex flex-wrap items-center gap-2">
@@ -221,6 +238,7 @@ async function AdminDeal({ params, searchParams }: Pick<PageProps<'/admin/deals/
               </p>
             </div>
           </Section>
+          ) : null}
           <Section title="Entscheiden">
             {own ? (
               <Alert tone="warning">Über eigene Angebote entscheidet jemand anderer aus dem Team.</Alert>

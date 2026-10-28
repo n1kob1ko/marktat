@@ -66,6 +66,14 @@ export default function PrivacyPage() {
         Derzeit werden ausschließlich technisch notwendige Cookies gesetzt; ein Einwilligungsbanner ist dafür nicht
         erforderlich. Vor Einführung von Analyse- oder Marketing-Diensten ist eine Einwilligungslösung umzusetzen.
       </p>
+      <h2>Partnerangebote (Affiliate-Links)</h2>
+      <p>
+        Mit „Werbung“ gekennzeichnete Partnerangebote führen über einen Tracking-Link des Partnernetzwerks (derzeit Awin)
+        zum Händler. Erst beim Klick auf einen solchen Link setzen Awin bzw. der Händler auf ihren eigenen Seiten Cookies,
+        um einen Kauf zuordnen zu können; dafür sind sie selbst verantwortlich. Produktbilder der Partnerangebote laden
+        wir über unseren Server, damit beim bloßen Ansehen keine Daten an Händler oder Netzwerk gehen. Näheres unter{' '}
+        <Link href="/deals/werbung">Werbung und Partnerangebote</Link>.
+      </p>
     </LegalPage>
   );
 }

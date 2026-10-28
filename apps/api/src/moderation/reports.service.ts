@@ -70,7 +70,7 @@ export class ReportsService {
     const deal = await this.prisma.deal.findFirst({ where: { id: dealId, ...publicDealWhere() }, select: { id: true, merchantId: true } });
     if (!deal) throw new NotFoundException('Dieses Angebot gibt es nicht (mehr).');
     if (deal.merchantId === user.id) throw new ForbiddenException('Dein eigenes Angebot kannst du nicht melden.');
-    const report = await this.create(user, { targetType: 'DEAL', dealId: deal.id, reportedId: deal.merchantId, reason: input.reason, details: input.details });
+    const report = await this.create(user, { targetType: 'DEAL', dealId: deal.id, reportedId: deal.merchantId ?? undefined, reason: input.reason, details: input.details });
     this.audit.log({ action: 'deal.reported', actorId: user.id, entityType: 'deal', entityId: deal.id, ip, metadata: { reportId: report.id, reason: input.reason } });
     return { id: report.id };
   }
@@ -122,7 +122,8 @@ export class ReportsService {
       dealId?: string;
       serviceProfileId?: string;
       conversationId?: string;
-      reportedId: string;
+      /** Leer bei Affiliate-Deals (kein Konto bei MarktAT) */
+      reportedId?: string;
       reason: ReportReason;
       details?: string;
     },
@@ -395,7 +396,8 @@ export class ReportsService {
   async closeWithDecision(
     tx: Prisma.TransactionClient,
     where: Prisma.ReportWhereInput,
-    decisionId: string,
+    /** null: Entscheidung ohne betroffenes Konto (Affiliate-Deals) */
+    decisionId: string | null,
     actorId: string,
     status: 'RESOLVED' | 'DISMISSED' | 'IN_REVIEW',
   ) {

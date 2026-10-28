@@ -18,7 +18,7 @@ import {
   type UpdateDealInput,
 } from '@marktat/shared';
 import { Prisma, type Deal } from '../generated/prisma/client.js';
-import type { DealStatus } from '../generated/prisma/enums.js';
+import type { DealSource, DealStatus } from '../generated/prisma/enums.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { loadEnv } from '../config/env.js';
@@ -40,7 +40,7 @@ import {
   statusAfterChange,
 } from './deal-fields.js';
 import { DealSearchService } from './deal-search.service.js';
-import { dealInclude, isDealPublic, toDealDetail, toMerchantDeal } from './deals.mapper.js';
+import { dealInclude, dealVisibilityInclude, isDealPublic, toDealDetail, toMerchantDeal } from './deals.mapper.js';
 
 const DAY_MS = 86_400_000;
 /** Höchstzahl gleichzeitig nicht gelöschter Deals je Händler (Schutz vor Massen-Spam; Importe zählen mit) */
@@ -329,7 +329,7 @@ export class DealsService {
   /** Weiterleitung auf eine Bildvariante: öffentlich nur für sichtbare Deals, sonst mit gültiger Signatur */
   async imageDownload(id: string, variant: string, exp?: string, sig?: string) {
     if (!ENTITY_ID.test(id) || !isImageVariant(variant)) return null;
-    const deal = await this.prisma.deal.findUnique({ where: { id }, include: { merchant: { select: { status: true, deletedAt: true, accountType: true, dealsBlockedAt: true } } } });
+    const deal = await this.prisma.deal.findUnique({ where: { id }, include: dealVisibilityInclude });
     if (!deal?.imageKey) return null;
     const isPublic = isDealPublic(deal);
     if (!isPublic && !this.urls.verify('deal', id, variant, exp, sig)) return null;
@@ -354,7 +354,7 @@ export class DealsService {
   /** Klick auf „Zum Angebot“: zählt und liefert das Ziel (nur bei sichtbaren Deals mit Link) */
   async click(id: string): Promise<{ url: string }> {
     if (!ENTITY_ID.test(id)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
-    const deal = await this.prisma.deal.findUnique({ where: { id }, include: { merchant: { select: { status: true, deletedAt: true, accountType: true, dealsBlockedAt: true } } } });
+    const deal = await this.prisma.deal.findUnique({ where: { id }, include: dealVisibilityInclude });
     if (!deal || !deal.url || !isDealPublic(deal)) throw new NotFoundException('Dieses Angebot ist nicht mehr verfügbar.');
     // Rohes SQL: Klicks ändern das Angebot nicht (updatedAt bleibt, Suchindex unberührt)
     await this.prisma.$executeRaw`UPDATE deals SET click_count = click_count + 1 WHERE id = ${id}`;
@@ -432,7 +432,7 @@ export class DealsService {
   }
 
   /** Preisänderung festhalten (Grundlage für „niedrigster erfasster Preis“ – keine Schätzungen) */
-  async recordPrice(tx: Prisma.TransactionClient, deal: Pick<Deal, 'id' | 'priceCents' | 'referencePriceCents'>, source: 'MANUAL' | 'CSV' | 'FEED') {
+  async recordPrice(tx: Prisma.TransactionClient, deal: Pick<Deal, 'id' | 'priceCents' | 'referencePriceCents'>, source: DealSource) {
     await tx.dealPriceRecord.create({ data: { dealId: deal.id, priceCents: deal.priceCents, referencePriceCents: deal.referencePriceCents, source } });
   }
 
