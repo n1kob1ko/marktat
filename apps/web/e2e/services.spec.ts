@@ -134,7 +134,8 @@ test('Anbieterprofil anlegen, finden, kontaktieren, melden und moderieren', asyn
   const dialog = visitor.getByRole('dialog', { name: 'Suche speichern' });
   await expect(dialog.getByText('Neue passende Anbieter per E-Mail schicken', { exact: false })).toBeVisible();
   await dialog.getByRole('button', { name: 'Speichern' }).click();
-  await expect(dialog.getByText('höchstens einmal am Tag', { exact: false })).toBeVisible();
+  // Erfolgsmeldung (der Hinweis „höchstens einmal am Tag“ steht schon am Häkchen)
+  await expect(dialog.getByText('Neue passende Anbieter bekommst du gesammelt', { exact: false })).toBeVisible();
   await visitor.goto('/konto/suchen');
   const saved = visitor.getByTestId('saved-search').filter({ hasText: word });
   await expect(saved.getByTestId('saved-search-kind')).toHaveText('Dienstleistungen');
