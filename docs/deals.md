@@ -42,7 +42,7 @@ Entwürfe sind auch vorher möglich.
 - **Rabatt**: berechnet ausschließlich die API (abgerundet). Händler geben ihn nie selbst ein.
 - **Prüfung vor dem Erscheinen**:
   - Ab 70 % Rabatt prüft das Team das Angebot, bevor es erscheint.
-  - Eine Preisänderung an einem freigegebenen Deal löst die Prüfung erneut aus. Sonstige Änderungen tun das nicht.
+  - Eine Preisänderung an einem freigegebenen Deal löst die Prüfung erneut aus, auch während einer Pause. Sonstige Änderungen tun das nicht.
 - **Was es bewusst nicht gibt**:
   - keine Countdown-Timer
   - keine erfundenen Preisverläufe
@@ -114,8 +114,8 @@ Ablauf:
 4. **Abruf** (`deal-feed-sync`): über `safeFetch` (keine internen Adressen, höchstens 3 Weiterleitungen, 20 s, 5 MB), mit eigenem User-Agent und bedingter Anfrage (`If-None-Match`/`If-Modified-Since`).
    - `304`: nichts geändert; die laufenden Angebote des Feeds gelten als bestätigt.
    - `429`: Hinweis auf Abrufbegrenzung, nächster Versuch zum nächsten Termin.
-   - Sonst dieselbe Prüfung wie beim CSV-Import, neue Angebote werden veröffentlicht. Angebote des Feeds, die nicht mehr enthalten sind, werden **beendet** (`EXPIRED`).
-5. **Fehler** werden am Feed (`last_error`, Zähler) und als fehlgeschlagener Import festgehalten. Nach **5** Fehlschlägen in Folge wird der Feed angehalten (`FAILING`, Audit `deal.feed_failing`). Der Händler kann ihn nach der Behebung fortsetzen.
+   - Sonst dieselbe Prüfung wie beim CSV-Import, neue Angebote werden veröffentlicht. Angebote des Feeds, die nicht mehr enthalten sind, werden **beendet** (`EXPIRED`). Angebote, die gerade geprüft werden (hoher Rabatt oder vom Team ausgeblendet), bleiben in Prüfung und enden nur zeitlich; sonst ließe sich eine Entscheidung durch Entfernen und Verlängern umgehen.
+5. **Fehler** werden am Feed (`last_error`, Zähler) und als fehlgeschlagener Import festgehalten. Nach **5** Fehlschlägen in Folge wird der Feed angehalten (`FAILING`, Audit `deal.feed_failing`). Der Händler kann ihn nach der Behebung fortsetzen. Einen **vom Team** angehaltenen Feed setzt erst eine neue Freigabe fort.
 
 Ein angehaltener, pausierter oder entfernter Feed aktualisiert nichts mehr. Seine Angebote verlieren nach 14 Tagen ohne Bestätigung automatisch die Sichtbarkeit.
 
