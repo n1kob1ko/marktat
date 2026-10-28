@@ -166,6 +166,19 @@ describe('Deals & Angebote', () => {
       expect(history.body.priceHistory.map((p: { priceCents: number }) => p.priceCents)).toEqual([49_900, 18_900, 19_900]);
     });
 
+    it('prüft einen hohen Rabatt auch, wenn er während einer Pause gesetzt wird', async () => {
+      const merchant = await signInMerchant(app);
+      const deal = await publishDeal(app, merchant.auth);
+      expect(deal.status).toBe('ACTIVE');
+      await request(server()).post(`/v1/me/deals/${deal.id}/pause`).set(merchant.auth).expect(200);
+      const repriced = await request(server()).patch(`/v1/me/deals/${deal.id}`).set(merchant.auth).send({ priceCents: 3_900 }).expect(200);
+      expect(repriced.body.status).toBe('PENDING_REVIEW');
+      // Fortsetzen geht erst nach der Prüfung durch das Team
+      await request(server()).post(`/v1/me/deals/${deal.id}/resume`).set(merchant.auth).expect(409);
+      await request(server()).post(`/v1/me/deals/${deal.id}/extend`).set(merchant.auth).send({ endsOn: viennaDayOffset(20) }).expect(409);
+      expect(await searchIds()).toEqual([]);
+    });
+
     it('zeigt den niedrigsten erfassten Preis der letzten 30 Tage vor der aktuellen Preisänderung', async () => {
       const merchant = await signInMerchant(app);
       const deal = await publishDeal(app, merchant.auth, { referencePriceCents: null, referencePriceType: null, referencePriceSource: null, referenceConfirmed: undefined, priceCents: 69_900 });

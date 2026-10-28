@@ -136,7 +136,10 @@ export function statusAfterChange(
   discountPercent: number | null,
   priceChanged: boolean,
 ): Pick<Deal, 'status' | 'reviewReason'> {
-  if (current.status === 'ACTIVE' && priceChanged && needsDiscountReview(discountPercent)) return { status: 'PENDING_REVIEW', reviewReason: DISCOUNT_REVIEW_REASON };
+  // Auch pausierte: sonst ließe sich der Rabatt während der Pause hochsetzen und das Angebot ungeprüft fortsetzen
+  if ((current.status === 'ACTIVE' || current.status === 'PAUSED') && priceChanged && needsDiscountReview(discountPercent)) {
+    return { status: 'PENDING_REVIEW', reviewReason: DISCOUNT_REVIEW_REASON };
+  }
   if (current.status === 'PENDING_REVIEW' && current.reviewReason === DISCOUNT_REVIEW_REASON && !needsDiscountReview(discountPercent)) return { status: 'ACTIVE', reviewReason: null };
   return { status: current.status, reviewReason: current.reviewReason };
 }

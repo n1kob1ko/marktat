@@ -305,6 +305,46 @@ describe('Deal-Importe und Produktfeeds', () => {
       }
     });
 
+    it('lässt vom Team ausgeblendete Deals in Prüfung, wenn sie aus dem Feed fallen, und hält angehaltene Feeds an', async () => {
+      const merchant = await signInMerchant(app);
+      const moderator = await signInAs(app, 'MODERATOR');
+      const { state, target, url } = await feedServer();
+      try {
+        state.body = csv([
+          ['F-1', 'Akkuschrauber 18 V Set', 'baumarkt-garten', '89,00', day(10), 'https://shop.example.at/as', '', '', ''],
+          ['F-2', 'Laubbläser kabellos', 'baumarkt-garten', '129,00', day(10), 'https://shop.example.at/lb', '', '', ''],
+        ]);
+        const created = await request(server()).post('/v1/me/deal-feeds').set(merchant.auth).send(FEED).expect(201);
+        await prisma.dealFeed.update({ where: { id: created.body.id }, data: { url } });
+        await request(server()).post(`/v1/admin/deal-feeds/${created.body.id}/review`).set(moderator.auth).send({ decision: 'APPROVE' }).expect(200);
+        const feeds = app.get(DealFeedService);
+        await feeds.runDue();
+        const hidden = await prisma.deal.findFirstOrThrow({ where: { externalId: 'F-2' } });
+        const version = (await request(server()).get(`/v1/admin/deals/${hidden.id}`).set(moderator.auth).expect(200)).body.version;
+        await request(server())
+          .post(`/v1/admin/deals/${hidden.id}/decisions`)
+          .set(moderator.auth)
+          .send({ decision: 'HIDE', reason: 'MISLEADING', ground: 'TERMS', statement: 'Der Vergleichspreis ist nicht belegt, das Angebot bleibt bis zur Klärung ausgeblendet.', version })
+          .expect(201);
+        expect((await prisma.deal.findUniqueOrThrow({ where: { id: hidden.id } })).status).toBe('PENDING_REVIEW');
+
+        // F-2 fällt aus dem Feed: bleibt in Prüfung (nicht „abgelaufen“, das ließe sich verlängern)
+        state.etag = '"v2"';
+        state.body = csv([['F-1', 'Akkuschrauber 18 V Set', 'baumarkt-garten', '89,00', day(10), 'https://shop.example.at/as', '', '', '']]);
+        await prisma.dealFeed.update({ where: { id: created.body.id }, data: { nextFetchAt: new Date() } });
+        await feeds.runDue();
+        expect(await prisma.deal.findUniqueOrThrow({ where: { id: hidden.id } })).toMatchObject({ status: 'PENDING_REVIEW' });
+        await request(server()).post(`/v1/me/deals/${hidden.id}/extend`).set(merchant.auth).send({ endsOn: viennaDayOffset(20) }).expect(409);
+        expect(await visibleIds()).not.toContain(hidden.id);
+
+        // Vom Team angehalten: der Händler kann nicht selbst fortsetzen
+        await request(server()).post(`/v1/admin/deal-feeds/${created.body.id}/review`).set(moderator.auth).send({ decision: 'PAUSE', note: 'Herkunft klären' }).expect(200);
+        await request(server()).post(`/v1/me/deal-feeds/${created.body.id}/resume`).set(merchant.auth).expect(409);
+      } finally {
+        target.close();
+      }
+    });
+
     it('hält einen Feed nach wiederholten Fehlern an und verbirgt fremde Feeds', async () => {
       const merchant = await signInMerchant(app);
       const other = await signInMerchant(app, 'Andere GmbH');

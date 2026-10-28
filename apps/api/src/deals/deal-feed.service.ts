@@ -130,7 +130,7 @@ export class DealFeedService implements OnModuleInit {
     const current = await this.requireOwned(user, id);
     if (paused && !['APPROVED', 'FAILING'].includes(current.status)) throw new ConflictException('Nur freigegebene Feeds können pausiert werden.');
     if (!paused && (current.status !== 'PAUSED' && current.status !== 'FAILING')) throw new ConflictException('Der Feed ist nicht pausiert.');
-    if (!paused && !current.approvedAt) throw new ConflictException('Der Feed wartet noch auf die Freigabe.');
+    if (!paused && !current.approvedAt) throw new ConflictException('Der Feed wartet auf die Freigabe durch das Team.');
     const feed = await this.prisma.dealFeed.update({
       where: { id },
       data: paused ? { status: 'PAUSED', nextFetchAt: null } : { status: 'APPROVED', consecutiveFailures: 0, lastError: null, nextFetchAt: new Date() },
@@ -200,7 +200,8 @@ export class DealFeedService implements OnModuleInit {
         ? { status: 'APPROVED', approvedAt: new Date(), reviewedById: admin.id, reviewNote: input.note ?? null, nextFetchAt: new Date(), consecutiveFailures: 0, lastError: null }
         : input.decision === 'REJECT'
           ? { status: 'REJECTED', approvedAt: null, reviewedById: admin.id, reviewNote: input.note ?? null, nextFetchAt: null }
-          : { status: 'PAUSED', reviewedById: admin.id, reviewNote: input.note ?? null, nextFetchAt: null };
+          : // Vom Team angehalten: erst eine neue Freigabe setzt den Feed fort, nicht der Händler
+            { status: 'PAUSED', approvedAt: null, reviewedById: admin.id, reviewNote: input.note ?? null, nextFetchAt: null };
     const feed = await this.prisma.dealFeed.update({ where: { id }, data, include: this.include() });
     this.audit.log({ action: `admin.deal_feed_${input.decision.toLowerCase() as 'approve' | 'reject' | 'pause'}`, actorId: admin.id, entityType: 'deal_feed', entityId: id, ip, metadata: { note: input.note ?? null } });
     return this.toView(feed);
@@ -278,10 +279,15 @@ export class DealFeedService implements OnModuleInit {
   private async endMissing(feed: DealFeed, externalIds: string[], importId: string, now: Date) {
     const missing = await this.prisma.deal.findMany({
       where: { feedId: feed.id, status: { in: ['ACTIVE', 'PAUSED', 'PENDING_REVIEW', 'DRAFT'] }, endsAt: { gt: now }, externalId: { notIn: externalIds } },
-      select: { id: true, title: true, externalId: true },
+      select: { id: true, title: true, externalId: true, status: true },
     });
     if (!missing.length) return [];
-    await this.prisma.deal.updateMany({ where: { id: { in: missing.map((d) => d.id) } }, data: { status: 'EXPIRED', endsAt: now, lastImportId: importId } });
+    const inReview = missing.filter((d) => d.status === 'PENDING_REVIEW').map((d) => d.id);
+    await this.prisma.$transaction([
+      this.prisma.deal.updateMany({ where: { id: { in: missing.filter((d) => d.status !== 'PENDING_REVIEW').map((d) => d.id) } }, data: { status: 'EXPIRED', endsAt: now, lastImportId: importId } }),
+      // In Prüfung (Rabatt oder vom Team ausgeblendet) bleibt in Prüfung: „abgelaufen“ ließe sich sonst verlängern und wäre wieder öffentlich
+      this.prisma.deal.updateMany({ where: { id: { in: inReview } }, data: { endsAt: now, lastImportId: importId } }),
+    ]);
     this.audit.log({ action: 'deal.feed_ended', actorId: null, entityType: 'deal_feed', entityId: feed.id, metadata: { deals: missing.length, importId } });
     this.search.index.syncMany(missing.map((d) => d.id));
     return missing.map((d) => ({ line: 0, externalId: d.externalId, title: d.title, action: 'END' as const, dealId: d.id, changes: [], messages: ['Nicht mehr im Feed – Angebot beendet.'], warnings: [] }));
