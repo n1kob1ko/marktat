@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MarktAT – Ersteinrichtung eines frischen Servers (Ubuntu 24.04 LTS). Einmalig als root ausführen:
+# Markterl – Ersteinrichtung eines frischen Servers (Ubuntu 24.04 LTS). Einmalig als root ausführen:
 #
 #   curl -fsSLO https://raw.githubusercontent.com/n1kob1ko/marktat/main/infra/production/setup-server.sh
 #   less setup-server.sh          # vorher lesen
@@ -12,7 +12,7 @@
 #   - sperrt Passwort-Anmeldungen per SSH (root nur noch mit Schlüssel)
 #   - öffnet nur SSH (22), HTTP (80) und HTTPS (443)
 #   - richtet die tägliche Datenbanksicherung ein (03:30 Uhr)
-# Es installiert MarktAT selbst noch nicht und kann gefahrlos erneut ausgeführt werden.
+# Es installiert Markterl selbst noch nicht und kann gefahrlos erneut ausgeführt werden.
 set -Eeuo pipefail
 
 DEPLOY_KEY="${1:?Aufruf: setup-server.sh \"<öffentlicher SSH-Schlüssel für GitHub Actions>\"}"
@@ -103,7 +103,7 @@ rm -f "$ROOT/generate-secrets.mjs"
 
 echo '== Tägliche Sicherung'
 cat > /etc/cron.d/marktat-backup <<CRON
-# MarktAT: verschlüsselte Datenbanksicherung (backup.sh), Protokoll in $ROOT/deploy.log
+# Markterl: verschlüsselte Datenbanksicherung (backup.sh), Protokoll in $ROOT/deploy.log
 30 3 * * * deploy [ -x $ROOT/current/backup.sh ] && $ROOT/current/backup.sh daily > /dev/null 2>&1
 CRON
 chmod 644 /etc/cron.d/marktat-backup

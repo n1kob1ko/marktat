@@ -23,7 +23,7 @@ const raw = {
   SMTP_HOST: 'smtp.tem.scaleway.com',
   SMTP_USER: 'user',
   SMTP_PASSWORD: 'pass',
-  MAIL_FROM: 'MarktAT <noreply@marktat.example>',
+  MAIL_FROM: 'Markterl <noreply@marktat.example>',
   MAIL_FROM_ADDRESS: 'noreply@marktat.example',
   MEILI_URL: 'http://meilisearch:7700',
   MEILI_MASTER_KEY: 'c'.repeat(48),
@@ -56,7 +56,7 @@ describe('Prüfung vor dem Online-Deployment', () => {
     ['2FA aus', { STAFF_MFA_REQUIRED: 'false' }, 'STAFF_MFA_REQUIRED'],
     ['Stripe live', { STRIPE_LIVE_ENABLED: 'true' }, 'STRIPE_LIVE_ENABLED'],
     ['Live-Schlüssel', { STRIPE_SECRET_KEY: 'sk_live_123' }, 'STRIPE_SECRET_KEY'],
-    ['Beispiel-Absender', { MAIL_FROM: 'MarktAT <noreply@example.at>', MAIL_FROM_ADDRESS: 'noreply@example.at' }, 'MAIL_FROM'],
+    ['Beispiel-Absender', { MAIL_FROM: 'Markterl <noreply@example.at>', MAIL_FROM_ADDRESS: 'noreply@example.at' }, 'MAIL_FROM'],
     ['fehlende Backup-Passphrase', { BACKUP_PASSPHRASE: undefined }, 'BACKUP_PASSPHRASE'],
   ])('lehnt ab: %s', (_label, overrides, name) => {
     const { errors } = check(overrides);

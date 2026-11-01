@@ -63,7 +63,7 @@ export interface SafeFetchResponse {
   truncated: boolean;
 }
 
-const USER_AGENT = 'MarktAT-Pruefdienst/1.0 (+Deals: Link- und Feedpruefung)';
+const USER_AGENT = 'Markterl-Pruefdienst/1.0 (+Deals: Link- und Feedpruefung)';
 
 function guardedLookup(allowPrivate: boolean) {
   return (hostname: string, options: object, callback: (error: NodeJS.ErrnoException | null, address: string | LookupAddress[], family?: number) => void) => {

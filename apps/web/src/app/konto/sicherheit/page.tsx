@@ -50,7 +50,7 @@ async function Security({ searchParams }: Pick<PageProps<'/konto/sicherheit'>, '
               Zwei-Faktor-Anmeldung: {verified.length ? 'aktiv' : 'nicht eingerichtet'}
             </h2>
             <p className="text-sm leading-relaxed text-ink-600">
-              Zusätzlich zum Passwort fragt MarktAT bei der Anmeldung nach einem 6-stelligen Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator,
+              Zusätzlich zum Passwort fragt Markterl bei der Anmeldung nach einem 6-stelligen Code aus einer Authenticator-App (z. B. Aegis, Google Authenticator,
               Microsoft Authenticator, 1Password). Kritische Aktionen im Admin-Bereich – Rollen, Kontosperren, Preise – bestätigst du ebenfalls mit einem Code.
               {required ? ' Für dein Konto ist sie Pflicht.' : ''}
             </p>

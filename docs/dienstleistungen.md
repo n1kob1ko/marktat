@@ -1,6 +1,6 @@
 # Dienstleistungen und Anbieterprofile
 
-Phase 10, Schritt 3. Freelancer:innen, Handwerksbetriebe und Privatpersonen bieten Dienstleistungen an. Kund:innen finden sie unter `/dienstleistungen` und schreiben ihnen über die bestehenden Nachrichten. MarktAT vermittelt nur den Kontakt: keine Provision, keine Zahlung, keine Buchung.
+Phase 10, Schritt 3. Freelancer:innen, Handwerksbetriebe und Privatpersonen bieten Dienstleistungen an. Kund:innen finden sie unter `/dienstleistungen` und schreiben ihnen über die bestehenden Nachrichten. Markterl vermittelt nur den Kontakt: keine Provision, keine Zahlung, keine Buchung.
 
 ## Ein Konto, keine zweite Registrierung
 
@@ -47,8 +47,8 @@ Ungültige Parameter liefern 400 mit Liste der Fehler. Die Web-Seite zeigt sie a
 ## Qualifikationen und regulierte Berufe
 
 - Qualifikationen sind zunächst **„Angabe der Anbieter:in, nicht geprüft“**. Die Nummer (z. B. GISA-Zahl) ist erst nach der Prüfung öffentlich.
-- **„Von MarktAT geprüft“** setzt nur das Team unter `/admin/dienstleistungen/:id`, nach Abgleich mit einer verlässlichen Quelle (GISA, Kammer, Berufsregister). Die Prüfung wird protokolliert (`admin.qualification_verified/rejected`), die Anbieter:in bekommt eine Mitteilung (`QUALIFICATION_REVIEWED`). Eigene Qualifikationen kann niemand selbst prüfen.
-- Profile mit regulierten Kategorien zeigen einen Hinweis mit Link zur GISA-Abfrage. MarktAT prüft Gewerbeberechtigungen **nicht** automatisch, und es gibt keine Schnittstelle zum GISA.
+- **„Von Markterl geprüft“** setzt nur das Team unter `/admin/dienstleistungen/:id`, nach Abgleich mit einer verlässlichen Quelle (GISA, Kammer, Berufsregister). Die Prüfung wird protokolliert (`admin.qualification_verified/rejected`), die Anbieter:in bekommt eine Mitteilung (`QUALIFICATION_REVIEWED`). Eigene Qualifikationen kann niemand selbst prüfen.
+- Profile mit regulierten Kategorien zeigen einen Hinweis mit Link zur GISA-Abfrage. Markterl prüft Gewerbeberechtigungen **nicht** automatisch, und es gibt keine Schnittstelle zum GISA.
 - Bewertungen, Sterne, Abzeichen und „Top-Anbieter“ gibt es bewusst nicht.
 
 ## Bilder
@@ -85,7 +85,7 @@ Unter `/dienstleistungen/projekte` beschreiben Privatpersonen und Betriebe ein k
 | Worum es geht | einmaliges Vorhaben, selbstständige Leistung | Anstellung | dauerhaftes Angebot |
 | Wer antwortet | nur Anbieter:innen mit sichtbarem Profil | alle | Kund:innen |
 
-**Keine Ausschreibung:** keine Gebote, keine öffentlichen Angebote, keine Vergabe und keine Zahlungen über MarktAT. Antworten laufen über die bestehenden Nachrichten (`conversations.project_id`, genau ein Bezug je Unterhaltung per CHECK-Constraint).
+**Keine Ausschreibung:** keine Gebote, keine öffentlichen Angebote, keine Vergabe und keine Zahlungen über Markterl. Antworten laufen über die bestehenden Nachrichten (`conversations.project_id`, genau ein Bezug je Unterhaltung per CHECK-Constraint).
 
 - **Lebenszyklus**: Entwurf → Veröffentlichen mit Bestätigung („selbstständige Leistung, kein Arbeitsverhältnis“) → sichtbar für 30 Tage → Verlängern in den letzten 7 Tagen bzw. nach Ablauf → Pausieren / Fortsetzen / Beenden („jemand gefunden“) / Löschen (Status `DELETED`, bestehende Unterhaltungen bleiben lesbar).
 - **Schutz vor Flut und Spam**: höchstens 5 offene Aufträge je Konto, 50 insgesamt; höchstens 20 Anbieter:innen je Auftrag (Zählung unter Zeilensperre, gleichzeitige Anfragen überschreiten das nicht); Anlegen 10/Stunde; Blockieren wie bei allen Nachrichten.
@@ -101,6 +101,6 @@ Unter `/dienstleistungen/projekte` beschreiben Privatpersonen und Betriebe ein k
 - **Gewerberecht**: Privatpersonen dürfen nur Tätigkeiten anbieten, für die keine Gewerbeberechtigung nötig ist (Nachbarschaftshilfe, gelegentliche Tätigkeiten). Wo die Grenze liegt, sollte eine Fachperson für Gewerberecht in den Nutzungsbedingungen formulieren.
 - **Regulierte Berufe** (z. B. Elektrotechnik, Gas/Wasser, Buchhaltung, Rechts- und Steuerberatung): Reicht der GISA-Hinweis, oder sollen manche Kategorien nur gewerblichen Konten mit geprüfter Berechtigung offenstehen?
 - **Impressum (§ 5 ECG)** für gewerbliche Profile: Reichen Firmenname, Anschrift, Firmenbuchnummer und UID aus dem Konto, oder sind Kammer/Aufsichtsbehörde zusätzlich nötig?
-- **Plattformarbeit**: Die EU-Plattformarbeitsrichtlinie betrifft Plattformen, die Arbeit organisieren. MarktAT vermittelt nur Kontakte und setzt keine Preise oder Aufträge fest; das sollte vor dem Start bestätigt werden.
-- **Haftung für Angaben**: Text zu „nicht geprüft“ und „Von MarktAT geprüft“ in den Nutzungsbedingungen.
+- **Plattformarbeit**: Die EU-Plattformarbeitsrichtlinie betrifft Plattformen, die Arbeit organisieren. Markterl vermittelt nur Kontakte und setzt keine Preise oder Aufträge fest; das sollte vor dem Start bestätigt werden.
+- **Haftung für Angaben**: Text zu „nicht geprüft“ und „Von Markterl geprüft“ in den Nutzungsbedingungen.
 - **Scheinselbstständigkeit**: Projektaufträge sind für selbstständige Leistungen gedacht. Ob die Bestätigung beim Veröffentlichen und das Melden versteckter Arbeitsverhältnisse ausreichen oder zusätzliche Hinweise (z. B. zur Sozialversicherung) nötig sind, sollte eine Fachperson für Arbeitsrecht beurteilen.

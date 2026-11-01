@@ -5,7 +5,7 @@ import { USER_ROLE_LABELS } from '@marktat/shared';
 import { requireStaff } from '@/lib/auth';
 import { AdminNav } from '@/components/admin/admin-nav';
 
-export const metadata: Metadata = { title: { template: '%s – Moderation | MarktAT', default: 'Moderation | MarktAT' }, robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: { template: '%s – Moderation | Markterl', default: 'Moderation | Markterl' }, robots: { index: false, follow: false } };
 
 export default function AdminLayout({ children }: LayoutProps<'/admin'>) {
   return (

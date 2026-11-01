@@ -144,14 +144,14 @@ async function ProjectContent({ params, searchParams }: Pick<PageProps<'/dienstl
               </>
             )}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
-              Höchstens {PROJECT_MAX_CONTACTS} Anbieter:innen können antworten. MarktAT vermittelt nicht und nimmt keine Provision; Angebot, Vertrag und Bezahlung vereinbart ihr
+              Höchstens {PROJECT_MAX_CONTACTS} Anbieter:innen können antworten. Markterl vermittelt nicht und nimmt keine Provision; Angebot, Vertrag und Bezahlung vereinbart ihr
               direkt. Verlange nie Vorauszahlungen für „Vermittlung“ und gib keine Bankdaten weiter, bevor ihr euch einig seid.
             </p>
           </Card>
 
           <p className="flex gap-2 px-1 text-xs text-ink-500">
             <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-            Ein Projektauftrag ist kein Stellenangebot und keine Ausschreibung. Mitglied seit {formatDate(project.client.memberSince)}. MarktAT zeigt keine Bewertungen.
+            Ein Projektauftrag ist kein Stellenangebot und keine Ausschreibung. Mitglied seit {formatDate(project.client.memberSince)}. Markterl zeigt keine Bewertungen.
           </p>
           {project.isOwner ? null : (
             <Link href={`/melden?projekt=${project.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">

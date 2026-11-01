@@ -22,7 +22,7 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="space-y-4">
-        {params.bestaetigt ? <Alert tone="success">Deine E-Mail-Adresse ist bestätigt. Willkommen bei MarktAT!</Alert> : null}
+        {params.bestaetigt ? <Alert tone="success">Deine E-Mail-Adresse ist bestätigt. Willkommen bei Markterl!</Alert> : null}
         {params.passwort === 'geaendert' ? <Alert tone="success">Dein Passwort wurde geändert.</Alert> : null}
         <Card className="p-5 sm:p-7">
           <h2 className="font-sans text-lg font-semibold tracking-normal">Profil bearbeiten</h2>

@@ -4,7 +4,7 @@
 > (`AWIN_ENABLED=false`). Es gibt noch kein Awin-Publisher-Konto, keine Partnerschaften und keine Schlüssel; es wurde
 > nichts Echtes importiert. Einschalten erst, wenn Niko Konto, Partnerschaften und Schlüssel hat.
 
-MarktAT nimmt bei Awin als **Publisher** teil (Werbepartner, kostenlos; Awin verlangt bei der Anmeldung 1 € Kaution, die
+Markterl nimmt bei Awin als **Publisher** teil (Werbepartner, kostenlos; Awin verlangt bei der Anmeldung 1 € Kaution, die
 mit der ersten Provision zurückkommt). Der kostenpflichtige Advertiser-Tarif (für Shops, die selbst Werbepartner suchen)
 wird **nicht** gebraucht.
 
@@ -12,13 +12,13 @@ wird **nicht** gebraucht.
 
 | Herkunft (`deals.source`) | Wer liefert | Händler im Deal | Freigabe |
 | --- | --- | --- | --- |
-| `MANUAL`, `CSV` | Händler mit MarktAT-Konto, im Formular oder per CSV-Datei | `merchant_id` = dieses Konto | Kontoregeln aus [deals.md](deals.md) |
+| `MANUAL`, `CSV` | Händler mit Markterl-Konto, im Formular oder per CSV-Datei | `merchant_id` = dieses Konto | Kontoregeln aus [deals.md](deals.md) |
 | `FEED` | eigener Produktfeed des Händlers (`deal_feeds`) | `merchant_id` = dieses Konto | Team gibt den Feed frei |
-| `AFFILIATE` | zentral über ein Netzwerk (jetzt Awin) | **kein** MarktAT-Konto: `merchant_id` ist leer, `affiliate_program_id` verweist auf das Programm | Admin gibt das Programm frei, Awin meldet die Partnerschaft als aktiv, Admin aktiviert den Feed |
+| `AFFILIATE` | zentral über ein Netzwerk (jetzt Awin) | **kein** Markterl-Konto: `merchant_id` ist leer, `affiliate_program_id` verweist auf das Programm | Admin gibt das Programm frei, Awin meldet die Partnerschaft als aktiv, Admin aktiviert den Feed |
 
 Die Datenbank erzwingt die Trennung (`deals_owner_check`): Ein Affiliate-Deal hat nie ein Händlerkonto, ein
 Händler-Deal nie ein Programm. Affiliate-Deals lassen sich keinem Händlerkonto zuordnen (API antwortet 409). So wird
-kein fremdes Angebot einem MarktAT-Konto zugeschrieben, das den Händler nicht vertritt.
+kein fremdes Angebot einem Markterl-Konto zugeschrieben, das den Händler nicht vertritt.
 
 ## Ablauf
 
@@ -81,16 +81,16 @@ und die offiziellen Awin-Adressen.
 
 ## Freigaben, die es braucht
 
-1. **Publisher-Konto** bei Awin (Österreich/DACH), mit MarktAT als Website (die Website muss dafür online sein, Awin
+1. **Publisher-Konto** bei Awin (Österreich/DACH), mit Markterl als Website (die Website muss dafür online sein, Awin
    prüft sie). Angaben zu Unternehmen und Auszahlung macht Niko selbst.
 2. **Partnerschaft je Händler**: im Awin-Konto im Bereich *Advertisers* (Programm suchen, „Join“) bei jedem gewünschten Programm
-   bewerben. Der Händler entscheidet. Erst „Joined“ zählt; MarktAT liest das aus der Feedliste.
+   bewerben. Der Händler entscheidet. Erst „Joined“ zählt; Markterl liest das aus der Feedliste.
 3. **Programmbedingungen lesen** (je Programm): Sind Produktbilder, Vergleichspreise (UVP), Gutscheincodes und das
    Werbeumfeld „Kleinanzeigen-/Preisvergleichsplattform“ erlaubt? Das Ergebnis kommt in die Dokumentation der
    Freigabe und in die Häkchen.
 4. **Produktfeed**: Manche Händler geben ihren Feed erst auf Anfrage frei (*Toolbox → Create-a-Feed* zeigt nur
    freigeschaltete Feeds).
-5. **Freigabe in MarktAT**: Admin-Bereich → **Affiliate** → Programm → „Freigabe bearbeiten“ (mindestens 20 Zeichen
+5. **Freigabe in Markterl**: Admin-Bereich → **Affiliate** → Programm → „Freigabe bearbeiten“ (mindestens 20 Zeichen
    Dokumentation, mit 2FA-Code) → Feed „Aktivieren“.
 
 ## Admin-Bereich (`/admin/affiliate`)

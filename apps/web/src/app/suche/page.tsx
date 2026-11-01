@@ -50,7 +50,7 @@ export async function generateMetadata({ searchParams }: PageProps<'/suche'>): P
   if (category && filters.length === 1) {
     return {
       title: `${category.name} – Kleinanzeigen in Österreich`,
-      description: `${category.name}: aktuelle Kleinanzeigen aus ganz Österreich auf MarktAT. Kostenlos inserieren und in deiner Nähe finden.`,
+      description: `${category.name}: aktuelle Kleinanzeigen aus ganz Österreich auf Markterl. Kostenlos inserieren und in deiner Nähe finden.`,
       alternates: { canonical: `/suche?kategorie=${category.path}${pageSuffix}` },
     };
   }

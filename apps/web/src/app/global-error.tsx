@@ -7,7 +7,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
   return (
     <html lang="de-AT" className="h-full antialiased">
       <body className="flex min-h-full flex-col items-center justify-center bg-canvas px-4 py-20 text-center">
-        <h1 className="text-2xl font-bold text-ink-950">MarktAT ist gerade nicht erreichbar</h1>
+        <h1 className="text-2xl font-bold text-ink-950">Markterl ist gerade nicht erreichbar</h1>
         <p className="mt-2 max-w-md text-ink-600">
           Wir haben ein technisches Problem und arbeiten daran. Bitte versuche es in ein paar Minuten noch einmal.
         </p>

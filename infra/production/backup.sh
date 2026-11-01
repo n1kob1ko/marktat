@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MarktAT – verschlüsselte Datenbanksicherung auf dem Server. Anleitung: docs/deployment.md, Abschnitt Sicherungen
+# Markterl – verschlüsselte Datenbanksicherung auf dem Server. Anleitung: docs/deployment.md, Abschnitt Sicherungen
 #
 #   backup.sh                       tägliche Sicherung (cron): beide Datenbanken, verschlüsselt, alte löschen, optional R2
 #   backup.sh pre-deploy            Sicherung vor einem Deployment (von deploy.sh aufgerufen)

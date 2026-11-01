@@ -26,7 +26,7 @@ export default function ContactPage() {
         . Weitere Anfragen: <Fact value={OPERATOR.privacyEmail ?? OPERATOR.email} />
       </p>
       <h2>Fragen zu einer Anzeige</h2>
-      <p>Bitte über „Nachricht schreiben“ in der Anzeige an die Anbieterin bzw. den Anbieter – MarktAT vermittelt nur.</p>
+      <p>Bitte über „Nachricht schreiben“ in der Anzeige an die Anbieterin bzw. den Anbieter – Markterl vermittelt nur.</p>
     </LegalPage>
   );
 }

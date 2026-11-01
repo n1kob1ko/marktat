@@ -26,7 +26,7 @@ import { Pagination } from '@/components/pagination';
 
 type Params = Record<string, string | string[] | undefined>;
 
-const DESCRIPTION = 'Konkrete Vorhaben, für die Privatpersonen und Betriebe in Österreich eine Dienstleistung suchen. Antworten über die Nachrichten von MarktAT, ohne Provision.';
+const DESCRIPTION = 'Konkrete Vorhaben, für die Privatpersonen und Betriebe in Österreich eine Dienstleistung suchen. Antworten über die Nachrichten von Markterl, ohne Provision.';
 
 /** Nur die Übersicht wird indexiert; gefilterte Varianten nicht */
 export async function generateMetadata({ searchParams }: PageProps<'/dienstleistungen/projekte'>): Promise<Metadata> {
@@ -52,7 +52,7 @@ export default function ProjectsPage({ searchParams }: PageProps<'/dienstleistun
           <p className="mt-2 max-w-2xl text-sm text-ink-600">
             Hier beschreiben Menschen und Betriebe ein konkretes Vorhaben – etwa eine Website, ein ausgemaltes Stiegenhaus oder Nachhilfe bis zur Matura – und suchen
             dafür eine selbstständige Dienstleistung. <strong className="font-semibold text-ink-800">Kein Jobangebot und keine Ausschreibung:</strong> Es gibt keine
-            Anstellung, keine Gebote und keine Vergabe über MarktAT. Antworten können Anbieter:innen mit sichtbarem Anbieterprofil, höchstens {PROJECT_MAX_CONTACTS} je Auftrag.
+            Anstellung, keine Gebote und keine Vergabe über Markterl. Antworten können Anbieter:innen mit sichtbarem Anbieterprofil, höchstens {PROJECT_MAX_CONTACTS} je Auftrag.
           </p>
           <div className="mt-4 flex flex-wrap gap-2">
             <Link href="/konto/projekte/neu" className={buttonClasses({ size: 'sm' })}>Auftrag beschreiben</Link>
@@ -169,7 +169,7 @@ async function ProjectResults({ searchParams }: { searchParams: Promise<Params> 
 
         <p className="mt-6 flex gap-2 text-xs leading-relaxed text-ink-500">
           <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-          Die Angaben in den Aufträgen stammen von den Auftraggeber:innen selbst. MarktAT vermittelt nicht, schließt keine Verträge und wickelt keine Zahlungen ab. Aufträge, die in
+          Die Angaben in den Aufträgen stammen von den Auftraggeber:innen selbst. Markterl vermittelt nicht, schließt keine Verträge und wickelt keine Zahlungen ab. Aufträge, die in
           Wahrheit ein Arbeitsverhältnis beschreiben (fixe Arbeitszeiten, Weisungen, Eingliederung in einen Betrieb), gehören unter Jobs – bitte melde sie.
         </p>
       </section>

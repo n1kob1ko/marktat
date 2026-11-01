@@ -42,11 +42,11 @@ export default function ImprintPage() {
         <Link href="/melden">Inhalte melden</Link> mitteilen.
       </p>
       <h2>Beta-Phase</h2>
-      <p>MarktAT befindet sich in einer öffentlichen Testphase. Alle Leistungen sind derzeit kostenlos.</p>
+      <p>Markterl befindet sich in einer öffentlichen Testphase. Alle Leistungen sind derzeit kostenlos.</p>
       <h2>Datenquellen</h2>
       <p>
         Postleitzahlen und Orte: <a href="https://www.geonames.org/">GeoNames</a>, Lizenz{' '}
-        <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, für MarktAT aufbereitet.
+        <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, für Markterl aufbereitet.
       </p>
     </LegalPage>
   );

@@ -1,6 +1,6 @@
-# MarktAT
+# Markterl
 
-Kleinanzeigenplattform für Österreich (Arbeitstitel) mit den Bereichen Marktplatz, Auto & Motor, Immobilien und Jobs.
+Kleinanzeigenplattform für Österreich (markterl.at) mit den Bereichen Marktplatz, Auto & Motor, Immobilien und Jobs.
 Monorepo mit Next.js-Frontend, NestJS-API, PostgreSQL/PostGIS und Supabase Auth.
 
 **Stand: Phase 7 (kostenloser Plattformstart, Monetarisierung vorbereitet, Händlerfunktionen).** Die Plattform ist

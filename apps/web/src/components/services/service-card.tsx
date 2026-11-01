@@ -76,7 +76,7 @@ export function ServiceCard({ profile, className }: { profile: ServiceProfileSum
           </p>
           {profile.hasVerifiedQualification ? (
             <p className="flex items-center gap-1 font-medium text-success-700">
-              <BadgeCheck className="size-3.5" aria-hidden="true" /> Qualifikation von MarktAT geprüft
+              <BadgeCheck className="size-3.5" aria-hidden="true" /> Qualifikation von Markterl geprüft
             </p>
           ) : null}
         </div>

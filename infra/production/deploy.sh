@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# MarktAT – Deployment auf dem Server (Docker Compose). Anleitung: docs/deployment.md
+# Markterl – Deployment auf dem Server (Docker Compose). Anleitung: docs/deployment.md
 #
 #   deploy.sh check                 Konfiguration prüfen (ändert nichts)
 #   deploy.sh build-args            öffentliche Werte für den Bau des Web-Images ausgeben (keine Geheimnisse)

@@ -8,7 +8,7 @@ const production = {
   APP_SIGNING_SECRET: 'x'.repeat(40),
   WEB_URL: 'https://marktat.example',
   SMTP_HOST: 'smtp.example.eu',
-  MAIL_FROM: 'MarktAT <noreply@marktat.example>',
+  MAIL_FROM: 'Markterl <noreply@marktat.example>',
   MEILI_URL: 'http://meilisearch:7700',
   MEILI_MASTER_KEY: 'k'.repeat(32),
 };
@@ -25,7 +25,7 @@ describe('Umgebung in Produktion', () => {
 
   it.each([
     ['SMTP_HOST', { SMTP_HOST: undefined }],
-    ['MAIL_FROM', { MAIL_FROM: 'MarktAT <noreply@marktat.local>' }],
+    ['MAIL_FROM', { MAIL_FROM: 'Markterl <noreply@marktat.local>' }],
     ['WEB_URL', { WEB_URL: 'http://marktat.example' }],
     ['MEILI_MASTER_KEY', { MEILI_MASTER_KEY: 'kurz' }],
     ['STORAGE_DRIVER', { STORAGE_DRIVER: 'local' }],

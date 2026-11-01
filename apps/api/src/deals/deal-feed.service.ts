@@ -33,7 +33,7 @@ const FEED_SYNC_INTERVAL_MS = 15 * 60_000;
 const CLEANUP_INTERVAL_MS = 60 * 60_000;
 /** Höchstens so viele Feeds je Durchlauf (nacheinander, damit keine Lastspitzen entstehen) */
 const FEEDS_PER_RUN = 5;
-const USER_AGENT = 'MarktAT-Feedabruf/1.0 (+https://marktat.at; ruft nur freigegebene Händler-Feeds ab)';
+const USER_AGENT = 'Markterl-Feedabruf/1.0 (+https://markterl.at; ruft nur freigegebene Händler-Feeds ab)';
 
 type FeedWithMerchant = DealFeed & { merchant: { id: string; displayName: string; companyName: string | null } };
 

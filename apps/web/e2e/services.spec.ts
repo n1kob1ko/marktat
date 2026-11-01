@@ -188,7 +188,7 @@ test('Anbieterprofil anlegen, finden, kontaktieren, melden und moderieren', asyn
 
   // Öffentlich: Qualifikation geprüft (mit Nummer), Portfolio-Eintrag weg
   await visitor.goto(`/dienstleistungen/${profileId}`);
-  await expect(visitor.getByTestId('qualifications')).toContainText('Von MarktAT geprüft');
+  await expect(visitor.getByTestId('qualifications')).toContainText('Von Markterl geprüft');
   await expect(visitor.getByTestId('qualifications')).toContainText(`MP-${run}`);
   await expect(visitor.getByTestId('portfolio')).toHaveCount(0);
   await visitor.goto(`/dienstleistungen?q=${word}`);

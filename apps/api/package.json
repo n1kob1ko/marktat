@@ -1,7 +1,7 @@
 {
   "name": "@marktat/api",
   "version": "0.1.0",
-  "description": "MarktAT REST-API (NestJS, modularer Monolith)",
+  "description": "Markterl REST-API (NestJS, modularer Monolith)",
   "author": "",
   "private": true,
   "type": "module",

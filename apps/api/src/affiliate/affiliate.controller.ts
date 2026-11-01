@@ -36,7 +36,7 @@ export class AffiliateController {
   @Public()
   @SkipThrottle()
   @Get('deals/:id/partner-image/:variant')
-  @ApiOperation({ summary: 'Produktbild eines Affiliate-Deals – unverändert vom Händler, über MarktAT ausgeliefert' })
+  @ApiOperation({ summary: 'Produktbild eines Affiliate-Deals – unverändert vom Händler, über Markterl ausgeliefert' })
   async image(@Param('id') id: string, @Res() res: Response) {
     const image = await this.affiliate.image(id);
     if (!image) throw new NotFoundException('Dieses Bild gibt es nicht.');

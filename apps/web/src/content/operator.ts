@@ -1,5 +1,5 @@
 /**
- * Angaben zur Betreiberin bzw. zum Betreiber von MarktAT für Impressum, Datenschutzerklärung, Kontakt und
+ * Angaben zur Betreiberin bzw. zum Betreiber von Markterl für Impressum, Datenschutzerklärung, Kontakt und
  * Nutzungsbedingungen. Öffentliche Pflichtangaben (ECG § 5, MedienG § 25, DSA Art. 11/12) – daher im Code.
  *
  * NUR echte, von Niko bestätigte Angaben eintragen. `null` = fehlt noch; die Seiten zeigen dann sichtbar

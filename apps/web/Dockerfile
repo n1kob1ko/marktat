@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# MarktAT-Web (Next.js) für den Online-Betrieb. Build-Kontext: Repo-Wurzel.
+# Markterl-Web (Next.js) für den Online-Betrieb. Build-Kontext: Repo-Wurzel.
 # Öffentliche Adressen und der Anon-Key werden beim Build fest eingebaut (NEXT_PUBLIC_*, CSP) –
 # deshalb je Umgebung ein eigenes Image:
 #   docker build -f apps/web/Dockerfile --build-arg WEB_URL=https://… --build-arg API_URL=https://… \

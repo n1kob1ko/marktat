@@ -140,7 +140,7 @@ async function AdminDeal({ params, searchParams }: Pick<PageProps<'/admin/deals/
             )}
             {deal.priceHistory.length ? (
               <p className="mt-3 text-sm text-ink-600">
-                Bei MarktAT erfasste Preise: {deal.priceHistory.map((p) => `${formatPriceCents(p.priceCents)} (${formatDate(p.recordedAt)})`).join(' · ')}
+                Bei Markterl erfasste Preise: {deal.priceHistory.map((p) => `${formatPriceCents(p.priceCents)} (${formatDate(p.recordedAt)})`).join(' · ')}
               </p>
             ) : null}
           </Section>
@@ -211,7 +211,7 @@ async function AdminDeal({ params, searchParams }: Pick<PageProps<'/admin/deals/
                   <span className="font-semibold text-ink-900">{detail.affiliate.programName}</span>
                   <Badge tone="neutral">Werbung · {detail.affiliate.networkName}</Badge>
                 </p>
-                <p className="text-ink-600">Kein Händlerkonto bei MarktAT – Angebot aus dem Produktfeed{detail.affiliate.feedName ? ` „${detail.affiliate.feedName}“` : ''}.</p>
+                <p className="text-ink-600">Kein Händlerkonto bei Markterl – Angebot aus dem Produktfeed{detail.affiliate.feedName ? ` „${detail.affiliate.feedName}“` : ''}.</p>
                 {detail.affiliate.externalId ? <p className="text-ink-500">Artikelnummer: {detail.affiliate.externalId}</p> : null}
                 <p className="text-ink-500">Entscheidungen hier gelten nur für dieses Produkt; ein neuer Feedstand hebt sie nicht auf.</p>
                 <p>

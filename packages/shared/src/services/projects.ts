@@ -1,7 +1,7 @@
 /**
  * Projektaufträge (Phase 10, Schritt 4): Jemand sucht für ein konkretes Vorhaben eine selbstständige Dienstleistung.
  * Bewusst kein Jobangebot (kein Arbeitsverhältnis) und keine Ausschreibung: keine Gebote, keine öffentlichen
- * Angebote, keine Vergabe über MarktAT. Anbieter:innen mit sichtbarem Profil melden sich über die Nachrichten.
+ * Angebote, keine Vergabe über Markterl. Anbieter:innen mit sichtbarem Profil melden sich über die Nachrichten.
  *
  * URL und API verwenden dieselben Parameter, z. B.
  *   /dienstleistungen/projekte?bereich=haus-handwerk&plz=8010&umkreis=25

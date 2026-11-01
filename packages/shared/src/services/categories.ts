@@ -5,7 +5,7 @@
  * Inserate bleiben Inserate, Profile verlinken auf sie.
  *
  * `regulated`: Für die Tätigkeit kann in Österreich eine Gewerbeberechtigung oder ein Befähigungsnachweis nötig sein.
- * MarktAT zeigt dann einen Hinweis und Qualifikationen nur als „geprüft“, wenn das Team sie geprüft hat.
+ * Markterl zeigt dann einen Hinweis und Qualifikationen nur als „geprüft“, wenn das Team sie geprüft hat.
  *
  * Erweitern: Eintrag ergänzen und `pnpm db:seed` ausführen. Slugs nie umbenennen (stehen in URLs und Suchen).
  */

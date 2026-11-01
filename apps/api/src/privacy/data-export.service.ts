@@ -88,11 +88,11 @@ export class DataExportService {
 
     this.audit.log({ action: 'privacy.export', actorId: id, entityType: 'user', entityId: id, ip });
     return {
-      format: 'MarktAT-Datenexport',
+      format: 'Markterl-Datenexport',
       version: 1,
       exportedAt: new Date().toISOString(),
       hinweis:
-        'Dieser Export enthält deine Daten bei MarktAT (Art. 15 und 20 DSGVO). Nachrichten anderer Personen sind aus Datenschutzgründen nicht enthalten, nur deine eigenen.',
+        'Dieser Export enthält deine Daten bei Markterl (Art. 15 und 20 DSGVO). Nachrichten anderer Personen sind aus Datenschutzgründen nicht enthalten, nur deine eigenen.',
       profile: {
         id: profile.id,
         email: profile.email,

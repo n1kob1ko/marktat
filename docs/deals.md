@@ -1,6 +1,6 @@
 # Deals & Angebote
 
-Phase 10, Schritt 1. Händler stellen eigene Angebote ein, online, im Geschäft oder beides. MarktAT verkauft nichts selbst. Es gibt keinen Warenkorb und keine Zahlung, nur einen gekennzeichneten Link zum Händler.
+Phase 10, Schritt 1. Händler stellen eigene Angebote ein, online, im Geschäft oder beides. Markterl verkauft nichts selbst. Es gibt keinen Warenkorb und keine Zahlung, nur einen gekennzeichneten Link zum Händler.
 
 Es gibt drei streng getrennte Herkünfte: Händler-Deals (Formular, CSV), eigene Produktfeeds der Händler und zentrale
 Partnerangebote über Affiliate-Netzwerke (`source = AFFILIATE`, ohne Händlerkonto, siehe [affiliate.md](affiliate.md)).
@@ -15,7 +15,7 @@ Deals sind **keine Inserate**. Preis-, Händler-, Link- und Ablaufregeln untersc
 | `deals` | Ein Angebot: Preis, optionaler Vergleichspreis mit Art, Quelle, Beleg und Bestätigung, berechneter Rabatt, Zeitraum, Kanal, Link, Bildrechte, Herkunft (`MANUAL`/`CSV`/`FEED`), `external_id` je Händler (eindeutig, für wiederholte Importe), Linkprüfung, Zähler |
 | `dealer_stores` | Filialen eines Händlers (Adresse, PLZ-Ort aus der Geodatenbank) |
 | `deal_stores` | In welchen Filialen ein Deal gilt |
-| `deal_price_records` | Preise, die MarktAT **selbst** bei jeder Preisänderung erfasst. Grundlage für „niedrigster erfasster Preis 30 Tage“, nie geschätzt. |
+| `deal_price_records` | Preise, die Markterl **selbst** bei jeder Preisänderung erfasst. Grundlage für „niedrigster erfasster Preis 30 Tage“, nie geschätzt. |
 | `deal_imports` | Jeder CSV-Import und jeder Feed-Abruf: Datei bzw. Feed, Status, Spaltenzuordnung, Ergebnis je Zeile mit Änderungen und Fehlern, Zähler. Die Rohdaten liegen nur bis zur Übernahme bzw. höchstens 24 Stunden in der Vorschau. |
 | `deal_feeds` | Produktfeeds der Händler: Adresse, Format, Abrufabstand, Herkunft und Nutzungsrechte laut Händler, Freigabe durch das Team, letzter Abruf, Fehlerzähler, ETag |
 
@@ -107,7 +107,7 @@ Regeln:
 
 Händlerbereich: `/konto/deals/feeds`. Moderation: `/admin/deals/feeds`. API: `/v1/me/deal-feeds`, `/v1/admin/deal-feeds`.
 
-Ein Feed ist der **eigene** Produktfeed eines Händlers (oder der seines Feed-Dienstleisters). MarktAT liest **keine** fremden Plattformen aus (kein Scraping von Geizhals, idealo, marktguru o. ä.) und behauptet keine Partnerschaften. Es gibt derzeit keine Vereinbarung mit einem Preisvergleichs- oder Prospektanbieter.
+Ein Feed ist der **eigene** Produktfeed eines Händlers (oder der seines Feed-Dienstleisters). Markterl liest **keine** fremden Plattformen aus (kein Scraping von Geizhals, idealo, marktguru o. ä.) und behauptet keine Partnerschaften. Es gibt derzeit keine Vereinbarung mit einem Preisvergleichs- oder Prospektanbieter.
 
 Ablauf:
 
@@ -124,7 +124,7 @@ Ein angehaltener, pausierter oder entfernter Feed aktualisiert nichts mehr. Sein
 
 Was für echte Partner-Schnittstellen fehlt:
 
-- Verträge bzw. Lizenzen mit Händlern, Feed-Dienstleistern oder Preisvergleichsdiensten, inklusive Bildrechten. MarktAT hat derzeit keine.
+- Verträge bzw. Lizenzen mit Händlern, Feed-Dienstleistern oder Preisvergleichsdiensten, inklusive Bildrechten. Markterl hat derzeit keine.
 - Eine Händler- bzw. Produkt-ID über Händlergrenzen hinweg (heute: Artikelnummer je Händler, optional GTIN).
 - Anbieterbezogene Abrufgrenzen und Zugangsdaten (API-Schlüssel, OAuth). Heute gibt es nur öffentliche Feed-Adressen ohne Anmeldung.
 - Ein Format für Verfügbarkeit je Filiale.

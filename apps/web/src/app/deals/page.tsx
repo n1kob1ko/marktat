@@ -39,7 +39,7 @@ export async function generateMetadata({ searchParams }: PageProps<'/deals'>): P
   if (category && filters.length === 1) {
     return {
       title: `${category.name} – Deals & Angebote`,
-      description: `${category.name}: aktuelle Angebote österreichischer Händler auf MarktAT.`,
+      description: `${category.name}: aktuelle Angebote österreichischer Händler auf Markterl.`,
       alternates: { canonical: `/deals?kategorie=${category.slug}` },
     };
   }
@@ -171,8 +171,8 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
         <p className="mt-8 flex gap-2 text-xs leading-relaxed text-ink-500">
           <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
           <span>
-            Angebote stammen von Händlern, die sie hier eintragen, oder – gekennzeichnet mit „Werbung“ – aus freigegebenen Partnerprogrammen (Awin); dafür erhält MarktAT
-            eventuell eine Provision. MarktAT verkauft nichts selbst und wickelt keine Zahlungen ab. Mit „Werbelink“ gekennzeichnete Links können dem Händler oder Dritten
+            Angebote stammen von Händlern, die sie hier eintragen, oder – gekennzeichnet mit „Werbung“ – aus freigegebenen Partnerprogrammen (Awin); dafür erhält Markterl
+            eventuell eine Provision. Markterl verkauft nichts selbst und wickelt keine Zahlungen ab. Mit „Werbelink“ gekennzeichnete Links können dem Händler oder Dritten
             eine Provision einbringen.{' '}
             <Link href="/deals/werbung" className="font-semibold text-brand-700 hover:underline">
               Mehr zu Werbung und Partnerangeboten

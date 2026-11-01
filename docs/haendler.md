@@ -4,7 +4,7 @@
 
 Für gewerbliche, aktive Konten (`GET /v1/dealers/:id?seite=`). Zeigt Firmenname, Logo, Beschreibung („Über mich“),
 Geschäftsanschrift, Website (nur `https://`, `rel="nofollow"`), Telefon nur bei Freigabe (`show_phone`),
-Firmenbuchnummer und UID (Anbieterkennzeichnung), „Auf MarktAT seit“ und alle aktiven Anzeigen (24 je Seite,
+Firmenbuchnummer und UID (Anbieterkennzeichnung), „Auf Markterl seit“ und alle aktiven Anzeigen (24 je Seite,
 Reihenfolge wie „Neueste“ inklusive Hochschieben). Kontakt läuft über die bestehenden Nachrichten je Anzeige; die
 Detailseite einer Händleranzeige verlinkt auf das Profil.
 

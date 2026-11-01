@@ -54,7 +54,7 @@ export const MERCHANT_REFERENCE_PRICE_TYPES = ['LOWEST_30_DAYS', 'RRP'] as const
 export const REFERENCE_PRICE_LABELS: Record<ReferencePriceType, string> = {
   LOWEST_30_DAYS: 'Niedrigster Preis der letzten 30 Tage vor der Ermäßigung',
   RRP: 'Unverbindliche Preisempfehlung (UVP)',
-  MARKET_CHECK: 'Vom MarktAT-Team geprüfter Marktvergleich',
+  MARKET_CHECK: 'Vom Markterl-Team geprüfter Marktvergleich',
 };
 
 /** Kurzform neben dem durchgestrichenen Preis */

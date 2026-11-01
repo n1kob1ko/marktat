@@ -119,7 +119,7 @@ test('Melden, moderieren, Einspruch und Sperre – mit getrennten Rollen', async
   await moderator.page.getByLabel('Begründung für die betroffene Person').fill('Verstoß.');
   await moderator.page.getByRole('button', { name: 'Deaktivieren – bestätigen' }).click();
   await expect(moderator.page.getByText(/mindestens 20 Zeichen/)).toBeVisible();
-  await moderator.page.getByLabel('Begründung für die betroffene Person').fill('Die Anzeige verlangt Vorauskasse per Gutschein. Das ist bei MarktAT nicht erlaubt.');
+  await moderator.page.getByLabel('Begründung für die betroffene Person').fill('Die Anzeige verlangt Vorauskasse per Gutschein. Das ist bei Markterl nicht erlaubt.');
   await moderator.page.getByRole('button', { name: 'Deaktivieren – bestätigen' }).click();
   await expect(moderator.page.getByText('Die Entscheidung ist gespeichert.', { exact: false })).toBeVisible();
   await expect(moderator.page.getByText('Inserat deaktiviert').first()).toBeVisible();

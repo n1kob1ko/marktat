@@ -258,7 +258,7 @@ describe('Deal-Importe und Produktfeeds', () => {
         const preview = await request(server()).post(`/v1/me/deal-feeds/${created.body.id}/preview`).set(merchant.auth).expect(200);
         expect(preview.body.counts).toMatchObject({ create: 2 });
         expect(await prisma.deal.count()).toBe(0);
-        expect(state.requests[0].ua).toContain('MarktAT-Feedabruf');
+        expect(state.requests[0].ua).toContain('Markterl-Feedabruf');
 
         // Eigene Feeds kann niemand aus dem Team freigeben, der sie selbst eingereicht hat; Händler können nicht freigeben
         await request(server()).post(`/v1/admin/deal-feeds/${created.body.id}/review`).set(merchant.auth).send({ decision: 'APPROVE' }).expect(403);

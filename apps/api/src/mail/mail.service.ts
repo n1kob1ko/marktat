@@ -66,14 +66,14 @@ export function mailLayout(options: {
 }) {
   const { heading, paragraphs, action, settingsUrl } = options;
   const footer = settingsUrl
-    ? `Du bekommst diese E-Mail, weil du sie in deinem MarktAT-Konto aktiviert hast.
+    ? `Du bekommst diese E-Mail, weil du sie in deinem Markterl-Konto aktiviert hast.
 <a href="${escapeHtml(settingsUrl)}" style="color:#0f4c3a">Benachrichtigungen ändern</a>`
     : 'Diese E-Mail betrifft eine Entscheidung zu deinem Konto oder deinen Inhalten und wird unabhängig von deinen Benachrichtigungseinstellungen versendet.';
   return `<!doctype html>
 <html lang="de"><body style="margin:0;background:#f5f4ef;font-family:Arial,Helvetica,sans-serif;color:#1d2420">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;border:1px solid #e3e1d8">
-<tr><td style="padding:24px 28px 8px;font-size:20px;font-weight:bold;color:#0f4c3a">MarktAT</td></tr>
+<tr><td style="padding:24px 28px 8px;font-size:20px;font-weight:bold;color:#0f4c3a">Markterl</td></tr>
 <tr><td style="padding:8px 28px 0"><h1 style="margin:0 0 12px;font-size:18px">${escapeHtml(heading)}</h1>
 ${paragraphs.map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.5">${p}</p>`).join('\n')}
 <p style="margin:20px 0 24px"><a href="${escapeHtml(action.url)}" style="display:inline-block;background:#0f4c3a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold">${escapeHtml(action.label)}</a></p>

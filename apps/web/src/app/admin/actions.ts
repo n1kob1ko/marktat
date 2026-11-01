@@ -233,7 +233,7 @@ export async function decidePortfolioItemAction(_prev: FormState, formData: Form
   redirect(`/admin/dienstleistungen/${profileId}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-portfolio-freigegeben' : 'mod-portfolio-ausgeblendet'}`);
 }
 
-/** Qualifikation prüfen: bestätigen („Von MarktAT geprüft“) oder nicht bestätigen */
+/** Qualifikation prüfen: bestätigen („Von Markterl geprüft“) oder nicht bestätigen */
 export async function reviewQualificationAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = String(formData.get('id') ?? '');
   const profileId = String(formData.get('profileId') ?? '');

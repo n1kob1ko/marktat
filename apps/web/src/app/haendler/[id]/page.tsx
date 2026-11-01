@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: PageProps<'/haendler/[id]'>):
   const { id } = await params;
   const dealer = await loadDealer(id).catch(() => null);
   if (!dealer) return { title: 'Händler nicht gefunden', robots: { index: false } };
-  const description = metaDescription(dealer.description ?? '', `Aktuelle Angebote von ${dealer.companyName} auf MarktAT.`);
+  const description = metaDescription(dealer.description ?? '', `Aktuelle Angebote von ${dealer.companyName} auf Markterl.`);
   return {
     title: dealer.companyName,
     description,
@@ -78,7 +78,7 @@ async function Dealer({ params, searchParams }: PageProps<'/haendler/[id]'>) {
           <p className="mt-1 flex items-center gap-1.5 text-sm text-brand-800">
             <BadgeCheck className="size-4" aria-hidden="true" /> Gewerblicher Anbieter
           </p>
-          <p className="mt-1 text-sm text-ink-500">Auf MarktAT seit {formatDate(dealer.memberSince)}</p>
+          <p className="mt-1 text-sm text-ink-500">Auf Markterl seit {formatDate(dealer.memberSince)}</p>
           {dealer.description ? <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-ink-700">{dealer.description}</p> : null}
           <ul className="mt-4 space-y-2 text-sm text-ink-700">
             {dealer.address ? (

@@ -1,4 +1,4 @@
-# Lokale Entwicklungsumgebung für MarktAT.
+# Lokale Entwicklungsumgebung für Markterl.
 # Start: `pnpm infra:up` im Repo-Wurzelverzeichnis (liest die Werte aus ../.env).
 # Alle Zugangsdaten hier sind reine Entwicklungswerte und dürfen nie produktiv verwendet werden.
 name: marktat
@@ -55,7 +55,7 @@ services:
       GOTRUE_SMTP_HOST: mailpit
       GOTRUE_SMTP_PORT: '1025'
       GOTRUE_SMTP_ADMIN_EMAIL: noreply@marktat.local
-      GOTRUE_SMTP_SENDER_NAME: MarktAT
+      GOTRUE_SMTP_SENDER_NAME: Markterl
       GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://gateway/email-templates/confirmation.html
       GOTRUE_MAILER_TEMPLATES_RECOVERY: http://gateway/email-templates/recovery.html
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Bitte bestätige deine E-Mail-Adresse

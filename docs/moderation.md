@@ -1,6 +1,6 @@
 # Moderation, Rollen und Meldungen (Phase 6)
 
-> ⚠️ Die Abläufe orientieren sich am Digital Services Act (DSA). Ob sie für MarktAT ausreichen, muss eine
+> ⚠️ Die Abläufe orientieren sich am Digital Services Act (DSA). Ob sie für Markterl ausreichen, muss eine
 > österreichische Rechtsberatung prüfen – siehe „Offene Punkte für die Rechtsprüfung“ unten.
 
 ## Rollen

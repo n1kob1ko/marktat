@@ -18,7 +18,7 @@ export interface DealMerchant {
   logoUrl: string | null;
 }
 
-/** Herkunft eines zentralen Affiliate-Deals: Händler laut Netzwerk, nie ein MarktAT-Händlerkonto */
+/** Herkunft eines zentralen Affiliate-Deals: Händler laut Netzwerk, nie ein Markterl-Händlerkonto */
 export interface DealAffiliateInfo {
   network: AffiliateNetwork;
   /** z. B. „Awin“ */
@@ -45,7 +45,7 @@ export interface DealSummary {
   imageUrl: string | null;
   channel: DealChannel;
   category: { slug: string; name: string };
-  /** Händlerkonto bei MarktAT; null bei Affiliate-Deals */
+  /** Händlerkonto bei Markterl; null bei Affiliate-Deals */
   merchant: DealMerchant | null;
   /** Nur Affiliate-Deals: Händler und Datenquelle (Kennzeichnung „Werbung“) */
   affiliate: DealAffiliateInfo | null;
@@ -71,7 +71,7 @@ export interface DealSummary {
   nearestStore: { name: string; postalCode: string; place: string; distanceKm: number | null } | null;
 }
 
-/** Erfasster Preis (eigene Aufzeichnung von MarktAT, keine Schätzung) */
+/** Erfasster Preis (eigene Aufzeichnung von Markterl, keine Schätzung) */
 export interface DealPricePoint {
   priceCents: number;
   recordedAt: string;
@@ -90,9 +90,9 @@ export interface DealDetail extends DealSummary {
   imageRights: DealImageRights | null;
   imageCredit: string | null;
   stores: DealStoreView[];
-  /** Preisänderungen, die MarktAT selbst erfasst hat (neueste zuerst, max. 20) */
+  /** Preisänderungen, die Markterl selbst erfasst hat (neueste zuerst, max. 20) */
   priceHistory: DealPricePoint[];
-  /** Niedrigster bei MarktAT erfasster Preis der 30 Tage vor dem aktuellen Preis */
+  /** Niedrigster bei Markterl erfasster Preis der 30 Tage vor dem aktuellen Preis */
   lowestRecordedPrice30d: number | null;
   source: DealSource;
   publishedAt: string | null;
@@ -102,7 +102,7 @@ export interface DealDetail extends DealSummary {
   isFavorite: boolean;
   linkStatus: DealLinkStatus;
   relatedCategoryPath: string | null;
-  /** Händlerseite bei MarktAT; null bei Affiliate-Deals */
+  /** Händlerseite bei Markterl; null bei Affiliate-Deals */
   merchantProfileUrl: string | null;
   /** Nur für Händler und Team */
   moderation?: DealModerationInfo | null;

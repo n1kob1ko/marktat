@@ -5,7 +5,7 @@ import { externalUrlSchema } from './schemas.js';
 
 /**
  * Produktfeeds: Ein Händler hinterlegt die Adresse seines eigenen (oder lizenzierten) Feeds, das Team gibt ihn frei,
- * danach holt MarktAT ihn regelmäßig ab und aktualisiert die Deals über denselben Weg wie der CSV-Import.
+ * danach holt Markterl ihn regelmäßig ab und aktualisiert die Deals über denselben Weg wie der CSV-Import.
  * Ohne Freigabe wird nichts abgerufen. Fremde Plattformen werden nicht ausgelesen.
  */
 

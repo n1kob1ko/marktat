@@ -76,7 +76,7 @@ export class NotificationsService implements OnModuleInit {
     await this.mail.send({
       to: notification.user.email,
       subject: notification.title,
-      text: [`Hallo ${notification.user.displayName},`, '', ...paragraphs.flatMap((p) => [p, '']), `Details: ${url}`, '', 'Dein MarktAT-Team'].join('\n'),
+      text: [`Hallo ${notification.user.displayName},`, '', ...paragraphs.flatMap((p) => [p, '']), `Details: ${url}`, '', 'Dein Markterl-Team'].join('\n'),
       html: mailLayout({
         heading: notification.title,
         paragraphs: [`Hallo ${escapeHtml(notification.user.displayName)},`, ...paragraphs.map((p) => escapeHtml(p).replace(/\n/g, '<br>'))],

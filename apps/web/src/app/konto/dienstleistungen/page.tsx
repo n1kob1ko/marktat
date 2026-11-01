@@ -49,8 +49,8 @@ async function MyServiceProfileView({ searchParams }: Pick<PageProps<'/konto/die
           <h2 className="font-sans text-xl font-semibold tracking-normal">Dienstleistungen anbieten</h2>
           <p className="text-sm text-ink-700">
             Mit einem Anbieterprofil findest du Kund:innen für deine Dienstleistungen – als Freelancer:in, Handwerksbetrieb oder privat. Das Profil gehört zu
-            deinem bestehenden Konto, eine eigene Registrierung brauchst du nicht. Anfragen kommen über die Nachrichten von MarktAT; Provisionen oder Zahlungen
-            über MarktAT gibt es nicht.
+            deinem bestehenden Konto, eine eigene Registrierung brauchst du nicht. Anfragen kommen über die Nachrichten von Markterl; Provisionen oder Zahlungen
+            über Markterl gibt es nicht.
           </p>
           <p className="text-sm text-ink-700">
             Bewertungen und Auszeichnungen gibt es bewusst nicht. Qualifikationen erscheinen als „Angabe der Anbieter:in“, bis unser Team den Nachweis geprüft hat.

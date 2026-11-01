@@ -171,7 +171,7 @@ export class AdminDealsService {
     if (!ENTITY_ID.test(id)) throw new NotFoundException('Dieses Angebot gibt es nicht.');
     const deal = await this.prisma.deal.findUnique({ where: { id } });
     if (!deal || deal.status === 'DELETED') throw new NotFoundException('Dieses Angebot gibt es nicht.');
-    // Affiliate-Angebote gehören einem Partnerprogramm und nie einem MarktAT-Händlerkonto
+    // Affiliate-Angebote gehören einem Partnerprogramm und nie einem Markterl-Händlerkonto
     if (deal.source === 'AFFILIATE') throw new ConflictException('Angebote aus Partnerprogrammen lassen sich keinem Händlerkonto zuordnen.');
     if (deal.merchantId === input.merchantId) throw new ConflictException('Das Angebot gehört bereits zu diesem Konto.');
     const target = await this.prisma.user.findUnique({ where: { id: input.merchantId }, select: { id: true, accountType: true, status: true } });

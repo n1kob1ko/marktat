@@ -35,7 +35,7 @@ const s3Error = (error: unknown) =>
 async function main() {
   const env = loadEnv();
   const setup = process.argv.includes('--setup');
-  console.log('\nMarktAT – R2-Verbindungstest\n');
+  console.log('\nMarkterl – R2-Verbindungstest\n');
 
   let config;
   try {

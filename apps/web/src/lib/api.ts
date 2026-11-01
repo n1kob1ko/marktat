@@ -34,7 +34,7 @@ interface ApiOptions extends Omit<RequestInit, 'body'> {
 
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-/** Serverseitiger Aufruf der MarktAT-API. Das Access-Token verlässt nie den Server. */
+/** Serverseitiger Aufruf der Markterl-API. Das Access-Token verlässt nie den Server. */
 export async function api<T>(path: string, { token, body, headers, timeoutMs = DEFAULT_TIMEOUT_MS, ...init }: ApiOptions = {}): Promise<T> {
   const timeout = AbortSignal.timeout(timeoutMs);
   const guestIp = !token && init.cache === 'no-store' ? clientIp(await requestHeaders()) : undefined;

@@ -19,7 +19,7 @@ export function Logo({ className, wordmarkClassName }: { className?: string; wor
     <span className={cn('inline-flex items-center gap-2', className)}>
       <LogoMark />
       <span className={cn('font-display text-[1.375rem] font-bold tracking-tight text-ink-950', wordmarkClassName)}>
-        Markt<span className="text-brand-700">AT</span>
+        Markt<span className="text-brand-700">erl</span>
       </span>
     </span>
   );
