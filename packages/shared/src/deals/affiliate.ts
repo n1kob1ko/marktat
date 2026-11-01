@@ -4,7 +4,7 @@ import { z } from '../schemas/zod.js';
 /**
  * Zentrale Affiliate-Deals (Publisher-Programme in Affiliate-Netzwerken, derzeit Awin). Getrennt von den
  * Angeboten der Händlerkonten: Ein Affiliate-Deal gehört einem freigegebenen Partnerprogramm, nie einem
- * MarktAT-Händler. Regeln und Ablauf: docs/affiliate.md
+ * Markterl-Händler. Regeln und Ablauf: docs/affiliate.md
  */
 
 export const AFFILIATE_NETWORKS = ['AWIN'] as const;

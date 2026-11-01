@@ -1,6 +1,6 @@
 # Monetarisierung (Phase 7)
 
-MarktAT startet **vollständig kostenlos**. Das Monetarisierungssystem ist vollständig gebaut, verrechnet aber nichts,
+Markterl startet **vollständig kostenlos**. Das Monetarisierungssystem ist vollständig gebaut, verrechnet aber nichts,
 solange der kostenlose Betrieb aktiv ist (Standard). Was später etwas kostet und wie viel, entscheidet ein Admin
 unter `/admin/monetarisierung`. Endgültige Preise sind bewusst **nicht** festgelegt.
 

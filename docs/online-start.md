@@ -1,7 +1,7 @@
 # Online-Start Schritt für Schritt (Windows + Ubuntu-Server)
 
 > Stand 28.10.2026. Nichts davon ist schon passiert: Es gibt keinen Server, keine Domain, kein Brevo-, Awin- oder
-> Produktions-R2-Konto. **Alles, was Geld kostet oder MarktAT öffentlich macht, entscheidet und klickt Niko selbst.**
+> Produktions-R2-Konto. **Alles, was Geld kostet oder Markterl öffentlich macht, entscheidet und klickt Niko selbst.**
 > Technischer Hintergrund: [deployment.md](deployment.md). Partnerangebote: [affiliate.md](affiliate.md).
 
 Was wo eingetragen wird, auf einen Blick:
@@ -36,13 +36,13 @@ Die Dateien **ohne** `.pub` sind geheim.
 
 ### A2. Domain registrieren (Registrar)
 
-1. Bei einem Registrar deiner Wahl (z. B. ein österreichischer für `.at`) die Domain kaufen. *Kostenpflichtig,
-   ca. 10–20 €/Jahr.* Name und Markenrechte vorher prüfen („MarktAT“ ist ein Arbeitstitel).
+1. Erledigt: `markterl.at` ist seit 01.11.2026 registriert. Die DNS-Verwaltung liegt beim Registrar, bei dem Niko
+   die Domain gekauft hat.
 2. Die DNS-Einträge kommen erst nach A3 dazu (dafür braucht es die Server-IP).
 
 ### A3. Server bei Hetzner bestellen
 
-1. [console.hetzner.cloud](https://console.hetzner.cloud) → Konto anlegen → **Neues Projekt** „MarktAT“.
+1. [console.hetzner.cloud](https://console.hetzner.cloud) → Konto anlegen → **Neues Projekt** „Markterl“.
 2. Projekt → **Sicherheit → SSH-Keys → SSH-Key hinzufügen** → Inhalt von `marktat-root.pub` einfügen
    (`Get-Content $HOME\.ssh\marktat-root.pub | Set-Clipboard`).
 3. **Server hinzufügen**: Standort Nürnberg oder Falkenstein (sonst Helsinki), Image **Ubuntu 24.04**, Typ
@@ -54,12 +54,12 @@ Die Dateien **ohne** `.pub` sind geheim.
 
 | Name | Typ | Wert |
 | --- | --- | --- |
-| `@` (bzw. `marktat.at`) | A | IPv4 des Servers |
-| `api` (bzw. `api.marktat.at`) | A | IPv4 des Servers |
+| `@` (bzw. `markterl.at`) | A | IPv4 des Servers |
+| `api` (bzw. `api.markterl.at`) | A | IPv4 des Servers |
 | `_dmarc` | TXT | `v=DMARC1; p=none; rua=mailto:<deine-adresse>` |
 | Einträge von Brevo (A5) | TXT / CNAME | genau wie Brevo sie anzeigt |
 
-Keinen AAAA-Eintrag (IPv6) anlegen. Prüfen in PowerShell: `Resolve-DnsName marktat.at` zeigt die Server-IP (kann bis
+Keinen AAAA-Eintrag (IPv6) anlegen. Prüfen in PowerShell: `Resolve-DnsName markterl.at` zeigt die Server-IP (kann bis
 zu einigen Stunden dauern).
 
 ### A5. E-Mail-Versand bei Brevo (Gratistarif, 300 E-Mails/Tag)
@@ -67,7 +67,7 @@ zu einigen Stunden dauern).
 1. [brevo.com](https://www.brevo.com) → kostenloses Konto anlegen (Free-Tarif).
 2. **Senders, Domains & Dedicated IPs → Domains → Add a domain** → deine Domain → „Authenticate“: Brevo zeigt einen
    TXT-Eintrag (Brevo-Code) und DKIM-Einträge. Diese 1:1 beim Registrar eintragen (A4), dann bei Brevo „Verify“.
-3. **Senders → Add a sender**: `noreply@<deine-domain>`, Name „MarktAT“.
+3. **Senders → Add a sender**: `noreply@<deine-domain>`, Name „Markterl“.
 4. **SMTP & API → SMTP** → „Generate a new SMTP key“. Angezeigt werden Server `smtp-relay.brevo.com`, Port `587`,
    ein **Login** (Form `…@smtp-brevo.com`) und der **SMTP-Schlüssel** (nur einmal sichtbar, in den Passwortmanager).
 5. Auftragsverarbeitungsvertrag (DPA) von Brevo in den Kontoeinstellungen annehmen.
@@ -128,12 +128,12 @@ nano /opt/marktat/.env      # speichern: Strg+O, Enter; beenden: Strg+X
 
 | Variable | Wert |
 | --- | --- |
-| `WEB_DOMAIN` | z. B. `marktat.at` |
-| `API_DOMAIN` | z. B. `api.marktat.at` |
+| `WEB_DOMAIN` | z. B. `markterl.at` |
+| `API_DOMAIN` | z. B. `api.markterl.at` |
 | `ACME_EMAIL` | deine E-Mail (Warnungen zu Zertifikaten) |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | `smtp-relay.brevo.com` / `587` / `false` |
 | `SMTP_USER` / `SMTP_PASSWORD` | Login und SMTP-Schlüssel aus A5 |
-| `MAIL_FROM` / `MAIL_FROM_ADDRESS` | `"MarktAT <noreply@marktat.at>"` / `noreply@marktat.at` |
+| `MAIL_FROM` / `MAIL_FROM_ADDRESS` | `"Markterl <noreply@markterl.at>"` / `noreply@markterl.at` |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | aus A6 |
 | `R2_BUCKET` / `R2_JURISDICTION` | `marktat-prod` / `default` (oder `eu`) |
 | `BETA_BASIC_AUTH` | für den ersten, geschlossenen Test z. B. `test:<langes-passwort>` (siehe B5) |
@@ -169,7 +169,7 @@ Voraussetzungen: Online-Funktionstest bestanden, Betreiberangaben im Impressum (
 
 ## Teil C – Awin (Partnerangebote), erst nach dem Online-Start
 
-Awin prüft bei der Anmeldung die Website, deshalb erst, wenn MarktAT öffentlich erreichbar ist.
+Awin prüft bei der Anmeldung die Website, deshalb erst, wenn Markterl öffentlich erreichbar ist.
 
 1. [awin.com](https://www.awin.com) → **Publisher werden** (kostenlos; 1 € Kaution, die mit der ersten Auszahlung
    zurückkommt). Website `https://<WEB_DOMAIN>/deals`, Werbeform „Preisvergleich/Gutscheine/Content“, Region
@@ -180,7 +180,7 @@ Awin prüft bei der Anmeldung die Website, deshalb erst, wenn MarktAT öffentlic
    Download-Adresse der Teil nach `apikey/`; Publisher-ID oben links im Konto.
 4. Auf dem Server in `/opt/marktat/.env`: `AWIN_PUBLISHER_ID`, `AWIN_API_TOKEN`, `AWIN_FEED_API_KEY`, dann
    `AWIN_ENABLED=true`; neu ausrollen (Actions → Deployment). Der Ausroll-Check lehnt unvollständige Werte ab.
-5. MarktAT → `/admin/affiliate`: „Jetzt abrufen“ → Programme erscheinen → je Programm „Freigabe bearbeiten“
+5. Markterl → `/admin/affiliate`: „Jetzt abrufen“ → Programme erscheinen → je Programm „Freigabe bearbeiten“
    (Dokumentation, Häkchen laut Bedingungen, 2FA-Code) → Feed „Aktivieren“. Ab dann läuft alles automatisch
    (stündlich Feedliste, Feeds nur bei neuem Stand, Aktionen alle 4 Stunden).
 

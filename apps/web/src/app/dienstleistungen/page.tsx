@@ -28,7 +28,7 @@ import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 type Params = Record<string, string | string[] | undefined>;
 
 const DESCRIPTION =
-  'Freelancer, Handwerk, Nachhilfe und Dienstleister in Österreich finden und direkt über MarktAT anschreiben. Ohne Provision, ohne Vermittlungsgebühr.';
+  'Freelancer, Handwerk, Nachhilfe und Dienstleister in Österreich finden und direkt über Markterl anschreiben. Ohne Provision, ohne Vermittlungsgebühr.';
 
 /** Nur die Übersicht sowie reine Bereichs- und Kategorieseiten werden indexiert; gefilterte Varianten nicht. */
 export async function generateMetadata({ searchParams }: PageProps<'/dienstleistungen'>): Promise<Metadata> {
@@ -39,10 +39,10 @@ export async function generateMetadata({ searchParams }: PageProps<'/dienstleist
   const category = rawCategory ? serviceCategoryBySlug(rawCategory) : undefined;
   const group = !rawCategory && rawGroup ? serviceGroupBySlug(rawGroup) : undefined;
   if (category && filters.length === 1) {
-    return { title: `${category.name} – Dienstleistungen`, description: `${category.name} in Österreich: Anbieter auf MarktAT finden und direkt anschreiben.`, alternates: { canonical: `/dienstleistungen?kategorie=${category.slug}` } };
+    return { title: `${category.name} – Dienstleistungen`, description: `${category.name} in Österreich: Anbieter auf Markterl finden und direkt anschreiben.`, alternates: { canonical: `/dienstleistungen?kategorie=${category.slug}` } };
   }
   if (group && filters.length === 1) {
-    return { title: `${group.name} – Dienstleistungen`, description: `${group.name}: Anbieter in Österreich auf MarktAT finden.`, alternates: { canonical: `/dienstleistungen?bereich=${group.slug}` } };
+    return { title: `${group.name} – Dienstleistungen`, description: `${group.name}: Anbieter in Österreich auf Markterl finden.`, alternates: { canonical: `/dienstleistungen?bereich=${group.slug}` } };
   }
   if (!filters.length) return { title: 'Dienstleistungen & Freelancer', description: DESCRIPTION, alternates: { canonical: '/dienstleistungen' } };
   return { title: 'Dienstleistungen & Freelancer', description: DESCRIPTION, robots: { index: false, follow: true }, alternates: { canonical: '/dienstleistungen' } };
@@ -56,8 +56,8 @@ export default function ServicesPage({ searchParams }: PageProps<'/dienstleistun
           <p className="text-sm font-semibold text-brand-700">Dienstleistungen</p>
           <h1 className="mt-1 text-2xl font-bold text-balance text-ink-950 sm:text-3xl">Anbieter und Freelancer finden</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-600">
-            Profile von Menschen und Betrieben, die ihre Arbeit anbieten – von Webentwicklung bis Gartenpflege. Kontakt über die Nachrichten von MarktAT, ohne Provision. Es gibt
-            keine Bewertungen; geprüft sind nur Qualifikationen mit dem Hinweis „von MarktAT geprüft“.
+            Profile von Menschen und Betrieben, die ihre Arbeit anbieten – von Webentwicklung bis Gartenpflege. Kontakt über die Nachrichten von Markterl, ohne Provision. Es gibt
+            keine Bewertungen; geprüft sind nur Qualifikationen mit dem Hinweis „von Markterl geprüft“.
           </p>
           <p className="mt-3 text-sm">
             <Link href="/dienstleistungen/projekte" className="font-semibold text-brand-700 hover:underline">
@@ -204,7 +204,7 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
           </Link>
           <Link href="/konto/dienstleistungen" className="group rounded-xl border border-line bg-surface p-4 hover:border-brand-300">
             <p className="font-semibold text-ink-900">Selbst Dienstleistungen anbieten</p>
-            <p className="mt-0.5 text-sm text-ink-600">Mit deinem bestehenden MarktAT-Konto ein Anbieterprofil anlegen – kostenlos.</p>
+            <p className="mt-0.5 text-sm text-ink-600">Mit deinem bestehenden Markterl-Konto ein Anbieterprofil anlegen – kostenlos.</p>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
               Profil anlegen <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
@@ -213,7 +213,7 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
 
         <p className="mt-6 flex gap-2 text-xs leading-relaxed text-ink-500">
           <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-          Die Angaben in den Profilen stammen von den Anbieterinnen und Anbietern selbst. MarktAT vermittelt nicht, schließt keine Verträge und wickelt keine Zahlungen ab. Für
+          Die Angaben in den Profilen stammen von den Anbieterinnen und Anbietern selbst. Markterl vermittelt nicht, schließt keine Verträge und wickelt keine Zahlungen ab. Für
           manche Tätigkeiten ist in Österreich eine Gewerbeberechtigung nötig – prüfe sie im Zweifel im GISA (Gewerbeinformationssystem Austria).
         </p>
       </section>

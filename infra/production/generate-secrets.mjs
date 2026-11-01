@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Erzeugt zufällige Geheimnisse für eine MarktAT-Umgebung und trägt sie in die .env ein.
+ * Erzeugt zufällige Geheimnisse für eine Markterl-Umgebung und trägt sie in die .env ein.
  *
  *   node generate-secrets.mjs .env
  *

@@ -135,7 +135,7 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
             ) : null}
             {deal.lowestRecordedPrice30d !== null ? (
               <p className="mt-1 text-sm text-ink-600">
-                Niedrigster bei MarktAT erfasster Preis in den 30 Tagen vor der letzten Preisänderung: {formatPriceCents(deal.lowestRecordedPrice30d)}
+                Niedrigster bei Markterl erfasster Preis in den 30 Tagen vor der letzten Preisänderung: {formatPriceCents(deal.lowestRecordedPrice30d)}
               </p>
             ) : null}
             {deal.shippingNote ? (
@@ -204,7 +204,7 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
             <Card className="p-5 sm:p-7">
               <h2 className="font-sans text-lg font-semibold tracking-normal">Erfasste Preise</h2>
               <p className="mt-1 text-sm text-ink-600">
-                {deal.affiliate ? 'Preise laut Produktfeed, wie MarktAT sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
+                {deal.affiliate ? 'Preise laut Produktfeed, wie Markterl sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
               </p>
               <table className="mt-4 w-full text-left text-sm">
                 <thead className="text-xs text-ink-500">
@@ -254,14 +254,14 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 </a>
                 <p className="mt-2 text-center text-xs text-ink-500">
                   {deal.affiliate
-                    ? `Weiter zum Shop von ${deal.affiliate.advertiserName} · Werbung: MarktAT erhält bei einem Kauf eventuell eine Provision von ${deal.affiliate.networkName}. Der Preis ändert sich dadurch nicht.`
+                    ? `Weiter zum Shop von ${deal.affiliate.advertiserName} · Werbung: Markterl erhält bei einem Kauf eventuell eine Provision von ${deal.affiliate.networkName}. Der Preis ändert sich dadurch nicht.`
                     : `Weiter zu ${deal.urlHost}${deal.isAffiliateLink ? ' · Werbelink: Der Händler oder Dritte erhalten eventuell eine Provision.' : ''}`}
                 </p>
               </>
             ) : null}
             {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
-              Kauf und Bezahlung erfolgen direkt beim Händler. MarktAT ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
+              Kauf und Bezahlung erfolgen direkt beim Händler. Markterl ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
               bzw. im Online-Shop.
             </p>
             {deal.merchant ? (
@@ -276,8 +276,8 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
               </>
             ) : (
               <p className="mt-3 text-xs leading-relaxed text-ink-500">
-                {deal.sellerName} ist kein Händlerkonto bei MarktAT. Das Angebot stammt aus dem Produktfeed des Händlers, den wir über das Partnerprogramm von{' '}
-                {deal.affiliate?.networkName} beziehen. <Link href="/deals/werbung" className="font-semibold text-brand-700 hover:underline">So finanziert sich MarktAT</Link>
+                {deal.sellerName} ist kein Händlerkonto bei Markterl. Das Angebot stammt aus dem Produktfeed des Händlers, den wir über das Partnerprogramm von{' '}
+                {deal.affiliate?.networkName} beziehen. <Link href="/deals/werbung" className="font-semibold text-brand-700 hover:underline">So finanziert sich Markterl</Link>
               </p>
             )}
           </Card>

@@ -113,7 +113,7 @@ async function MyServices({ searchParams }: Pick<PageProps<'/konto/leistungen'>,
           </Card>
         ) : (
           <Card className="p-5 text-sm text-ink-600">
-            Keine Zahlungen{overview.history.total > overview.history.pageSize ? ' auf dieser Seite' : ''}. Solange MarktAT kostenlos ist, fallen keine an.
+            Keine Zahlungen{overview.history.total > overview.history.pageSize ? ' auf dieser Seite' : ''}. Solange Markterl kostenlos ist, fallen keine an.
           </Card>
         )}
       </section>

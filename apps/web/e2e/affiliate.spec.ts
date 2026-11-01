@@ -115,7 +115,7 @@ test('Admin gibt ein Awin-Programm frei; Partnerangebote erscheinen gekennzeichn
     await expect(v.getByRole('heading', { level: 1, name: product })).toBeVisible();
     await expect(v.getByText('Partnerangebot über Awin')).toBeVisible();
     await expect(v.getByText(`Quelle: Produktfeed von ${shop} über Awin`)).toBeVisible();
-    await expect(v.getByText(/MarktAT erhält bei einem Kauf eventuell eine Provision von Awin/)).toBeVisible();
+    await expect(v.getByText(/Markterl erhält bei einem Kauf eventuell eine Provision von Awin/)).toBeVisible();
     // Bild kommt unverändert über den Bild-Proxy der API, nicht direkt vom Händler
     const image = v.locator('img[src*="partner-image"]').first();
     await expect(image).toBeVisible();

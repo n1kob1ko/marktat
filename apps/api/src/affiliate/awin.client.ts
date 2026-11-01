@@ -54,7 +54,7 @@ export interface AwinPromotion {
   voucherCode: string | null;
 }
 
-const USER_AGENT = 'MarktAT-Affiliate/1.0 (+Awin-Publisher; Feeds nur bei geändertem Stand)';
+const USER_AGENT = 'Markterl-Affiliate/1.0 (+Awin-Publisher; Feeds nur bei geändertem Stand)';
 /** Etwas unter dem Limit von 20 Aufrufen je Minute bleiben */
 const API_CALLS_PER_MINUTE = 18;
 const FEED_TIMEOUT_MS = 15 * 60_000;

@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# MarktAT-API (NestJS) für den Online-Betrieb. Build-Kontext: Repo-Wurzel.
+# Markterl-API (NestJS) für den Online-Betrieb. Build-Kontext: Repo-Wurzel.
 #   docker build -f apps/api/Dockerfile -t marktat-api .
 # Das Image enthält auch die Werkzeuge für Migrationen und Verwaltung (prisma, tsx), z. B.
 #   docker compose run --rm api pnpm db:migrate

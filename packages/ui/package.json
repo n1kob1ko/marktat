@@ -2,7 +2,7 @@
   "name": "@marktat/ui",
   "version": "0.1.0",
   "private": true,
-  "description": "MarktAT-Designsystem: wiederverwendbare, barrierearme React-Komponenten (Tailwind CSS v4)",
+  "description": "Markterl-Designsystem: wiederverwendbare, barrierearme React-Komponenten (Tailwind CSS v4)",
   "type": "module",
   "exports": {
     ".": "./src/index.ts",

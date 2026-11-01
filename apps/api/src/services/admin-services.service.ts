@@ -135,7 +135,7 @@ export class AdminServicesService {
 
   /**
    * Qualifikation prüfen (z. B. GISA-Eintrag, Zeugnis oder Registernummer abgeglichen). Erst danach erscheint sie
-   * öffentlich als „von MarktAT geprüft“. Die Prüfung ersetzt keine behördliche Bestätigung.
+   * öffentlich als „von Markterl geprüft“. Die Prüfung ersetzt keine behördliche Bestätigung.
    */
   async reviewQualification(reviewer: AuthUser, qualificationId: string, input: QualificationReviewInput, ip?: string): Promise<AdminServiceProfileDetail> {
     if (!ENTITY_ID.test(qualificationId)) throw new NotFoundException('Diese Qualifikation gibt es nicht.');
@@ -163,7 +163,7 @@ export class AdminServicesService {
       title: status === 'VERIFIED' ? 'Deine Qualifikation wurde geprüft' : 'Deine Qualifikation konnte nicht bestätigt werden',
       body: [
         status === 'VERIFIED'
-          ? `Wir haben deine Angabe „${qualification.title}“ geprüft. Sie erscheint in deinem Anbieterprofil jetzt als „von MarktAT geprüft“.`
+          ? `Wir haben deine Angabe „${qualification.title}“ geprüft. Sie erscheint in deinem Anbieterprofil jetzt als „von Markterl geprüft“.`
           : `Wir konnten deine Angabe „${qualification.title}“ nicht bestätigen. Sie wird in deinem Anbieterprofil nicht mehr angezeigt.`,
         input.note ? `Hinweis: ${input.note}` : '',
         status === 'REJECTED' ? 'Du kannst die Angabe löschen und mit einem überprüfbaren Nachweis (z. B. GISA-Zahl) neu eintragen.' : '',

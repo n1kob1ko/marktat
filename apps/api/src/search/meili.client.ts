@@ -1,6 +1,6 @@
 /**
  * Schlanker Meilisearch-Client über fetch (keine zusätzliche Abhängigkeit).
- * Nur die Endpunkte, die MarktAT braucht: https://www.meilisearch.com/docs/reference/api/overview
+ * Nur die Endpunkte, die Markterl braucht: https://www.meilisearch.com/docs/reference/api/overview
  */
 
 export class MeiliError extends Error {

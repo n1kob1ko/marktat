@@ -1,4 +1,4 @@
-# MarktAT – Reverse-Proxy mit automatischem HTTPS (Let's Encrypt).
+# Markterl – Reverse-Proxy mit automatischem HTTPS (Let's Encrypt).
 # Domains und Optionen kommen aus der .env (WEB_DOMAIN, API_DOMAIN, ACME_EMAIL, CADDY_GLOBAL_EXTRA).
 # Nur dieser Container ist von außen erreichbar (Ports 80 und 443); alles andere liegt im internen Docker-Netz.
 {

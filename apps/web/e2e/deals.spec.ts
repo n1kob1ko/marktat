@@ -4,7 +4,7 @@ import { expectNoHorizontalScroll, newPage, registerBusiness, viennaDay } from '
 
 /**
  * Phase 10, Deals: Händler bestätigt seine Angaben, legt eine Filiale an und veröffentlicht ein Angebot mit
- * belegbarem Vergleichspreis; Käufer:innen finden es über Suche und Umkreis, „Zum Angebot“ läuft über MarktAT.
+ * belegbarem Vergleichspreis; Käufer:innen finden es über Suche und Umkreis, „Zum Angebot“ läuft über Markterl.
  * Am Ende wird das Angebot gelöscht, damit andere Specs nicht von Testdaten abhängen.
  */
 test.describe.configure({ mode: 'serial' });

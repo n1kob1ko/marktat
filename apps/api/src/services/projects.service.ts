@@ -41,7 +41,7 @@ function fieldError(message: string, issues: { path: string; message: string }[]
 
 /**
  * Projektaufträge: Jemand beschreibt ein konkretes Vorhaben und sucht dafür eine selbstständige Dienstleistung.
- * Keine Ausschreibung: keine Gebote, keine öffentlichen Angebote und keine Vergabe über MarktAT. Anbieter:innen mit
+ * Keine Ausschreibung: keine Gebote, keine öffentlichen Angebote und keine Vergabe über Markterl. Anbieter:innen mit
  * sichtbarem Profil schreiben über die Nachrichten (höchstens PROJECT_MAX_CONTACTS je Auftrag).
  */
 @Injectable()

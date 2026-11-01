@@ -41,7 +41,7 @@ export async function startEnrollAction(_prev: FormState, formData: FormData): P
     if (factor.status !== 'verified') await supabase.auth.mfa.unenroll({ factorId: factor.id });
   }
 
-  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: name.data, issuer: 'MarktAT' });
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName: name.data, issuer: 'Markterl' });
   if (error) return { status: 'error', message: authErrorMessage(error), values: { name: name.data } };
   return {
     status: 'success',

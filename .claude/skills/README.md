@@ -7,7 +7,7 @@ Diese Skills lädt Claude Code automatisch in jeder Session für dieses Repo (lo
 Quelle: [affaan-m/ECC](https://github.com/affaan-m/ECC), Version 2.2.3, Commit `25278e7d7b6cf6e6a4e7a6c8e10f14ff22f0eb5b`, MIT-Lizenz (siehe `ECC-LICENSE`).
 Die Dateien sind unverändert kopiert. Verweise auf andere ECC-Skills oder `rules/`, die hier nicht enthalten sind, laufen ins Leere und können ignoriert werden.
 
-| Skill | Wofür in MarktAT |
+| Skill | Wofür in Markterl |
 | --- | --- |
 | `nestjs-patterns` | Module, DTO-Validierung, Guards, Interceptors in `apps/api` |
 | `api-design` | REST-Endpunkte, Pagination, Fehlerformat, Versionierung |

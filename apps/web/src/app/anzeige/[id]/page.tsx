@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): 
   // Mit Sitzung, damit Eigentümer auch bei Entwürfen und abgelaufenen Inseraten den richtigen Titel sehen
   const listing = await api<ListingDetail>(`/listings/${id}`, { token: token ?? undefined, cache: 'no-store' }).catch(() => null);
   if (!listing) return { title: 'Anzeige nicht gefunden', robots: { index: false } };
-  const description = metaDescription(listing.description, `${listing.title} – Kleinanzeige auf MarktAT`);
+  const description = metaDescription(listing.description, `${listing.title} – Kleinanzeige auf Markterl`);
   const image = listing.images[0];
   return {
     title: listing.title,

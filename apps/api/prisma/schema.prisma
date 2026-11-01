@@ -1,4 +1,4 @@
-// MarktAT – Datenbankschema (PostgreSQL 16 + PostGIS)
+// Markterl – Datenbankschema (PostgreSQL 16 + PostGIS)
 // Überblick und geplante Erweiterungen: docs/datenmodell.md
 
 generator client {
@@ -1017,7 +1017,7 @@ enum DealSource {
   MANUAL
   CSV
   FEED
-  /// Zentral über ein Affiliate-Netzwerk (Awin): gehört keinem MarktAT-Händlerkonto, sondern einem freigegebenen Partnerprogramm
+  /// Zentral über ein Affiliate-Netzwerk (Awin): gehört keinem Markterl-Händlerkonto, sondern einem freigegebenen Partnerprogramm
   AFFILIATE
 }
 
@@ -1048,7 +1048,7 @@ model DealCategory {
 model Deal {
   id                        String              @id @default(cuid())
   slug                      String
-  /// Händlerkonto bei MarktAT; leer nur bei Affiliate-Deals (Herkunft AFFILIATE, siehe CHECK deals_owner_check)
+  /// Händlerkonto bei Markterl; leer nur bei Affiliate-Deals (Herkunft AFFILIATE, siehe CHECK deals_owner_check)
   merchantId                String?             @map("merchant_id") @db.Uuid
   /// Partnerprogramm im Affiliate-Netzwerk (nur Herkunft AFFILIATE)
   affiliateProgramId        String?             @map("affiliate_program_id")
@@ -1555,7 +1555,7 @@ model ServiceProject {
 
 // ---------------------------------------------------------------------------
 // Zentrale Affiliate-Deals (Awin-Publisher, weitere Netzwerke später). Getrennt von Händlerkonten:
-// Angebote gehören einem Partnerprogramm, nie einem MarktAT-Händler. Regeln: docs/affiliate.md
+// Angebote gehören einem Partnerprogramm, nie einem Markterl-Händler. Regeln: docs/affiliate.md
 // ---------------------------------------------------------------------------
 
 enum AffiliateNetwork {

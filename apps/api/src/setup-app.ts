@@ -50,8 +50,8 @@ export function setupApp(app: NestExpressApplication): INestApplication {
 
 export function setupOpenApi(app: INestApplication) {
   const config = new DocumentBuilder()
-    .setTitle('MarktAT API')
-    .setDescription('REST-API der Kleinanzeigenplattform MarktAT')
+    .setTitle('Markterl API')
+    .setDescription('REST-API der Kleinanzeigenplattform Markterl')
     .setVersion('0.1.0')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT', description: 'Supabase-Access-Token' })
     .build();

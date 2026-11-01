@@ -621,7 +621,7 @@ export class BookingsService implements OnModuleInit {
         bookingId: booking.id,
         amountCents: booking.priceCents,
         currency: booking.currency,
-        productName: `MarktAT – ${booking.product.name}`,
+        productName: `Markterl – ${booking.product.name}`,
         description: booking.listing ? booking.listing.title.slice(0, 200) : undefined,
         customerEmail: user.email,
         successUrl: `${back}&session_id={CHECKOUT_SESSION_ID}`,

@@ -1,7 +1,7 @@
 {
   "name": "marktat",
   "private": true,
-  "description": "MarktAT – Kleinanzeigenplattform für Österreich (Monorepo)",
+  "description": "Markterl – Kleinanzeigenplattform für Österreich (Monorepo)",
   "packageManager": "pnpm@10.28.0",
   "engines": {
     "node": ">=22.12"

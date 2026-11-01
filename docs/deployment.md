@@ -14,8 +14,8 @@ Ein Server in der EU mit Docker Compose. Von außen erreichbar ist nur Caddy (Po
 über Let's Encrypt). Alles andere liegt im internen Docker-Netz ohne veröffentlichte Ports.
 
 ```
-Browser ──HTTPS──► Caddy ─┬─ marktat.at ────────────► web (Next.js)  ──intern──► api
-                          └─ api.marktat.at ─┬─ /auth/v1/* ► auth (Supabase Auth/GoTrue, selbst betrieben)
+Browser ──HTTPS──► Caddy ─┬─ markterl.at ────────────► web (Next.js)  ──intern──► api
+                          └─ api.markterl.at ─┬─ /auth/v1/* ► auth (Supabase Auth/GoTrue, selbst betrieben)
                                              └─ alles andere ► api (NestJS) ─► db (PostgreSQL+PostGIS), redis,
                                                                                 meilisearch, Cloudflare R2, SMTP
 ```
@@ -79,25 +79,24 @@ etwa 10 €/Monat.
 
 ## Was Niko einrichten muss
 
-1. **Domain** registrieren (Vorschlag: eine `.at`-Domain bei einem österreichischen Registrar; Name entscheidet Niko,
-   „MarktAT“ ist ein Arbeitstitel – Verfügbarkeit und Markenrechte vorher prüfen). Benötigt werden zwei Adressen,
-   z. B. `marktat.at` (Web) und `api.marktat.at` (API und Anmeldung).
+1. **Domain**: `markterl.at` ist registriert (01.11.2026). Benötigt werden zwei Adressen:
+   `markterl.at` (Web) und `api.markterl.at` (API und Anmeldung).
 2. **Hetzner-Konto** und Server CX33, Ubuntu 24.04, Standort Nürnberg/Falkenstein (oder Helsinki), mit eigenem
    SSH-Schlüssel für root und aktivierten Backups. *Kostenpflichtig – braucht Nikos Freigabe.*
 3. **DNS-Einträge** (beim Registrar):
 
    | Name | Typ | Wert |
    | --- | --- | --- |
-   | `marktat.at` | A | IPv4 des Servers |
-   | `api.marktat.at` | A | IPv4 des Servers |
+   | `markterl.at` | A | IPv4 des Servers |
+   | `api.markterl.at` | A | IPv4 des Servers |
    | Absenderdomain | TXT (SPF), CNAME/TXT (DKIM) | genau wie vom E-Mail-Dienst angezeigt |
-   | `_dmarc.marktat.at` | TXT | `v=DMARC1; p=none; rua=mailto:<adresse>` – nach 2–4 Wochen ohne Fehler auf `p=quarantine` |
+   | `_dmarc.markterl.at` | TXT | `v=DMARC1; p=none; rua=mailto:<adresse>` – nach 2–4 Wochen ohne Fehler auf `p=quarantine` |
 
    Vorerst **keinen AAAA-Eintrag (IPv6)**: Docker reicht IPv6-Verbindungen sonst mit einer internen Adresse weiter, und
    Rate-Limits würden alle IPv6-Nutzer:innen zusammenzählen. IPv6 kommt später mit IPv6 im Docker-Netz.
 4. **E-Mail-Versand**: Konto bei einem Transaktionsdienst in der EU, z. B. **Brevo** (Gratistarif, 300 E-Mails/Tag,
    SMTP `smtp-relay.brevo.com`, Port 587) oder **Scaleway Transactional Email** (300 E-Mails/Monat gratis, danach
-   0,25 € je 1000). Absenderdomain verifizieren (SPF/DKIM), Absender z. B. `noreply@marktat.at`, SMTP-Zugang anlegen.
+   0,25 € je 1000). Absenderdomain verifizieren (SPF/DKIM), Absender z. B. `noreply@markterl.at`, SMTP-Zugang anlegen.
    AV-Vertrag des Anbieters annehmen.
 5. **Cloudflare R2**: eigener Bucket für die Produktion (z. B. `marktat-prod`, privat, Standort EU wählbar) und ein
    eigenes API-Token „Object Read & Write“ nur für diesen Bucket. CORS-Regel: Origin `https://<WEB_DOMAIN>`,
@@ -135,7 +134,7 @@ etwa 10 €/Monat.
    ```bash
    /opt/marktat/current/deploy.sh compose exec api pnpm admin:role -- --email <adresse> --role ADMIN
    ```
-   Beim nächsten Öffnen von `/admin` verlangt MarktAT die Einrichtung der Zwei-Faktor-Anmeldung.
+   Beim nächsten Öffnen von `/admin` verlangt Markterl die Einrichtung der Zwei-Faktor-Anmeldung.
 7. Online-Funktionstest (Checkliste unten) und erst danach den Link teilen.
 
 ## Updates
@@ -277,7 +276,7 @@ Ergebnisse mit Datum in diesem Abschnitt festhalten. Lokale Proben zählen nicht
 
 ## Bekannte Grenzen
 
-- Ein einzelner Server: fällt er aus, ist MarktAT offline (Wiederherstellung aus Hetzner-Backup oder auf neuem Server
+- Ein einzelner Server: fällt er aus, ist Markterl offline (Wiederherstellung aus Hetzner-Backup oder auf neuem Server
   mit `setup-server.sh` + Sicherung).
 - Kein IPv6 (siehe DNS).
 - Kurze Unterbrechung bei jedem Update; Caddy startet dabei ebenfalls neu (Zertifikate bleiben erhalten).

@@ -480,7 +480,7 @@ export class MessagesService implements OnModuleInit {
       paragraphs: [
         `Hallo ${escapeHtml(recipient.displayName)},`,
         `<strong>${escapeHtml(senderName)}</strong> hat dir ${count > 1 ? `${count} neue Nachrichten` : 'eine neue Nachricht'} ${escapeHtml(intro)} geschrieben.`,
-        'Aus Datenschutzgründen steht der Text nur in deinem Postfach auf MarktAT.',
+        'Aus Datenschutzgründen steht der Text nur in deinem Postfach auf Markterl.',
       ],
       action: { label: 'Nachricht lesen', url },
       settingsUrl: `${this.env.WEB_URL}/konto/benachrichtigungen`,
@@ -674,7 +674,7 @@ function displayName(user: Pick<UserRow, 'displayName' | 'accountType' | 'compan
 }
 
 function sendBlockedReason(partner: UserRow, blockedByMe: boolean, blockedMe: boolean): string | null {
-  if (isInactive(partner)) return 'Diese Person ist nicht mehr auf MarktAT aktiv.';
+  if (isInactive(partner)) return 'Diese Person ist nicht mehr auf Markterl aktiv.';
   if (blockedByMe) return 'Du hast diese Person blockiert. Über das Menü oben kannst du die Blockierung aufheben.';
   if (blockedMe) return 'Du kannst dieser Person keine Nachrichten mehr senden.';
   return null;

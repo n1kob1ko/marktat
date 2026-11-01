@@ -41,7 +41,7 @@ export const QUALIFICATION_STATUSES = ['CLAIMED', 'VERIFIED', 'REJECTED'] as con
 export type QualificationStatus = (typeof QUALIFICATION_STATUSES)[number];
 export const QUALIFICATION_STATUS_LABELS: Record<QualificationStatus, string> = {
   CLAIMED: 'Angabe der Anbieter:in, nicht geprüft',
-  VERIFIED: 'Von MarktAT geprüft',
+  VERIFIED: 'Von Markterl geprüft',
   REJECTED: 'Nicht bestätigt',
 };
 

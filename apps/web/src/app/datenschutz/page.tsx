@@ -32,7 +32,7 @@ export default function PrivacyPage() {
       <h2>Wo die Daten liegen</h2>
       <p>
         Konten (Anmeldung über Supabase Auth, selbst betrieben), Inserate und Nachrichten liegen in der eigenen Datenbank
-        auf dem Server von MarktAT; es gibt kein Konto bei Supabase. Bilder liegen bei Cloudflare R2.
+        auf dem Server von Markterl; es gibt kein Konto bei Supabase. Bilder liegen bei Cloudflare R2.
       </p>
       <h2>Auftragsverarbeiter</h2>
       <ul>

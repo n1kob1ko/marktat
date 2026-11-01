@@ -13,7 +13,7 @@ Vor dem Teilen des Links (auch in der Beta – Impressum und Kontaktstelle gelte
 
 | Angabe | Wofür | Hinweis |
 | --- | --- | --- |
-| Name bzw. Firma und Rechtsform der Betreiberin/des Betreibers | Impressum (ECG § 5, MedienG § 25), Datenschutz (Verantwortlicher), Nutzungsbedingungen (Vertragspartner) | Wer betreibt MarktAT – Niko als Privatperson, Einzelunternehmen oder eine Gesellschaft? Davon hängen Gewerbe, UID und Firmenbuch ab |
+| Name bzw. Firma und Rechtsform der Betreiberin/des Betreibers | Impressum (ECG § 5, MedienG § 25), Datenschutz (Verantwortlicher), Nutzungsbedingungen (Vertragspartner) | Wer betreibt Markterl – Niko als Privatperson, Einzelunternehmen oder eine Gesellschaft? Davon hängen Gewerbe, UID und Firmenbuch ab |
 | Ladungsfähige Anschrift (Straße, PLZ, Ort, Land) | Impressum, Datenschutz | Postfach reicht nicht |
 | E-Mail-Adresse für Anfragen, optional Telefon | Impressum, Kontakt | muss schnell erreichbar sein; Adresse unter der eigenen Domain empfohlen |
 | E-Mail der DSA-Kontaktstelle und Sprachen | Impressum, Kontakt (DSA Art. 11/12) | kann dieselbe Adresse sein, z. B. Deutsch und Englisch |

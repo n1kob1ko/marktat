@@ -167,7 +167,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
 
           {profile.regulatedCategories.length ? (
             <Alert tone="info" title="Hinweis zu Berufsberechtigungen">
-              Für {profile.regulatedCategories.join(', ')} kann in Österreich eine Gewerbeberechtigung bzw. ein Befähigungsnachweis nötig sein. MarktAT prüft Berechtigungen
+              Für {profile.regulatedCategories.join(', ')} kann in Österreich eine Gewerbeberechtigung bzw. ein Befähigungsnachweis nötig sein. Markterl prüft Berechtigungen
               nicht automatisch. Ob ein Betrieb eingetragen ist, kannst du im{' '}
               <a href="https://www.gisa.gv.at/abfrage" rel="noopener noreferrer" target="_blank" className="font-semibold underline">
                 GISA (Gewerbeinformationssystem Austria)
@@ -198,7 +198,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
                   </li>
                 ))}
               </ul>
-              <p className="mt-4 text-xs text-ink-500">„Von MarktAT geprüft“ heißt: Das Team hat den angegebenen Nachweis abgeglichen. Das ersetzt keine behördliche Bestätigung.</p>
+              <p className="mt-4 text-xs text-ink-500">„Von Markterl geprüft“ heißt: Das Team hat den angegebenen Nachweis abgeglichen. Das ersetzt keine behördliche Bestätigung.</p>
             </Card>
           ) : null}
 
@@ -260,7 +260,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
               <ItemFavoriteButton kind="service" id={profile.id} title={profile.headline} initial={profile.isFavorite} className="mt-3" />
             ) : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
-              MarktAT vermittelt nicht und nimmt keine Provision. Vertrag, Leistung und Bezahlung vereinbart ihr direkt miteinander. Zahle nie vorab an Unbekannte.
+              Markterl vermittelt nicht und nimmt keine Provision. Vertrag, Leistung und Bezahlung vereinbart ihr direkt miteinander. Zahle nie vorab an Unbekannte.
             </p>
           </Card>
 
@@ -284,7 +284,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
 
           <p className="flex gap-2 px-1 text-xs text-ink-500">
             <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-            Mitglied seit {formatDate(profile.provider.memberSince)}. MarktAT zeigt keine Bewertungen.
+            Mitglied seit {formatDate(profile.provider.memberSince)}. Markterl zeigt keine Bewertungen.
           </p>
           {profile.isOwner ? null : (
             <Link href={`/melden?anbieter=${profile.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">

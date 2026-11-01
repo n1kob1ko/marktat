@@ -11,13 +11,13 @@ import { AreaNav, AreaNavList } from '@/components/area-nav';
 export const metadata: Metadata = {
   metadataBase: new URL(serverEnv.webUrl),
   title: {
-    default: 'MarktAT – Kleinanzeigen für Österreich',
-    template: '%s | MarktAT',
+    default: 'Markterl – Kleinanzeigen für Österreich',
+    template: '%s | Markterl',
   },
   description:
     'Kostenlos inserieren und finden: Marktplatz, Auto & Motor, Immobilien, Jobs, Deals und Dienstleistungen in ganz Österreich.',
-  applicationName: 'MarktAT',
-  openGraph: { type: 'website', locale: 'de_AT', siteName: 'MarktAT' },
+  applicationName: 'Markterl',
+  openGraph: { type: 'website', locale: 'de_AT', siteName: 'Markterl' },
   // Vor dem offiziellen Start nicht indexieren (ALLOW_INDEXING, siehe next.config.ts)
   ...(serverEnv.allowIndexing ? {} : { robots: { index: false, follow: false } }),
 };

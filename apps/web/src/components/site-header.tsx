@@ -9,7 +9,7 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <Container className="flex h-16 items-center gap-2 sm:gap-6">
-        <Link href="/" className="shrink-0 rounded-lg" aria-label="MarktAT – zur Startseite">
+        <Link href="/" className="shrink-0 rounded-lg" aria-label="Markterl – zur Startseite">
           {/* Sehr schmale Handys (320–400 px): nur das Bildzeichen, damit „Inserieren“ Platz hat */}
           <Logo wordmarkClassName="max-[400px]:sr-only" />
         </Link>

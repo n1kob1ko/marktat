@@ -35,7 +35,7 @@ export function dealSavingsCents(
   return dealDiscountPercent(priceCents, referencePriceCents, referencePriceType) === null ? null : referencePriceCents! - priceCents;
 }
 
-/** Niedrigster tatsächlich erfasster Preis vor `before` innerhalb von 30 Tagen (eigene Aufzeichnung von MarktAT). */
+/** Niedrigster tatsächlich erfasster Preis vor `before` innerhalb von 30 Tagen (eigene Aufzeichnung von Markterl). */
 export function lowestRecordedPrice(records: readonly { priceCents: number; recordedAt: string | Date }[], before: Date, days = 30): number | null {
   const from = before.getTime() - days * 86_400_000;
   let lowest: number | null = null;

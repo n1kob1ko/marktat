@@ -16,7 +16,7 @@ const LINK_RECHECK_MS = 24 * 3600_000;
 const LINK_BATCH = 40;
 /** Erst nach so vielen eindeutigen Fehlern (404/410) in Folge gilt ein Link als defekt */
 export const LINK_FAILURES_UNTIL_BROKEN = 3;
-const USER_AGENT = 'MarktAT-Linkpruefung/1.0 (+https://marktat.at; prüft nur, ob die Angebotsseite existiert)';
+const USER_AGENT = 'Markterl-Linkpruefung/1.0 (+https://markterl.at; prüft nur, ob die Angebotsseite existiert)';
 
 export type LinkCheckResult = 'ok' | 'gone' | 'unknown';
 

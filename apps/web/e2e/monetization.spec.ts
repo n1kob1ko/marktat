@@ -97,7 +97,7 @@ test('Kostenlos inserieren und kostenlose Zusatzleistungen mit Limits, Top-Anzei
   const active = seller.page.getByRole('region', { name: 'Laufende Leistungen' });
   await expect(active.getByText('Hervorhebung')).toBeVisible();
   await expect(active.getByText('Top-Anzeige')).toBeVisible();
-  await expect(seller.page.getByText('Solange MarktAT kostenlos ist, fallen keine an.', { exact: false })).toBeVisible();
+  await expect(seller.page.getByText('Solange Markterl kostenlos ist, fallen keine an.', { exact: false })).toBeVisible();
   await expectNoHorizontalScroll(seller.page);
 
   // Suche: Top-Anzeigen über passenden Ergebnissen, gekennzeichnet, aber nicht als bezahlt

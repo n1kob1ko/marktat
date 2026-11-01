@@ -2,8 +2,8 @@ import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'MarktAT – Kleinanzeigen für Österreich',
-    short_name: 'MarktAT',
+    name: 'Markterl – Kleinanzeigen für Österreich',
+    short_name: 'Markterl',
     description: 'Kaufen und verkaufen in ganz Österreich.',
     lang: 'de-AT',
     start_url: '/',

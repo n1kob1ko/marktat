@@ -77,7 +77,7 @@ export const envSchema = z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
-    MAIL_FROM: z.string().min(3).default('MarktAT <noreply@marktat.local>'),
+    MAIL_FROM: z.string().min(3).default('Markterl <noreply@marktat.local>'),
     /** Wartezeit vor der E-Mail zu einer neuen Nachricht. Wer in dieser Zeit liest, bekommt keine E-Mail. */
     MESSAGE_EMAIL_DELAY_SECONDS: z.coerce.number().int().min(0).max(86_400).default(120),
     /** Abstand der Prüfung gespeicherter Suchen auf neue Treffer */

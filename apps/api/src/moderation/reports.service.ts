@@ -122,7 +122,7 @@ export class ReportsService {
       dealId?: string;
       serviceProfileId?: string;
       conversationId?: string;
-      /** Leer bei Affiliate-Deals (kein Konto bei MarktAT) */
+      /** Leer bei Affiliate-Deals (kein Konto bei Markterl) */
       reportedId?: string;
       reason: ReportReason;
       details?: string;

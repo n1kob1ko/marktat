@@ -24,7 +24,7 @@ const centsToInput = (cents: number | null | undefined) => (cents ? (cents / 100
 
 /**
  * Formular für Deals (anlegen und bearbeiten). Vergleichspreise nur mit Grundlage und Bestätigung; der Rabatt
- * wird nicht eingegeben, sondern von MarktAT berechnet.
+ * wird nicht eingegeben, sondern von Markterl berechnet.
  */
 export function DealForm({
   categories,

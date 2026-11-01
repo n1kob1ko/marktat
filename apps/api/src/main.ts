@@ -16,6 +16,6 @@ async function bootstrap() {
   setupApp(app);
   if (env.NODE_ENV !== 'production') setupOpenApi(app);
   await app.listen(env.API_PORT);
-  new Logger('Start').log(`MarktAT API läuft auf Port ${env.API_PORT}${env.NODE_ENV !== 'production' ? ' (Doku: /docs)' : ''}`);
+  new Logger('Start').log(`Markterl API läuft auf Port ${env.API_PORT}${env.NODE_ENV !== 'production' ? ' (Doku: /docs)' : ''}`);
 }
 await bootstrap();
