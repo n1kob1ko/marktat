@@ -71,7 +71,8 @@ PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin prohibit-password
 CONF
-  systemctl reload ssh || systemctl reload sshd
+  # Ubuntu 24.04 startet sshd über ssh.socket je Verbindung neu; dort ist ssh.service inaktiv und reload schlägt fehl
+  systemctl reload ssh 2>/dev/null || systemctl reload sshd 2>/dev/null || true
 else
   echo 'WARNUNG: root hat keinen SSH-Schlüssel – Passwort-Anmeldung bleibt vorerst erlaubt (docs/deployment.md).'
 fi

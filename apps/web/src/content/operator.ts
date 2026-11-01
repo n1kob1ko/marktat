@@ -38,20 +38,20 @@ export interface Operator {
 }
 
 export const OPERATOR: Operator = {
-  name: null,
-  legalForm: null,
+  name: 'Wang Ji e.U.',
+  legalForm: 'Eingetragenes Einzelunternehmen',
   businessPurpose: null,
-  street: null,
-  postalCode: null,
-  city: null,
-  country: null,
-  email: null,
+  street: 'Katsushikastraße 1/210',
+  postalCode: '1210',
+  city: 'Wien',
+  country: 'Österreich',
+  email: 'mail@wang-ji.at',
   phone: null,
   companyRegister: null,
   vatId: null,
   supervisoryAuthority: null,
-  dsaContactEmail: null,
-  dsaLanguages: null,
+  dsaContactEmail: 'mail@wang-ji.at',
+  dsaLanguages: 'Deutsch, Englisch',
   privacyEmail: null,
   dataProtectionOfficer: null,
   editorialLine: null,
@@ -68,7 +68,7 @@ export interface Processor {
 }
 
 export const PROCESSORS: Processor[] = [
-  { purpose: 'Server und Datenbank (Hosting)', provider: null, region: null },
+  { purpose: 'Server und Datenbank (Hosting)', provider: 'Hetzner Online GmbH', region: 'Deutschland (Falkenstein)' },
   { purpose: 'Bilder (Speicher)', provider: 'Cloudflare R2', region: null },
   { purpose: 'E-Mail-Versand', provider: null, region: null },
 ];
