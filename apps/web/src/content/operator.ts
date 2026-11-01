@@ -70,7 +70,7 @@ export interface Processor {
 export const PROCESSORS: Processor[] = [
   { purpose: 'Server und Datenbank (Hosting)', provider: 'Hetzner Online GmbH', region: 'Deutschland (Falkenstein)' },
   { purpose: 'Bilder (Speicher)', provider: 'Cloudflare R2', region: null },
-  { purpose: 'E-Mail-Versand', provider: null, region: null },
+  { purpose: 'E-Mail-Versand', provider: 'Brevo SAS, Paris', region: 'Frankreich (EU)' },
 ];
 
 /** Pflichtangaben, die vor dem öffentlichen Start feststehen müssen (für Hinweise und Tests) */
