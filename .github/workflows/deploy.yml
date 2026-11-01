@@ -59,9 +59,12 @@ jobs:
           [ -n "$DEPLOY_HOST" ] && [ -n "$DEPLOY_SSH_KEY" ] && [ -n "$DEPLOY_KNOWN_HOSTS" ] \
             || { echo '::error::Secrets DEPLOY_HOST, DEPLOY_SSH_KEY und DEPLOY_KNOWN_HOSTS in der Umgebung production fehlen'; exit 1; }
           install -d -m 700 ~/.ssh
-          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          # Unter Windows kopierte Schlüssel enthalten oft CRLF-Zeilenenden; damit kann ssh den Schlüssel nicht laden
+          printf '%s\n' "$DEPLOY_SSH_KEY" | tr -d '\r' > ~/.ssh/id_deploy && chmod 600 ~/.ssh/id_deploy
+          ssh-keygen -y -P '' -f ~/.ssh/id_deploy > /dev/null \
+            || { echo '::error::DEPLOY_SSH_KEY ist kein gültiger privater Schlüssel ohne Passphrase (ganze Datei inkl. BEGIN/END-Zeilen einfügen)'; exit 1; }
           # Server-Schlüssel fest hinterlegt: keine Verbindung zu einem untergeschobenen Server
-          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" | tr -d '\r' > ~/.ssh/known_hosts
           printf 'Host marktat\n  HostName %s\n  User deploy\n  IdentityFile ~/.ssh/id_deploy\n  BatchMode yes\n  StrictHostKeyChecking yes\n' "$DEPLOY_HOST" > ~/.ssh/config
 
       # Öffentliche Werte für das Web-Image (Adressen, Anon-Key) kommen aus der .env auf dem Server – eine Quelle
