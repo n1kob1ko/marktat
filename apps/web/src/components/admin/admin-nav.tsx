@@ -1,49 +1,62 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@marktat/ui';
+import {
+  Activity,
+  BriefcaseBusiness,
+  Coins,
+  Flag,
+  Gauge,
+  Handshake,
+  LayoutList,
+  Scale,
+  ScrollText,
+  Tag,
+  Users,
+  Wrench,
+} from 'lucide-react';
+import { findActiveHref, SectionNav, type SectionNavGroup } from '../section-nav';
 
-const NAV = [
-  { href: '/admin', label: 'Übersicht', adminOnly: false },
-  { href: '/admin/meldungen', label: 'Meldungen', adminOnly: false },
-  { href: '/admin/inserate', label: 'Inserate', adminOnly: false },
-  { href: '/admin/deals', label: 'Deals', adminOnly: false },
-  { href: '/admin/affiliate', label: 'Affiliate', adminOnly: false },
-  { href: '/admin/dienstleistungen', label: 'Dienstleistungen', adminOnly: false },
-  { href: '/admin/dienstleistungen/projekte', label: 'Projektaufträge', adminOnly: false },
-  { href: '/admin/einsprueche', label: 'Einsprüche', adminOnly: false },
-  { href: '/admin/nutzer', label: 'Konten', adminOnly: true },
-  { href: '/admin/monetarisierung', label: 'Monetarisierung', adminOnly: true },
-  { href: '/admin/protokoll', label: 'Protokoll', adminOnly: true },
-  { href: '/admin/system', label: 'System', adminOnly: true },
-];
+function buildGroups(isAdmin: boolean): SectionNavGroup[] {
+  const groups: SectionNavGroup[] = [
+    {
+      label: 'Moderation',
+      items: [
+        { href: '/admin', label: 'Übersicht', icon: Gauge },
+        { href: '/admin/meldungen', label: 'Meldungen', icon: Flag },
+        { href: '/admin/inserate', label: 'Inserate', icon: LayoutList },
+        { href: '/admin/einsprueche', label: 'Einsprüche', icon: Scale },
+      ],
+    },
+    {
+      label: 'Inhalte',
+      items: [
+        { href: '/admin/deals', label: 'Deals', icon: Tag },
+        { href: '/admin/affiliate', label: 'Affiliate', icon: Handshake },
+        { href: '/admin/dienstleistungen', label: 'Dienstleistungen', icon: Wrench },
+        { href: '/admin/dienstleistungen/projekte', label: 'Projektaufträge', icon: BriefcaseBusiness },
+      ],
+    },
+  ];
+  // Konten, Monetarisierung, Protokoll und Systemzustand sehen nur Administratoren
+  if (isAdmin) {
+    groups.push({
+      label: 'Verwaltung',
+      items: [
+        { href: '/admin/nutzer', label: 'Konten', icon: Users },
+        { href: '/admin/monetarisierung', label: 'Monetarisierung', icon: Coins },
+        { href: '/admin/protokoll', label: 'Protokoll', icon: ScrollText },
+        { href: '/admin/system', label: 'System', icon: Activity },
+      ],
+    });
+  }
+  return groups;
+}
 
-/** Reiter im Admin-Bereich. Konten, Monetarisierung, Protokoll und Systemzustand sehen nur Administratoren. */
+/** Navigation im Moderations- und Admin-Bereich. */
 export function AdminNav({ isAdmin }: { isAdmin: boolean }) {
   const pathname = usePathname();
-  return (
-    <nav aria-label="Admin-Bereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
-      <ul className="flex gap-1">
-        {NAV.filter((item) => isAdmin || !item.adminOnly).map((item) => {
-          // Der genaueste passende Reiter ist aktiv (/admin/dienstleistungen/projekte vor /admin/dienstleistungen)
-          const active = item.href === '/admin' ? pathname === '/admin' : pathname.startsWith(item.href) && !NAV.some((other) => other.href.length > item.href.length && other.href.startsWith(item.href) && pathname.startsWith(other.href));
-          return (
-            <li key={item.href} className="shrink-0">
-              <Link
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  '-mb-px flex items-center border-b-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap sm:px-4',
-                  active ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-600 hover:border-line-strong hover:text-ink-900',
-                )}
-              >
-                {item.label}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
+  const groups = buildGroups(isAdmin);
+  const hrefs = groups.flatMap((g) => g.items.map((item) => item.href));
+  return <SectionNav label="Admin-Bereich" groups={groups} activeHref={findActiveHref(pathname, hrefs, '/admin')} />;
 }

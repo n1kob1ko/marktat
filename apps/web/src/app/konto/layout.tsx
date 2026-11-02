@@ -7,10 +7,12 @@ export default function AccountLayout({ children }: LayoutProps<'/konto'>) {
   return (
     <Container className="py-8 sm:py-10">
       <h1 className="text-3xl font-bold text-ink-950 sm:text-4xl">Mein Konto</h1>
-      <Suspense fallback={<AccountNavFallback />}>
-        <AccountNavForUser />
-      </Suspense>
-      <div className="mt-8">{children}</div>
+      <div className="mt-6 lg:mt-8 lg:grid lg:grid-cols-[14rem_minmax(0,1fr)] lg:items-start lg:gap-10">
+        <Suspense fallback={<AccountNavFallback />}>
+          <AccountNavForUser />
+        </Suspense>
+        <div className="mt-6 min-w-0 lg:mt-0">{children}</div>
+      </div>
     </Container>
   );
 }

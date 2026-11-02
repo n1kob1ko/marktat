@@ -162,7 +162,8 @@ test('Projektauftrag beschreiben, finden, beantworten, melden und moderieren', a
   await becomeStaff(moderator.page, emails.moderator, 'MODERATOR');
   const mod = moderator.page;
   await mod.goto(`/admin/dienstleistungen/projekte?q=${word}`);
-  await expect(mod.getByRole('link', { name: 'Projektaufträge', exact: true })).toHaveAttribute('aria-current', 'page');
+  // Seitenleiste am Desktop, aufklappbares Menü am Handy – der aktive Eintrag ist in beiden derselbe
+  await expect(mod.getByRole('navigation', { name: 'Admin-Bereich' }).locator('a[aria-current="page"]').first()).toHaveAttribute('href', '/admin/dienstleistungen/projekte');
   const row = mod.locator('tr', { hasText: title });
   await expect(row).toContainText('1 Meldung(en)');
   await expectNoHorizontalScroll(mod);

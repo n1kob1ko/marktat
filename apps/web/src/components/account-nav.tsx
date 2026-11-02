@@ -1,81 +1,78 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { cn } from '@marktat/ui';
+import {
+  Bell,
+  Bookmark,
+  BriefcaseBusiness,
+  Heart,
+  Inbox,
+  LayoutList,
+  LockKeyhole,
+  MessageCircle,
+  ShieldCheck,
+  Sparkles,
+  Tag,
+  UserRound,
+  Wrench,
+} from 'lucide-react';
 import { useUnread } from '@/lib/realtime';
+import { findActiveHref, SectionNav, type SectionNavGroup } from './section-nav';
 
-const NAV = [
-  { href: '/konto', label: 'Profil' },
-  { href: '/konto/anzeigen', label: 'Meine Anzeigen' },
-  { href: '/konto/dienstleistungen', label: 'Dienstleistungen' },
-  { href: '/konto/projekte', label: 'Projektaufträge' },
-  { href: '/konto/leistungen', label: 'Leistungen' },
-  { href: '/nachrichten', label: 'Nachrichten' },
-  { href: '/konto/merkliste', label: 'Merkliste' },
-  { href: '/konto/suchen', label: 'Gespeicherte Suchen' },
-  { href: '/konto/benachrichtigungen', label: 'Benachrichtigungen' },
-  { href: '/konto/mitteilungen', label: 'Mitteilungen' },
-  { href: '/konto/datenschutz', label: 'Datenschutz' },
-];
+/** Seiten ohne eigenen Eintrag, die zu einem Eintrag gehören */
+const ALIASES: Record<string, string> = {
+  '/konto/entscheidungen': '/konto/mitteilungen',
+};
 
-/** Nur für gewerbliche Konten */
-const DEALS = { href: '/konto/deals', label: 'Deals' };
+function buildGroups({ unreadMessages, showSecurity, showDeals }: { unreadMessages: number; showSecurity: boolean; showDeals: boolean }): SectionNavGroup[] {
+  return [
+    {
+      label: 'Konto',
+      items: [{ href: '/konto', label: 'Profil', icon: UserRound }],
+    },
+    {
+      label: 'Anbieten',
+      items: [
+        { href: '/konto/anzeigen', label: 'Meine Anzeigen', icon: LayoutList },
+        // Nur für gewerbliche Konten
+        ...(showDeals ? [{ href: '/konto/deals', label: 'Deals', icon: Tag }] : []),
+        { href: '/konto/dienstleistungen', label: 'Dienstleistungen', icon: Wrench },
+        { href: '/konto/projekte', label: 'Projektaufträge', icon: BriefcaseBusiness },
+        { href: '/konto/leistungen', label: 'Leistungen', icon: Sparkles },
+      ],
+    },
+    {
+      label: 'Kontakt & Merken',
+      items: [
+        { href: '/nachrichten', label: 'Nachrichten', icon: MessageCircle, count: unreadMessages, countLabel: 'ungelesen' },
+        { href: '/konto/merkliste', label: 'Merkliste', icon: Heart },
+        { href: '/konto/suchen', label: 'Gespeicherte Suchen', icon: Bookmark },
+      ],
+    },
+    {
+      label: 'Einstellungen',
+      items: [
+        { href: '/konto/benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
+        { href: '/konto/mitteilungen', label: 'Mitteilungen', icon: Inbox },
+        // Nur für Moderation und Administration: Zwei-Faktor-Anmeldung
+        ...(showSecurity ? [{ href: '/konto/sicherheit', label: 'Sicherheit', icon: ShieldCheck }] : []),
+        { href: '/konto/datenschutz', label: 'Datenschutz', icon: LockKeyhole },
+      ],
+    },
+  ];
+}
 
-/** Nur für Moderation und Administration: Zwei-Faktor-Anmeldung */
-const SECURITY = { href: '/konto/sicherheit', label: 'Sicherheit' };
-
-/** Reiter im Kontobereich; „Nachrichten“ zeigt die Zahl ungelesener Nachrichten live. */
+/** Navigation im Kontobereich; „Nachrichten“ zeigt die Zahl ungelesener Nachrichten live. */
 export function AccountNav({ showSecurity = false, showDeals = false }: { showSecurity?: boolean; showDeals?: boolean }) {
   const pathname = usePathname();
   const unread = useUnread();
-  return <AccountNavList pathname={pathname} unreadMessages={unread?.messages ?? 0} showSecurity={showSecurity} showDeals={showDeals} />;
+  const groups = buildGroups({ unreadMessages: unread?.messages ?? 0, showSecurity, showDeals });
+  const hrefs = groups.flatMap((g) => g.items.map((item) => item.href));
+  const lookup = Object.entries(ALIASES).find(([from]) => pathname === from || pathname.startsWith(`${from}/`))?.[1] ?? pathname;
+  return <SectionNav label="Kontobereich" groups={groups} activeHref={findActiveHref(lookup, hrefs, '/konto')} />;
 }
 
-/** Ohne aktiven Reiter – Platzhalter, solange der Pfad bei dynamischen Seiten noch nicht feststeht */
+/** Ohne aktiven Eintrag – Platzhalter, solange der Pfad bei dynamischen Seiten noch nicht feststeht */
 export function AccountNavFallback() {
-  return <AccountNavList pathname={null} unreadMessages={0} />;
-}
-
-function AccountNavList({
-  pathname,
-  unreadMessages,
-  showSecurity = false,
-  showDeals = false,
-}: {
-  pathname: string | null;
-  unreadMessages: number;
-  showSecurity?: boolean;
-  showDeals?: boolean;
-}) {
-  const items = [...NAV.slice(0, 4), ...(showDeals ? [DEALS] : []), ...NAV.slice(4), ...(showSecurity ? [SECURITY] : [])];
-  return (
-    <nav aria-label="Kontobereich" className="-mx-4 mt-6 overflow-x-auto border-b border-line px-4 sm:mx-0 sm:px-0">
-      <ul className="flex gap-1">
-        {items.map((item) => {
-          const active = pathname !== null && (item.href === '/konto' ? pathname === '/konto' : pathname.startsWith(item.href));
-          return (
-            <li key={item.href} className="shrink-0">
-              <Link
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  '-mb-px flex items-center gap-1.5 border-b-2 px-3 py-2.5 text-sm font-semibold whitespace-nowrap sm:px-4',
-                  active ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-600 hover:border-line-strong hover:text-ink-900',
-                )}
-              >
-                {item.label}
-                {item.href === '/nachrichten' && unreadMessages ? (
-                  <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-ink-950">
-                    <span className="sr-only">, ungelesen: </span>
-                    {unreadMessages}
-                  </span>
-                ) : null}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
-  );
+  return <SectionNav label="Kontobereich" groups={buildGroups({ unreadMessages: 0, showSecurity: false, showDeals: false })} activeHref={null} />;
 }
