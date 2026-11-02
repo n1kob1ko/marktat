@@ -213,6 +213,38 @@ describe('Inserate', () => {
     expect(byVertical.body.total).toBe(0);
   });
 
+  it('schlägt eine Preisspanne aus ähnlichen Inseraten vor – erst in der Nähe, sonst österreichweit', async () => {
+    const seller = await tokenFor();
+    const vienna = (await prisma.location.findFirstOrThrow({ where: { postalCode: '1010', place: 'Wien' } })).id;
+    const post = (priceCents: number, extra: Record<string, unknown> = {}) =>
+      request(server()).post('/v1/listings').set(seller.auth).send({ ...complete(), priceCents, ...extra }).expect(201);
+
+    // Zu wenige Inserate: keine Spanne, nur die Anzahl
+    await post(10_000);
+    await post(20_000);
+    let hint = await request(server()).get('/v1/listings/price-hint').query({ kategorie: leafCategoryId, ort: locationId }).expect(200);
+    expect(hint.body).toMatchObject({ count: 2, scope: 'austria', lowCents: null, medianCents: null, highCents: null });
+
+    // Entwürfe, „Zu verschenken“ und andere Kategorien zählen nicht mit
+    await post(99_000, { publish: false });
+    await post(0, { priceType: 'FREE', priceCents: undefined });
+    await post(30_000);
+    await post(40_000);
+    hint = await request(server()).get('/v1/listings/price-hint').query({ kategorie: leafCategoryId, ort: locationId }).expect(200);
+    expect(hint.body).toEqual({ count: 4, scope: 'nearby', radiusKm: 50, lowCents: 17_500, medianCents: 25_000, highCents: 32_500 });
+
+    // Wien ist weit weg von Graz: österreichweite Spanne
+    hint = await request(server()).get('/v1/listings/price-hint').query({ kategorie: leafCategoryId, ort: vienna }).expect(200);
+    expect(hint.body).toMatchObject({ count: 4, scope: 'austria', radiusKm: null, medianCents: 25_000 });
+
+    // Oberkategorien haben eigene Inserate nicht: leer statt Fehler; unbekannte Kategorie und falsche Eingaben werden abgewiesen
+    hint = await request(server()).get('/v1/listings/price-hint').query({ kategorie: parentCategoryId }).expect(200);
+    expect(hint.body).toMatchObject({ count: 0, medianCents: null });
+    await request(server()).get('/v1/listings/price-hint').query({ kategorie: 'gibtesnicht' }).expect(404);
+    await request(server()).get('/v1/listings/price-hint').expect(400);
+    await request(server()).get('/v1/listings/price-hint').query({ kategorie: leafCategoryId, ort: 'abc' }).expect(400);
+  });
+
   it('sucht Orte über PLZ und Namen', async () => {
     const byCode = await request(server()).get('/v1/geo/locations').query({ q: '6020' }).expect(200);
     expect(byCode.body[0]).toMatchObject({ place: 'Innsbruck', state: 'Tirol' });

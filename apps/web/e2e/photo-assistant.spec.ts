@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { registerConfirmed } from './accounts';
+import { nextListingStep, registerConfirmed } from './accounts';
 import { startFakeClaude } from './fake-claude';
 
 /**
@@ -33,7 +33,7 @@ test('Foto füllt das Inserat aus und wird zum ersten Bild der Anzeige', async (
     await expect(page.getByLabel('Genauere Kategorie').locator('option:checked')).toHaveText('Grafikkarten');
     await expect(page.getByLabel('Grafikspeicher')).toHaveValue('12');
     await expect(page.getByLabel('Grafikchip')).toHaveValue('GeForce RTX 4070 Super');
-    await expect(page.getByLabel('Zustand')).toHaveValue('LIKE_NEW');
+    await expect(page.getByRole('radio', { name: 'Wie neu' })).toBeChecked();
 
     await page.getByRole('button', { name: 'Rückgängig' }).click();
     await expect(page.getByLabel('Titel')).toHaveValue('Mein eigener Titel');
@@ -42,6 +42,7 @@ test('Foto füllt das Inserat aus und wird zum ersten Bild der Anzeige', async (
     // Noch einmal auswerten und veröffentlichen
     await page.getByLabel('Bild auswählen').setInputFiles(PHOTO);
     await expect(page.getByLabel('Titel')).toHaveValue('ASUS Dual GeForce RTX 4070 Super 12 GB', { timeout: 30_000 });
+    await nextListingStep(page);
     await page.getByText('Verhandlungsbasis').click();
     await page.getByLabel('Preis in Euro').fill('520');
     await page.getByLabel('Postleitzahl').fill('1010');

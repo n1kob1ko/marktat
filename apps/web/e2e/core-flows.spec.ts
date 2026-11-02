@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { waitForMailLink } from './mailpit';
+import { nextListingStep } from './accounts';
 
 const PASSWORD = 'Sicheres-Passwort-2026';
 const fixture = (name: string) => path.join(__dirname, 'fixtures', name);
@@ -54,6 +55,10 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
   await page.getByLabel('Titel').fill(title);
   await page.getByLabel('Beschreibung').fill('Gepflegtes Trekkingrad, 28 Zoll, frisch serviciert. Abholung in Graz.');
+  // Ohne Beschreibung geht es nicht weiter; Zustand per Knopf
+  await page.getByRole('radiogroup', { name: 'Zustand' }).getByText('Gut', { exact: true }).click();
+  await expect(page.getByRole('radio', { name: 'Gut' })).toBeChecked();
+  await nextListingStep(page);
   await page.getByText('Verhandlungsbasis').click();
   await page.getByLabel('Preis in Euro').fill('249,50');
   await page.getByLabel('Postleitzahl').fill('8010');
