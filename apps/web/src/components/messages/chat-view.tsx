@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { ArrowDown, ArrowLeft, Check, CheckCheck, ImageIcon, Info, RotateCw, SendHorizontal, ShieldAlert } from 'lucide-react';
 import { MESSAGE_MAX_LENGTH, formatPriceCents, type ChatMessage, type ConversationDetail, type MessagePage, type RealtimeEvent } from '@marktat/shared';
 import { Button, Spinner, cn } from '@marktat/ui';
 import { dayKey, formatDayLabel, formatMessageTime } from '@/lib/chat-format';
 import { setUnread, useRealtime } from '@/lib/realtime';
 import { newClientId } from '@/lib/client-id';
+import { useMobileFullscreen } from '@/lib/use-mobile-fullscreen';
 import { loadMessagesAction, markReadAction, sendMessageAction } from '@/app/nachrichten/actions';
 import { ChatMenu } from './chat-menu';
 
@@ -19,10 +20,13 @@ interface ChatViewProps {
   conversation: ConversationDetail;
   initial: MessagePage;
   backHref: string;
+  /** Hinweis oder Fehler nach einer Aktion (z. B. Melden), unter dem Kopf */
+  notice?: ReactNode;
 }
 
 /** Chatfenster: senden (optimistisch), live empfangen, ältere nachladen, Lesestatus. */
-export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
+export function ChatView({ conversation, initial, backHref, notice }: ChatViewProps) {
+  const fullscreen = useMobileFullscreen();
   const [messages, setMessages] = useState<LocalMessage[]>(initial.items);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -74,6 +78,17 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
       el.scrollTop = el.scrollHeight;
     }
   }, [messages]);
+
+  // Höhe ändert sich (Tastatur auf/zu, Textfeld wächst): unten bleiben, wenn man unten war
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      if (stickToBottom.current) el.scrollTop = el.scrollHeight;
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   function onScroll() {
     const el = scroller.current;
@@ -182,7 +197,13 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
   const price = !listing ? null : listing.priceType === 'FREE' ? 'Zu verschenken' : listing.priceCents !== null ? formatPriceCents(listing.priceCents) : null;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-canvas/40">
+    // Am Handy eine eigene Vollbild-Ansicht über Kopf und Fußzeile der Seite (eigener Zurück-Pfeil), die genau über
+    // der Tastatur endet; am Desktop Teil des zweispaltigen Postfachs
+    <div
+      className="flex min-h-0 flex-1 flex-col bg-canvas max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-50 max-lg:h-dvh lg:bg-canvas/40"
+      style={fullscreen}
+      data-testid="chat-view"
+    >
       {/* Kopf: Person und Anzeige */}
       <header className="flex items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
         <Link href={backHref} className="-ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5 lg:hidden" aria-label="Zurück zu allen Nachrichten">
@@ -212,6 +233,8 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
         </Link>
         <ChatMenu conversation={conversation} />
       </header>
+
+      {notice ? <div className="border-b border-line bg-surface p-3">{notice}</div> : null}
 
       {!subject.available ? (
         <p className="flex items-center gap-2 border-b border-line bg-warning-50 px-4 py-2 text-sm text-warning-700">

@@ -4,7 +4,7 @@ import { registerConfirmed } from './accounts';
 import { startFakeClaude } from './fake-claude';
 
 /**
- * Fotos im Formular + „Mit KI ausfüllen“: zwei Fotos auswählen → Kategorie, Titel, Beschreibung und
+ * Fotos im Formular + „Mit KI ausfüllen“: über „Mit KI Inserat aufgeben“ zwei Fotos auswählen → Kategorie, Titel, Beschreibung und
  * Grafikkarten-Details sind ausgefüllt (der Zustand nicht), „Rückgängig“ stellt den Stand davor wieder her; nach dem
  * Veröffentlichen werden die Fotos automatisch als Bilder der Anzeige hochgeladen.
  *
@@ -27,9 +27,16 @@ test('KI füllt das Inserat aus mehreren Fotos aus, die Fotos werden zu Bildern 
 
     // Erst selbst etwas eintippen: „Rückgängig“ soll genau diesen Stand zurückbringen
     await page.getByLabel('Titel').fill('Mein eigener Titel');
-    await page.getByLabel('Aus Galerie wählen').setInputFiles([PHOTO, PHOTO]);
+    // Orangener Einstieg: „Mit KI Inserat aufgeben“ → Kamera oder Galerie → danach „Mit KI ausfüllen“
+    await page.getByRole('button', { name: 'Mit KI Inserat aufgeben' }).click();
+    await expect(page.getByRole('button', { name: 'Mit Kamera fotografieren' })).toBeVisible();
+    const chooser = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Foto aus Galerie' }).click();
+    await (await chooser).setFiles([PHOTO, PHOTO]);
     const photos = page.getByRole('list', { name: 'Deine Fotos' });
     await expect(photos.getByRole('img')).toHaveCount(2);
+    await expect(page.getByRole('button', { name: 'Mit KI Inserat aufgeben' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Foto aus Galerie' })).toHaveCount(0);
     await expect(photos.getByText('Titelbild')).toHaveCount(1);
     await page.getByRole('button', { name: 'Mit KI ausfüllen' }).click();
     await expect(page.getByText(/Ausgefüllt: Kategorie, Titel, Beschreibung, .*Grafikspeicher/)).toBeVisible({ timeout: 30_000 });

@@ -3,12 +3,16 @@ import Link from 'next/link';
 import { Fact, LegalFact } from '@/components/legal-fact';
 import { LegalPage } from '@/components/legal-page';
 import { OPERATOR } from '@/content/operator';
+import { CATEGORY_PHOTOS } from '@/content/category-photos';
 
 export const metadata: Metadata = { title: 'Impressum' };
 
 const address = [OPERATOR.street, [OPERATOR.postalCode, OPERATOR.city].filter(Boolean).join(' '), OPERATOR.country]
   .filter(Boolean)
   .join(', ');
+
+/** Unsplash bittet um Links mit Herkunftsangabe */
+const unsplash = (path: string) => `https://unsplash.com/${path}?utm_source=markterl&utm_medium=referral`;
 
 export default function ImprintPage() {
   return (
@@ -48,6 +52,19 @@ export default function ImprintPage() {
         Postleitzahlen und Orte: <a href="https://www.geonames.org/">GeoNames</a>, Lizenz{' '}
         <a href="https://creativecommons.org/licenses/by/4.0/deed.de">CC BY 4.0</a>, für Markterl aufbereitet.
       </p>
+      <h2 id="fotos">Fotos</h2>
+      <p>
+        Die Kategoriefotos auf der Startseite stammen von <a href={unsplash('')}>Unsplash</a>{' '}
+        (<a href="https://unsplash.com/license">Unsplash-Lizenz</a>). Danke an:
+      </p>
+      <ul>
+        {Object.values(CATEGORY_PHOTOS).map((photo) => (
+          <li key={photo.id}>
+            <a href={unsplash(`photos/${photo.id}`)}>Foto</a> von{' '}
+            <a href={unsplash(`@${photo.username}`)}>{photo.author}</a>
+          </li>
+        ))}
+      </ul>
     </LegalPage>
   );
 }
