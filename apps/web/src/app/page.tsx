@@ -47,11 +47,11 @@ export default function HomePage() {
       </section>
 
       <Container className="relative z-10 -mt-10">
-        <nav aria-label="Bereiche auf Markterl" className="rounded-[var(--radius-card)] border border-line bg-surface p-2 shadow-[var(--shadow-card)] sm:p-3">
+        <div className="rounded-[var(--radius-card)] border border-line bg-surface p-2 shadow-[var(--shadow-card)] sm:p-3">
           <Suspense fallback={<AreaTiles counts={{}} />}>
             <AreaTilesWithCounts />
           </Suspense>
-        </nav>
+        </div>
       </Container>
 
       <Container className="mt-12">
