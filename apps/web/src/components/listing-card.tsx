@@ -8,6 +8,8 @@ import { RelativeDate } from './relative-date';
 
 /** `favorite`: bekannter Merkstatus (sonst wird er nachgeladen), `false` bei `showFavorite={false}` blendet das Herz aus. */
 export function ListingCard({ listing, favorite, showFavorite = true }: { listing: ListingSummary; favorite?: boolean; showFavorite?: boolean }) {
+  // Jobs zeigen ein Gehalt (oft lang) im Textbereich, alle anderen den Preis gut sichtbar auf dem Foto
+  const isJob = listing.vertical === 'JOBS';
   return (
     <article
       className={cn(
@@ -26,23 +28,25 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
           </div>
         )}
         <PromotionBadges listing={listing} className="absolute top-3 left-3" />
+        {!isJob ? (
+          <PriceTag
+            priceType={listing.priceType}
+            priceCents={listing.priceCents}
+            suffix={listing.priceSuffix}
+            className="absolute bottom-2.5 left-2.5 max-w-[calc(100%-1.25rem)] gap-x-1.5 rounded-lg bg-surface/95 px-2 py-0.5 text-base text-ink-950 shadow-[0_1px_3px_rgb(18_23_21/0.18)]"
+          />
+        ) : null}
         {showFavorite ? <FavoriteButton listingId={listing.id} title={listing.title} initial={favorite} className="absolute top-2.5 right-2.5" /> : null}
       </div>
-      <div className={cn('flex flex-1 flex-col gap-2 p-4', listing.highlighted && 'bg-accent-50/50')}>
+      <div className={cn('flex flex-1 flex-col gap-1.5 p-3.5 sm:p-4', listing.highlighted && 'bg-accent-50/50')}>
         <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal text-ink-900">
           <Link href={`/anzeige/${listing.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
             {listing.title}
           </Link>
         </h3>
         {listing.facts.length ? <p className="line-clamp-1 text-xs text-ink-600">{listing.facts.join(' · ')}</p> : null}
-        <PriceTag
-          priceType={listing.priceType}
-          priceCents={listing.priceCents}
-          suffix={listing.priceSuffix}
-          salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
-          className="text-lg"
-        />
-        <div className="mt-auto flex flex-col gap-1 pt-1 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        {isJob ? <PriceTag priceType={listing.priceType} priceCents={listing.priceCents} salary={listing.salary} className="text-base" /> : null}
+        <div className="mt-auto flex flex-col gap-0.5 pt-1.5 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           {listing.location ? (
             <span className="flex min-w-0 items-center gap-1">
               <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
@@ -59,7 +63,7 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
             <span />
           )}
           {listing.publishedAt ? (
-            <span className="whitespace-nowrap">
+            <span className="shrink-0 whitespace-nowrap">
               <RelativeDate value={listing.publishedAt} />
             </span>
           ) : null}

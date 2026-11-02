@@ -13,14 +13,16 @@ import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
 
+/** Die sechs Bereiche als eine Icon-Reihe; Kleinanzeigen-Bereiche zeigen die Zahl ihrer Anzeigen */
 const VERTICAL_TILES = [
-  { slug: VERTICAL_SLUGS.MARKETPLACE, href: `/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`, title: 'Marktplatz', text: 'Elektronik, Möbel, Mode und mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
-  { slug: VERTICAL_SLUGS.VEHICLES, href: `/suche?bereich=${VERTICAL_SLUGS.VEHICLES}`, title: 'Auto & Motor', text: 'Gebrauchtwagen, Motorräder, Zubehör', icon: Car, tone: 'bg-accent-50 text-accent-700' },
-  { slug: VERTICAL_SLUGS.REAL_ESTATE, href: `/suche?bereich=${VERTICAL_SLUGS.REAL_ESTATE}`, title: 'Immobilien', text: 'Wohnungen und Häuser mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a]' },
-  { slug: VERTICAL_SLUGS.JOBS, href: `/suche?bereich=${VERTICAL_SLUGS.JOBS}`, title: 'Jobs', text: 'Vollzeit, Teilzeit, Lehrstellen', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a]' },
-  { slug: 'deals', href: '/deals', title: 'Deals', text: 'Aktuelle Angebote von Händlern', icon: Percent, tone: 'bg-[#fdf0ec] text-[#9a3b1c]' },
-  { slug: 'dienstleistungen', href: '/dienstleistungen', title: 'Dienstleistungen', text: 'Freelancer, Handwerk, Nachhilfe', icon: Wrench, tone: 'bg-[#ecf6f4] text-[#1f6656]' },
+  { slug: VERTICAL_SLUGS.MARKETPLACE, href: `/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`, title: 'Marktplatz', hint: 'Möbel, Mode & mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
+  { slug: VERTICAL_SLUGS.VEHICLES, href: `/suche?bereich=${VERTICAL_SLUGS.VEHICLES}`, title: 'Auto & Motor', hint: 'Autos & Motorräder', icon: Car, tone: 'bg-accent-50 text-accent-700' },
+  { slug: VERTICAL_SLUGS.REAL_ESTATE, href: `/suche?bereich=${VERTICAL_SLUGS.REAL_ESTATE}`, title: 'Immobilien', hint: 'Mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a]' },
+  { slug: VERTICAL_SLUGS.JOBS, href: `/suche?bereich=${VERTICAL_SLUGS.JOBS}`, title: 'Jobs', hint: 'Voll- & Teilzeit', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a]' },
+  { slug: 'deals', href: '/deals', title: 'Deals', hint: 'Angebote von Händlern', icon: Percent, tone: 'bg-[#fdf0ec] text-[#9a3b1c]' },
+  { slug: 'dienstleistungen', href: '/dienstleistungen', title: 'Dienstleistungen', hint: 'Handwerk, Nachhilfe', icon: Wrench, tone: 'bg-[#ecf6f4] text-[#1f6656]' },
 ];
+
 
 export default function HomePage() {
   return (
@@ -28,54 +30,31 @@ export default function HomePage() {
       <section className="relative isolate overflow-hidden bg-brand-800 text-white">
         <TopoPattern className="absolute inset-0 -z-10 size-full text-white/[0.07]" />
         <div aria-hidden="true" className="absolute -top-40 -right-40 -z-10 size-[32rem] rounded-full bg-accent-500/15 blur-3xl" />
-        <Container className="py-14 sm:py-20 lg:py-24">
-          <div className="max-w-3xl">
-            <p className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-sm font-medium text-brand-100">
-              <span className="size-1.5 rounded-full bg-accent-500" aria-hidden="true" />
-              Kleinanzeigen aus allen neun Bundesländern
-            </p>
-            <h1 className="mt-5 text-4xl leading-[1.05] font-bold sm:text-5xl lg:text-6xl">
+        {/* Kompakter Kopf: Suche im Mittelpunkt, damit Bereiche und erste Anzeigen schon im ersten Bildschirm stehen */}
+        <Container className="pt-8 pb-16 sm:pt-11 sm:pb-20">
+          <div className="flex flex-wrap items-end justify-between gap-x-8 gap-y-3">
+            <h1 className="text-3xl leading-[1.05] font-bold sm:text-4xl lg:text-[2.75rem]">
               Gutes findet man <span className="text-accent-300">um die Ecke.</span>
             </h1>
-            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-brand-100">
-              Kostenlos inserieren, in der Nähe finden, fair handeln – vom Fahrrad bis zur Wohnung.
+            <p className="hidden max-w-md text-[0.9375rem] leading-relaxed text-brand-100 sm:block lg:text-right">
+              Kostenlos inserieren, in der Nähe finden, fair handeln. Kleinanzeigen aus allen neun Bundesländern.
             </p>
           </div>
-          <div className="mt-9 max-w-4xl">
+          <div className="mt-6">
             <SearchHero />
           </div>
         </Container>
       </section>
 
-      <Container className="-mt-8 relative z-10">
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:gap-4">
-          {VERTICAL_TILES.map((tile) => (
-            <li key={tile.slug}>
-              <Link
-                href={tile.href}
-                className="group flex h-full flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-card)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--shadow-card-hover)] sm:flex-row sm:items-center sm:p-5"
-              >
-                <span className={`flex size-11 shrink-0 items-center justify-center rounded-xl ${tile.tone}`}>
-                  <tile.icon className="size-5.5" aria-hidden="true" />
-                </span>
-                <span>
-                  <span className="block font-semibold text-ink-900">{tile.title}</span>
-                  <span className="mt-0.5 block text-sm text-ink-500">{tile.text}</span>
-                </span>
-              </Link>
-            </li>
-          ))}
-        </ul>
+      <Container className="relative z-10 -mt-10">
+        <nav aria-label="Bereiche auf Markterl" className="rounded-[var(--radius-card)] border border-line bg-surface p-2 shadow-[var(--shadow-card)] sm:p-3">
+          <Suspense fallback={<AreaTiles counts={{}} />}>
+            <AreaTilesWithCounts />
+          </Suspense>
+        </nav>
       </Container>
 
-      <Container className="mt-16">
-        <SectionHeading title="Alle Kategorien im Marktplatz" />
-        <Suspense fallback={<GridSkeleton count={9} className="h-16" />}>
-          <MarketplaceCategories />
-        </Suspense>
-      </Container>
-
-      <Container className="mt-16">
+      <Container className="mt-12">
         <SectionHeading
           title="Neu eingestellt"
           action={
@@ -84,12 +63,19 @@ export default function HomePage() {
             </Link>
           }
         />
-        <Suspense fallback={<GridSkeleton count={8} className="h-72" />}>
+        <Suspense fallback={<GridSkeleton count={10} className="h-64" />}>
           <LatestListings />
         </Suspense>
       </Container>
 
-      <Container className="mt-16">
+      <Container className="mt-14">
+        <SectionHeading title="Alle Kategorien im Marktplatz" />
+        <Suspense fallback={<GridSkeleton count={9} className="h-16" />}>
+          <MarketplaceCategories />
+        </Suspense>
+      </Container>
+
+      <Container className="mt-14">
         <SectionHeading
           title="Aktuelle Deals & Angebote"
           action={
@@ -162,6 +148,36 @@ export default function HomePage() {
         </div>
       </Container>
     </>
+  );
+}
+
+async function AreaTilesWithCounts() {
+  return <AreaTiles counts={await getCategoryCounts()} />;
+}
+
+function AreaTiles({ counts }: { counts: Record<string, number> }) {
+  return (
+    <ul className="grid grid-cols-3 gap-1 sm:grid-cols-6">
+      {VERTICAL_TILES.map((tile) => {
+        const count = counts[tile.slug];
+        return (
+          <li key={tile.slug} className="flex">
+            <Link
+              href={tile.href}
+              className="group flex w-full flex-col items-center gap-2 rounded-xl px-1 py-3 text-center transition-colors hover:bg-canvas sm:py-4"
+            >
+              <span className={`flex size-12 items-center justify-center rounded-2xl transition-transform group-hover:-translate-y-0.5 ${tile.tone}`}>
+                <tile.icon className="size-6" aria-hidden="true" />
+              </span>
+              <span className="text-sm leading-tight font-semibold text-ink-900">{tile.title}</span>
+              <span className="hidden text-xs leading-tight text-ink-500 tabular-nums sm:block">
+                {count ? `${count.toLocaleString('de-AT')} ${count === 1 ? 'Anzeige' : 'Anzeigen'}` : tile.hint}
+              </span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -269,7 +285,7 @@ function CategoryRow({ href, icon, name, count, hint }: { href: string; icon: Re
 }
 
 async function LatestListings() {
-  const listings = await getLatestListings(8);
+  const listings = await getLatestListings(10);
   if (!listings.length) {
     return (
       <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface px-6 py-12 text-center">
@@ -282,7 +298,7 @@ async function LatestListings() {
     );
   }
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
       {listings.map((listing) => (
         <li key={listing.id} className="flex">
           <ListingCard listing={listing} />
@@ -298,11 +314,13 @@ async function LatestDeals() {
   await connection();
   const deals = await getLatestDeals(4);
   if (!deals.length) {
+    // Schmaler Hinweis statt großer Leerfläche, solange es noch keine Händlerangebote gibt
     return (
-      <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface px-6 py-10 text-center">
-        <p className="font-semibold text-ink-900">Hier erscheinen bald Angebote von Händlern</p>
-        <p className="mt-1 text-sm text-ink-500">Du bist Händler:in? Stelle deine Aktionen kostenlos ein – online oder für deine Filialen.</p>
-        <Link href="/konto/deals" className={buttonClasses({ variant: 'outline', className: 'mt-5' })}>
+      <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-ink-600">
+          <span className="font-semibold text-ink-900">Bald findest du hier Aktionen von Händlern.</span> Du bist Händler:in? Stelle deine Angebote kostenlos ein.
+        </p>
+        <Link href="/konto/deals" className={buttonClasses({ variant: 'outline', size: 'sm', className: 'shrink-0' })}>
           Angebot einstellen
         </Link>
       </div>
