@@ -6,6 +6,7 @@ import { truncateIp } from '../common/ip.js';
 export type AuditAction =
   | 'user.created'
   | 'user.profile_updated'
+  | 'user.account_type_changed'
   | 'listing.created'
   | 'listing.published'
   | 'listing.paused'

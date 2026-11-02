@@ -20,6 +20,20 @@
 - Das letzte aktive Administratorkonto kann weder gesperrt, herabgestuft noch gelöscht werden. Alle Änderungen an
   Team-Konten laufen nacheinander (`pg_advisory_xact_lock`), damit sich zwei Admins nicht gleichzeitig gegenseitig sperren.
 
+### Administratorkonten ohne Limits
+
+Für `ADMIN` (nicht `MODERATOR`) gelten keine Mengen- und Zeitlimits (`isUnlimitedAccount` in `@marktat/shared`):
+Rate-Limits je Konto, Spam-Bremse bei Nachrichten, Tageslimit für Meldungen, Höchstzahlen und Wartezeiten bei
+Hervorhebung/Top-Anzeige/Hochschieben, Buchungen je Stunde, Deals/Filialen/Feeds/Importe je Händler, offene
+Projektaufträge und das Tageslimit des Foto-Assistenten je Konto. Weiter gelten technische Grenzen (Dateigröße,
+Textlänge, Fotos je Inserat, Portfolio-Einträge), die Merkliste (500) und gespeicherte Suchen (50), sowie die
+Obergrenze des Foto-Assistenten für alle zusammen (`AI_AUTOFILL_DAILY_LIMIT`, Kostenbremse).
+
+Administratorkonten können ihren Kontotyp in `/konto` selbst zwischen privat und gewerblich wechseln
+(`PATCH /v1/me/account-type`, Audit `user.account_type_changed`). Als gewerbliches Konto brauchen sie weder
+Firmenangaben noch die Bestätigung nach Art. 30 DSA, um Deals oder ein Anbieterprofil zu veröffentlichen – sie sind
+der Betreiber, die Angaben stehen im Impressum.
+
 ### Erstes Administratorkonto
 
 Es gibt keinen Bootstrap-Endpunkt und kein hinterlegtes Passwort. Die Person registriert sich normal, bestätigt die

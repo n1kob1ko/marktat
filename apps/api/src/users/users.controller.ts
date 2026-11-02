@@ -2,12 +2,14 @@ import { Body, Controller, Get, Param, ParseUUIDPipe, Patch, Req } from '@nestjs
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import {
+  changeAccountTypeSchema,
   notificationSettingsSchema,
   updateProfileSchema,
+  type ChangeAccountTypeInput,
   type NotificationSettingsInput,
   type UpdateProfileInput,
 } from '@marktat/shared';
-import { AllowSuspended, CurrentUser, Public } from '../auth/decorators.js';
+import { AllowSuspended, CurrentUser, Public, Roles } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { openApiSchema } from '../common/openapi.js';
@@ -47,6 +49,19 @@ export class UsersController {
     @Req() req: Request,
   ) {
     return this.users.updateMe(user, body, req.ip);
+  }
+
+  @Patch('me/account-type')
+  @Roles('ADMIN')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Kontotyp privat/gewerblich wechseln (nur Administratoren)' })
+  @ApiBody({ schema: openApiSchema(changeAccountTypeSchema) })
+  changeAccountType(
+    @CurrentUser() user: AuthUser,
+    @Body(new ZodValidationPipe(changeAccountTypeSchema)) body: ChangeAccountTypeInput,
+    @Req() req: Request,
+  ) {
+    return this.users.changeAccountType(user, body, req.ip);
   }
 
   @Patch('me/notifications')

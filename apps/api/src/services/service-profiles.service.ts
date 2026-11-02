@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  isUnlimitedAccount,
   portfolioImageRightsSchema,
   SERVICE_MAX_PORTFOLIO,
   SERVICE_MAX_QUALIFICATIONS,
@@ -55,8 +56,9 @@ export class ServiceProfilesService {
 
   async me(user: AuthUser): Promise<MyServiceProfile> {
     const account = await this.prisma.user.findUniqueOrThrow({ where: { id: user.id }, select: { accountType: true, companyName: true, companyAddress: true } });
+    // Administratorkonten (Betreiber) brauchen keine Firmenangaben
     const missingAccountFields =
-      account.accountType === 'BUSINESS'
+      account.accountType === 'BUSINESS' && !isUnlimitedAccount(user)
         ? [!account.companyName && 'Firmenname', !account.companyAddress && 'Firmenanschrift'].filter((v): v is string => Boolean(v))
         : [];
     const row = await this.prisma.serviceProfile.findUnique({ where: { userId: user.id }, include: serviceProfileDetailInclude });

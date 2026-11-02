@@ -1,5 +1,6 @@
 import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  isUnlimitedAccount,
   REPORT_REASON_LABELS,
   type AdminReportDetail,
   type AdminReportQuery,
@@ -137,7 +138,7 @@ export class ReportsService {
         );
       }
       const since = new Date(Date.now() - DAY_MS);
-      if ((await tx.report.count({ where: { reporterId: user.id, createdAt: { gt: since } } })) >= REPORTS_PER_DAY) {
+      if (!isUnlimitedAccount(user) && (await tx.report.count({ where: { reporterId: user.id, createdAt: { gt: since } } })) >= REPORTS_PER_DAY) {
         throw new HttpException('Du hast heute schon viele Meldungen geschickt. Bitte versuche es morgen wieder.', HttpStatus.TOO_MANY_REQUESTS);
       }
       const duplicate = await tx.report.findFirst({

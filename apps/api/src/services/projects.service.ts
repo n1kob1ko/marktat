@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  isUnlimitedAccount,
   MAX_SEARCH_PAGE,
   parseProjectSearchParams,
   PROJECT_EXTEND_WINDOW_DAYS,
@@ -58,7 +59,7 @@ export class ProjectsService {
   async mine(user: AuthUser): Promise<MyServiceProjects> {
     const rows = await this.prisma.serviceProject.findMany({ where: { userId: user.id, status: { not: 'DELETED' } }, include: projectInclude, orderBy: { updatedAt: 'desc' } });
     const projects = await Promise.all(rows.map((row) => this.toMine(row)));
-    return { projects, openCount: await this.openCount(user.id), maxOpen: PROJECT_MAX_OPEN };
+    return { projects, openCount: await this.openCount(user.id), maxOpen: isUnlimitedAccount(user) ? null : PROJECT_MAX_OPEN };
   }
 
   async mineOne(user: AuthUser, id: string): Promise<MyServiceProject> {
@@ -66,7 +67,7 @@ export class ProjectsService {
   }
 
   async create(user: AuthUser, input: ServiceProjectFields, ip?: string): Promise<MyServiceProject> {
-    const total = await this.prisma.serviceProject.count({ where: { userId: user.id, status: { not: 'DELETED' } } });
+    const total = isUnlimitedAccount(user) ? 0 : await this.prisma.serviceProject.count({ where: { userId: user.id, status: { not: 'DELETED' } } });
     if (total >= MAX_PROJECTS_TOTAL) throw new ConflictException('Du hast schon sehr viele Aufträge angelegt. Bitte lösche alte Entwürfe oder beendete Aufträge.');
     const fields = await this.fields(input);
     const row = await this.prisma.serviceProject.create({ data: { ...fields, userId: user.id }, include: projectInclude });
@@ -87,7 +88,7 @@ export class ProjectsService {
   async publish(user: AuthUser, id: string, ip?: string): Promise<MyServiceProject> {
     const project = await this.requireOwn(user, id);
     if (project.status !== 'DRAFT') throw new ConflictException('Nur Entwürfe können veröffentlicht werden.');
-    await this.assertOpenLimit(user.id);
+    await this.assertOpenLimit(user);
     const now = new Date();
     await this.prisma.serviceProject.updateMany({
       where: { id: project.id, status: 'DRAFT' },
@@ -129,7 +130,7 @@ export class ProjectsService {
     if (project.status !== 'REJECTED') throw new ConflictException('Nur abgelehnte Aufträge können erneut eingereicht werden.');
     const decision = await this.prisma.moderationDecision.findFirst({ where: { projectId: project.id, action: 'PROJECT_REJECTED' }, orderBy: { createdAt: 'desc' } });
     if (decision && project.updatedAt <= decision.createdAt) throw new ConflictException('Bitte überarbeite den Auftrag, bevor du ihn erneut einreichst.');
-    await this.assertOpenLimit(user.id);
+    await this.assertOpenLimit(user);
     const updated = await this.prisma.serviceProject.updateMany({ where: { id: project.id, status: 'REJECTED' }, data: { status: 'PENDING_REVIEW', reviewReason: RESUBMIT_REVIEW_REASON } });
     if (!updated.count) throw new ConflictException('Der Status des Auftrags hat sich inzwischen geändert.');
     this.audit.log({ action: 'project.resubmitted', actorId: user.id, entityType: 'service_project', entityId: project.id, ip, metadata: { decisionId: decision?.id } });
@@ -272,8 +273,10 @@ export class ProjectsService {
     return this.prisma.serviceProject.count({ where: { userId, status: { in: OPEN_STATUSES }, OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] } });
   }
 
-  private async assertOpenLimit(userId: string) {
-    if ((await this.openCount(userId)) >= PROJECT_MAX_OPEN) {
+  /** Höchstzahl offener Aufträge je Konto; Administratorkonten sind ausgenommen */
+  private async assertOpenLimit(user: Pick<AuthUser, 'id' | 'role'>) {
+    if (isUnlimitedAccount(user)) return;
+    if ((await this.openCount(user.id)) >= PROJECT_MAX_OPEN) {
       throw new ConflictException(`Du hast schon ${PROJECT_MAX_OPEN} offene Aufträge. Bitte beende oder pausiere zuerst einen.`);
     }
   }

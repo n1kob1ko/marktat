@@ -17,6 +17,7 @@ import {
   AUTOFILL_MAX_PHOTOS,
   categoryAttributeSchema,
   coerceAttributeSuggestions,
+  isUnlimitedAccount,
   type AutofillStatus,
   type AutofillSuggestion,
 } from '@marktat/shared';
@@ -81,7 +82,7 @@ export class AutofillService {
     if (!this.client) throw new AutofillDisabledError();
     const images = await Promise.all(this.readImages(body).map((image) => this.prepareImage(image)));
     // Eine Auswertung zählt einmal, egal wie viele Fotos sie enthält
-    await this.countUsage(user.id);
+    await this.countUsage(user);
 
     const tree = await this.categories.tree();
     const output = await this.ask(this.client, images, systemPrompt(tree));
@@ -125,11 +126,14 @@ export class AutofillService {
     }
   }
 
-  /** Kostenbremse: Auswertungen je Konto und insgesamt je Tag (UTC). Gezählt wird jeder Versuch. */
-  private async countUsage(userId: string) {
+  /**
+   * Kostenbremse: Auswertungen je Konto und insgesamt je Tag (UTC). Gezählt wird jeder Versuch.
+   * Administratorkonten haben kein Limit je Konto; die Obergrenze für alle zusammen (Kosten) gilt weiter.
+   */
+  private async countUsage(user: Pick<AuthUser, 'id' | 'role'>) {
     const day = new Date().toISOString().slice(0, 10);
-    const perUser = await this.increment(`autofill:${day}:user:${userId}`);
-    if (perUser > this.env.AI_AUTOFILL_USER_DAILY_LIMIT) {
+    const perUser = await this.increment(`autofill:${day}:user:${user.id}`);
+    if (!isUnlimitedAccount(user) && perUser > this.env.AI_AUTOFILL_USER_DAILY_LIMIT) {
       throw new HttpException('Du hast den Foto-Assistenten heute schon oft verwendet. Morgen geht es wieder.', HttpStatus.TOO_MANY_REQUESTS);
     }
     const total = await this.increment(`autofill:${day}:total`);

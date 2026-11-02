@@ -135,7 +135,8 @@ export interface MyServiceProject extends ServiceProjectDetail {
 export interface MyServiceProjects {
   projects: MyServiceProject[];
   openCount: number;
-  maxOpen: number;
+  /** null = keine Höchstzahl (Administratorkonten) */
+  maxOpen: number | null;
 }
 
 export interface ProjectSearchResult extends Paginated<ServiceProjectSummary> {

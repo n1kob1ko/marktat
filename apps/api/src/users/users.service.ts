@@ -1,10 +1,18 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { ACCOUNT_TYPES, displayNameSchema, type NotificationSettingsInput, type UpdateProfileInput } from '@marktat/shared';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ACCOUNT_TYPES,
+  displayNameSchema,
+  type ChangeAccountTypeInput,
+  type NotificationSettingsInput,
+  type UpdateProfileInput,
+} from '@marktat/shared';
 import type { AccountType } from '../generated/prisma/enums.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
 import type { AccountUser, AuthUser, SupabaseClaims } from '../auth/auth.types.js';
+import { DealSearchService } from '../deals/deal-search.service.js';
+import { SearchIndexService } from '../search/search-index.service.js';
 import { toMe, toPublicSeller } from './users.mapper.js';
 
 const LAST_SEEN_INTERVAL_MS = 15 * 60_000;
@@ -15,6 +23,8 @@ export class UsersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly audit: AuditService,
+    private readonly searchIndex: SearchIndexService,
+    private readonly dealSearch: DealSearchService,
   ) {}
 
   /**
@@ -118,6 +128,29 @@ export class UsersService {
       metadata: { fields: Object.keys(input) },
     });
     return toMe(updated);
+  }
+
+  /**
+   * Kontotyp privat/gewerblich wechseln – nur Administratorkonten. Sie brauchen als Betreiber keine
+   * Händlerangaben (siehe DealsService.eligibility, ServiceProfilesService.me). Suchindizes werden nachgezogen,
+   * weil „gewerblich“ in Inseraten und Deals sichtbar ist.
+   */
+  async changeAccountType(user: AuthUser, input: ChangeAccountTypeInput, ip?: string) {
+    if (user.role !== 'ADMIN') throw new ForbiddenException('Den Kontotyp können nur Administratorkonten selbst ändern.');
+    if (user.accountType !== input.accountType) {
+      await this.prisma.user.update({ where: { id: user.id }, data: { accountType: input.accountType } });
+      this.audit.log({
+        action: 'user.account_type_changed',
+        actorId: user.id,
+        entityType: 'user',
+        entityId: user.id,
+        ip,
+        metadata: { from: user.accountType, to: input.accountType },
+      });
+      this.searchIndex.syncSeller(user.id);
+      this.dealSearch.syncMerchant(user.id);
+    }
+    return this.getMe(user.id);
   }
 
   async getPublicProfile(id: string) {

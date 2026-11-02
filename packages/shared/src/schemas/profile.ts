@@ -46,3 +46,9 @@ export const updateProfileSchema = z.object({
   showPhone: z.boolean().optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
+
+/** Kontotyp wechseln – nur Administratorkonten (z. B. um gewerbliche Angebote ohne Händlerangaben einzustellen) */
+export const changeAccountTypeSchema = z.object({
+  accountType: z.enum(['PRIVATE', 'BUSINESS']),
+});
+export type ChangeAccountTypeInput = z.infer<typeof changeAccountTypeSchema>;
