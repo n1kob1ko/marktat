@@ -23,8 +23,9 @@ async function newPage(browser: Browser, testInfo: TestInfo) {
 /** Navigation im Kontobereich; auf dem Handy ist sie ein Menü, das erst aufgeklappt werden muss */
 async function openAccountNav(page: Page) {
   const nav = page.getByRole('navigation', { name: 'Kontobereich' });
+  // Erst die echte Navigation abwarten: der Platzhalter beim Streamen hat keinen aktiven Eintrag und wird ersetzt
+  await expect(nav.locator('a[aria-current="page"]').first()).toBeAttached();
   const toggle = nav.getByText('Bereich wechseln');
-  await expect(nav.getByRole('link', { name: 'Profil' }).or(toggle).filter({ visible: true })).toBeVisible();
   if (await toggle.isVisible()) await toggle.click();
   return nav;
 }
