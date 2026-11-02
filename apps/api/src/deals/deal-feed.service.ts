@@ -4,6 +4,7 @@ import {
   DEAL_FEED_MAX_BYTES,
   DEAL_FEED_MAX_FAILURES,
   DEAL_FEED_MAX_PER_MERCHANT,
+  isUnlimitedAccount,
   missingRequiredFields,
   parseCsv,
   parseJsonFeed,
@@ -77,7 +78,7 @@ export class DealFeedService implements OnModuleInit {
   async create(user: AuthUser, input: DealFeedInput, ip?: string): Promise<DealFeedView> {
     if (user.accountType !== 'BUSINESS') throw new ForbiddenException('Produktfeeds gibt es nur für gewerbliche Konten.');
     const count = await this.prisma.dealFeed.count({ where: { merchantId: user.id, deletedAt: null } });
-    if (count >= DEAL_FEED_MAX_PER_MERCHANT) throw new ConflictException(`Höchstens ${DEAL_FEED_MAX_PER_MERCHANT} Feeds je Händler.`);
+    if (!isUnlimitedAccount(user) && count >= DEAL_FEED_MAX_PER_MERCHANT) throw new ConflictException(`Höchstens ${DEAL_FEED_MAX_PER_MERCHANT} Feeds je Händler.`);
     const feed = await this.prisma.dealFeed.create({
       data: {
         merchantId: user.id,

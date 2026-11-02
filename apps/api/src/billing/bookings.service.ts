@@ -13,6 +13,7 @@ import {
 } from '@nestjs/common';
 import {
   formatDateTime,
+  isUnlimitedAccount,
   type AdminBookingDto,
   type AdminBookingQuery,
   type BillingMode,
@@ -114,9 +115,9 @@ export class BookingsService implements OnModuleInit {
    * Preis und Laufzeit fürs Veröffentlichen bzw. Verlängern. `requiresPayment` = im kostenpflichtigen Betrieb
    * nur über eine Buchung mit Zahlung möglich.
    */
-  async listingTerms(user: Pick<AuthUser, 'accountType'>, db: Db = this.prisma) {
+  async listingTerms(user: Pick<AuthUser, 'accountType' | 'role'>, db: Db = this.prisma) {
     const product = await this.pricing.product('listing', db);
-    if (!this.pricing.availableFor(product, user.accountType)) {
+    if (!isUnlimitedAccount(user) && !this.pricing.availableFor(product, user.accountType)) {
       throw new ForbiddenException(
         user.accountType === 'BUSINESS'
           ? 'Inserate sind für gewerbliche Konten derzeit nicht verfügbar.'
@@ -174,7 +175,7 @@ export class BookingsService implements OnModuleInit {
         const settings = await this.pricing.settings(tx);
         const mode = this.pricing.effectiveMode(settings);
 
-        if (product.kind !== 'LISTING') {
+        if (product.kind !== 'LISTING' && !isUnlimitedAccount(user)) {
           const recent = await tx.booking.count({ where: { userId: user.id, kind: { not: 'LISTING' }, createdAt: { gt: new Date(now.getTime() - HOUR_MS) } } });
           if (recent >= settings.maxBookingsPerHour) {
             throw new HttpException('Zu viele Buchungen in kurzer Zeit. Bitte versuche es später noch einmal.', HttpStatus.TOO_MANY_REQUESTS);
@@ -526,10 +527,12 @@ export class BookingsService implements OnModuleInit {
    * Prüft Berechtigung und Limits. Gibt einen deutschen Grund zurück statt zu werfen, damit dieselbe Prüfung
    * für die Anzeige („wieder möglich ab …“) und fürs Buchen gilt.
    */
-  private async evaluate(db: Db, user: Pick<AuthUser, 'id' | 'accountType'>, product: Product, listing: ListingForBooking, now: Date): Promise<Evaluation> {
+  private async evaluate(db: Db, user: Pick<AuthUser, 'id' | 'accountType' | 'role'>, product: Product, listing: ListingForBooking, now: Date): Promise<Evaluation> {
     const no = (reason: string, extra: Partial<Evaluation> = {}): Evaluation => ({ available: false, reason, activeUntil: null, nextAvailableAt: null, ...extra });
+    // Administratorkonten: keine Wartezeiten, Höchstzahlen oder Kontotyp-Einschränkungen
+    const unlimited = isUnlimitedAccount(user);
     if (!product.isActive) return no('Diese Leistung wird derzeit nicht angeboten.');
-    if (!this.pricing.availableFor(product, user.accountType)) {
+    if (!unlimited && !this.pricing.availableFor(product, user.accountType)) {
       return no(user.accountType === 'BUSINESS' ? 'Für gewerbliche Konten derzeit nicht verfügbar.' : 'Für private Konten derzeit nicht verfügbar.');
     }
     if (product.kind === 'LISTING') return { available: true, reason: null, activeUntil: null, nextAvailableAt: null };
@@ -539,6 +542,8 @@ export class BookingsService implements OnModuleInit {
     if (activeUntil && activeUntil > now) return no(`Läuft bereits bis ${formatDateTime(activeUntil)}.`, { activeUntil });
     const pending = await db.booking.count({ where: { listingId: listing.id, productId: product.id, status: 'PENDING_PAYMENT' } });
     if (pending) return no('Für diese Leistung ist bereits eine Zahlung offen.');
+
+    if (unlimited) return { available: true, reason: null, activeUntil: null, nextAvailableAt: null };
 
     if (product.cooldownHours) {
       const base = Math.max(listing.publishedAt?.getTime() ?? 0, listing.bumpedAt?.getTime() ?? 0);

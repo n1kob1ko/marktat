@@ -2,8 +2,10 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert, Badge, Card, Skeleton } from '@marktat/ui';
+import { SubmitButton } from '@/components/submit-button';
 import { formatDate } from '@marktat/shared';
 import { isStaff, requireUser } from '@/lib/auth';
+import { changeAccountTypeAction } from './actions';
 import { ProfileForm } from './profile-form';
 import { LogoUpload } from './logo-upload';
 
@@ -24,6 +26,11 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
       <div className="space-y-4">
         {params.bestaetigt ? <Alert tone="success">Deine E-Mail-Adresse ist bestätigt. Willkommen bei Markterl!</Alert> : null}
         {params.passwort === 'geaendert' ? <Alert tone="success">Dein Passwort wurde geändert.</Alert> : null}
+        {params.kontotyp === 'gewerblich' ? (
+          <Alert tone="success">Dein Konto ist jetzt gewerblich. Deals, Händlerprofil und Anbieterprofil kannst du ohne Firmenangaben nutzen.</Alert>
+        ) : null}
+        {params.kontotyp === 'privat' ? <Alert tone="success">Dein Konto ist jetzt privat.</Alert> : null}
+        {params.kontotyp === 'fehler' ? <Alert tone="danger">Der Kontotyp konnte nicht geändert werden. Bitte versuche es noch einmal.</Alert> : null}
         <Card className="p-5 sm:p-7">
           <h2 className="font-sans text-lg font-semibold tracking-normal">Profil bearbeiten</h2>
           <div className="mt-5">
@@ -60,6 +67,20 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
             <Link href="/admin" className="inline-block font-semibold text-brand-700 hover:underline">Zum Moderationsbereich</Link>
           ) : null}
         </Card>
+        {user.role === 'ADMIN' ? (
+          <Card className="space-y-3 p-5 text-sm text-ink-600">
+            <p className="font-semibold text-ink-900">Administration: keine Limits</p>
+            <p className="leading-relaxed">
+              Für dein Konto gelten keine Mengen- und Zeitlimits. Als gewerbliches Konto brauchst du keine Firmenangaben und keine Händlerbestätigung.
+            </p>
+            <form action={changeAccountTypeAction}>
+              <input type="hidden" name="accountType" value={user.accountType === 'BUSINESS' ? 'PRIVATE' : 'BUSINESS'} />
+              <SubmitButton variant="outline" size="sm">
+                {user.accountType === 'BUSINESS' ? 'Auf privat umstellen' : 'Auf gewerblich umstellen'}
+              </SubmitButton>
+            </form>
+          </Card>
+        ) : null}
         <Card className="p-5 text-sm text-ink-600">
           <p className="font-semibold text-ink-900">Datenschutz</p>
           <p className="mt-1.5 leading-relaxed">Lade alle deine Daten herunter oder lösche dein Konto (DSGVO Art. 15, 17, 20).</p>

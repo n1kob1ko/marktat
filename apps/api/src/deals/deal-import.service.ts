@@ -8,6 +8,7 @@ import {
   dealCompleteSchema,
   dealDiscountPercent,
   dealImportRowToFields,
+  isUnlimitedAccount,
   missingRequiredFields,
   parseCsv,
   suggestDealImportMapping,
@@ -133,7 +134,7 @@ export class DealImportService {
     if (user.accountType !== 'BUSINESS') throw new ForbiddenException('Deals können nur gewerbliche Konten importieren.');
     const since = new Date(Date.now() - 24 * 3600_000);
     const recent = await this.prisma.dealImport.count({ where: { merchantId: user.id, source: 'CSV', createdAt: { gte: since } } });
-    if (recent >= DEAL_IMPORT_DAILY_LIMIT) throw new ConflictException(`Höchstens ${DEAL_IMPORT_DAILY_LIMIT} Importe in 24 Stunden. Bitte versuche es später erneut.`);
+    if (!isUnlimitedAccount(user) && recent >= DEAL_IMPORT_DAILY_LIMIT) throw new ConflictException(`Höchstens ${DEAL_IMPORT_DAILY_LIMIT} Importe in 24 Stunden. Bitte versuche es später erneut.`);
     if (Buffer.isBuffer(body) && body.length > DEAL_IMPORT_MAX_BYTES) throw new BadRequestException('Die Datei darf höchstens 2 MB groß sein.');
     const text = decodeText(body);
     const table = this.parse(text);
@@ -357,14 +358,14 @@ export class DealImportService {
    * Jeder Import gilt als Bestätigung („Zuletzt geprüft“) der enthaltenen, laufenden Angebote.
    */
   async apply(merchantId: string, plan: ImportPlan, options: ApplyOptions): Promise<{ rows: DealImportRowResult[]; counts: DealImportCounts }> {
-    const merchant = await this.prisma.user.findUniqueOrThrow({ where: { id: merchantId }, select: { id: true, accountType: true } });
+    const merchant = await this.prisma.user.findUniqueOrThrow({ where: { id: merchantId }, select: { id: true, accountType: true, role: true } });
     if (merchant.accountType !== 'BUSINESS') throw new ForbiddenException('Deals können nur gewerbliche Konten importieren.');
     const eligibility = await this.deals.eligibility(merchantId);
     if (eligibility.blocked) throw new ForbiddenException('Dein Konto ist für Deals gesperrt.');
     if (options.publish && !eligibility.eligible) throw new ForbiddenException('Zum Veröffentlichen fehlen noch Voraussetzungen (siehe „Meine Deals“). Du kannst als Entwurf importieren.');
     const creates = plan.rows.filter((r) => r.action === 'CREATE').length;
     const total = await this.prisma.deal.count({ where: { merchantId, status: { not: 'DELETED' } } });
-    if (total + creates > MAX_DEALS_PER_MERCHANT) throw new ConflictException(`Mit diesem Import hättest du mehr als ${MAX_DEALS_PER_MERCHANT} Angebote. Bitte lösche zuerst alte Angebote.`);
+    if (!isUnlimitedAccount(merchant) && total + creates > MAX_DEALS_PER_MERCHANT) throw new ConflictException(`Mit diesem Import hättest du mehr als ${MAX_DEALS_PER_MERCHANT} Angebote. Bitte lösche zuerst alte Angebote.`);
 
     const now = new Date();
     const touched: string[] = [];

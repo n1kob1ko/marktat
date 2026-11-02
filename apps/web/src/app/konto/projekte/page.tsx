@@ -33,7 +33,7 @@ async function MyProjectsView({ searchParams }: Pick<PageProps<'/konto/projekte'
           <h2 className="font-sans text-xl font-semibold tracking-normal">Projektaufträge</h2>
           <p className="mt-1 text-sm text-ink-600">
             Beschreibe ein konkretes Vorhaben, und Anbieter:innen mit Anbieterprofil schreiben dir über die Nachrichten. Kein Stellenangebot, keine Ausschreibung, keine Gebühren.
-            Offen sind {openCount} von höchstens {maxOpen} Aufträgen.
+            {maxOpen === null ? (openCount === 1 ? 'Offen ist 1 Auftrag.' : `Offen sind ${openCount} Aufträge.`) : `Offen sind ${openCount} von höchstens ${maxOpen} Aufträgen.`}
           </p>
         </div>
         <Link href="/konto/projekte/neu" className={buttonClasses({ size: 'sm' })}>

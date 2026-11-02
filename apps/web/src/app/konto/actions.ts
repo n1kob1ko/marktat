@@ -1,7 +1,8 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { updateProfileSchema } from '@marktat/shared';
+import { redirect } from 'next/navigation';
+import { changeAccountTypeSchema, updateProfileSchema } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
@@ -30,4 +31,20 @@ export async function updateProfileAction(_prev: FormState, formData: FormData):
   }
   revalidatePath('/konto');
   return { status: 'success', message: 'Dein Profil wurde gespeichert.' };
+}
+
+/** Nur Administratorkonten: Kontotyp privat/gewerblich wechseln (gewerbliche Angebote ohne Händlerangaben) */
+export async function changeAccountTypeAction(formData: FormData): Promise<void> {
+  const { user, token } = await requireUser('/konto');
+  const parsed = changeAccountTypeSchema.safeParse({ accountType: formData.get('accountType') });
+  if (user.role !== 'ADMIN' || !parsed.success) redirect('/konto?kontotyp=fehler');
+  let failed = false;
+  try {
+    await api('/me/account-type', { method: 'PATCH', token, body: parsed.data });
+  } catch (error) {
+    if (!(error instanceof ApiError)) throw error;
+    failed = true;
+  }
+  revalidatePath('/', 'layout');
+  redirect(failed ? '/konto?kontotyp=fehler' : `/konto?kontotyp=${parsed.data.accountType === 'BUSINESS' ? 'gewerblich' : 'privat'}`);
 }

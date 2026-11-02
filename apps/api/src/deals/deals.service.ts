@@ -6,6 +6,7 @@ import {
   dealEndsAt,
   dealImageRightsSchema,
   dealStartsAt,
+  isUnlimitedAccount,
   toViennaDay,
   type CreateDealInput,
   type DealCategoryView,
@@ -70,12 +71,16 @@ export class DealsService {
 
   async eligibility(userId: string): Promise<DealerEligibility> {
     const user = await this.prisma.user.findUniqueOrThrow({ where: { id: userId } });
+    // Administratorkonten (Betreiber) brauchen weder Händlerangaben noch die Bestätigung nach Art. 30 DSA
+    const admin = isUnlimitedAccount(user);
     const missingFields: string[] = [];
-    if (!user.companyName) missingFields.push('Firmenname');
-    if (!user.companyAddress) missingFields.push('Geschäftsadresse');
-    if (!user.phone) missingFields.push('Telefonnummer');
+    if (!admin) {
+      if (!user.companyName) missingFields.push('Firmenname');
+      if (!user.companyAddress) missingFields.push('Geschäftsadresse');
+      if (!user.phone) missingFields.push('Telefonnummer');
+    }
     const business = user.accountType === 'BUSINESS' && user.status === 'ACTIVE' && !user.deletedAt;
-    const certified = Boolean(user.dealerCertifiedAt);
+    const certified = admin || Boolean(user.dealerCertifiedAt);
     const blocked = Boolean(user.dealsBlockedAt);
     return { business, missingFields, certified, blocked, eligible: business && !missingFields.length && certified && !blocked };
   }
@@ -127,7 +132,7 @@ export class DealsService {
       const previous = await this.prisma.deal.findFirst({ where: { merchantId: user.id, clientRequestId, deletedAt: null } });
       if (previous) return this.detail(previous.id, user);
     }
-    const active = await this.prisma.deal.count({ where: { merchantId: user.id, status: { not: 'DELETED' } } });
+    const active = isUnlimitedAccount(user) ? 0 : await this.prisma.deal.count({ where: { merchantId: user.id, status: { not: 'DELETED' } } });
     if (active >= MAX_DEALS_PER_MERCHANT) throw new ConflictException(`Du hast bereits ${MAX_DEALS_PER_MERCHANT} Deals. Bitte lösche alte Angebote.`);
     if (fields.externalId) await this.assertExternalIdFree(user.id, fields.externalId);
     const prepared = await prepareDeal(this.prisma, user.id, parseCompleteDeal(fields));
@@ -392,7 +397,7 @@ export class DealsService {
   async createStore(user: AuthUser, input: DealerStoreInput, ip?: string) {
     if (user.accountType !== 'BUSINESS') throw new ForbiddenException('Filialen gibt es nur für gewerbliche Konten.');
     const count = await this.prisma.dealerStore.count({ where: { merchantId: user.id, deletedAt: null } });
-    if (count >= MAX_STORES_PER_MERCHANT) throw new ConflictException(`Höchstens ${MAX_STORES_PER_MERCHANT} Filialen je Händler.`);
+    if (!isUnlimitedAccount(user) && count >= MAX_STORES_PER_MERCHANT) throw new ConflictException(`Höchstens ${MAX_STORES_PER_MERCHANT} Filialen je Händler.`);
     await this.requireLocation(input.locationId);
     const store = await this.prisma.dealerStore.create({ data: { merchantId: user.id, name: input.name, street: input.street, locationId: input.locationId, openingHours: input.openingHours ?? null } });
     this.audit.log({ action: 'dealer.store_created', actorId: user.id, entityType: 'dealer_store', entityId: store.id, ip });

@@ -18,7 +18,7 @@ import type {
   ReportUserInput,
   UnreadSummary,
 } from '@marktat/shared';
-import { PROJECT_MAX_CONTACTS } from '@marktat/shared';
+import { isUnlimitedAccount, PROJECT_MAX_CONTACTS } from '@marktat/shared';
 import type { AuthUser } from '../auth/auth.types.js';
 import { AuditService } from '../audit/audit.service.js';
 import { loadEnv } from '../config/env.js';
@@ -163,8 +163,8 @@ export class MessagesService implements OnModuleInit {
           ? { serviceProfileId_buyerId: { serviceProfileId: subject.id, buyerId: user.id } }
           : { projectId_buyerId: { projectId: subject.id, buyerId: user.id } };
     const existing = await this.prisma.conversation.findUnique({ where: key, select: { id: true } });
-    if (!existing) await this.assertConversationLimit(user.id);
-    await this.assertMessageLimit(user.id);
+    if (!existing) await this.assertConversationLimit(user);
+    await this.assertMessageLimit(user);
 
     let created: { conversationId: string; message: Message };
     try {
@@ -324,7 +324,7 @@ export class MessagesService implements OnModuleInit {
     const [blockedByMe, blockedMe] = await this.blockState(user.id, partner.id);
     const reason = sendBlockedReason(partner, blockedByMe, blockedMe);
     if (reason) throw new ForbiddenException(reason);
-    await this.assertMessageLimit(user.id);
+    await this.assertMessageLimit(user);
 
     let message: Message;
     try {
@@ -631,7 +631,10 @@ export class MessagesService implements OnModuleInit {
     if (blockedMe) throw new ForbiddenException('Du kannst dieser Person keine Nachrichten senden.');
   }
 
-  private async assertMessageLimit(userId: string) {
+  /** Spam-Schutz je Konto; Administratorkonten sind ausgenommen */
+  private async assertMessageLimit(user: Pick<AuthUser, 'id' | 'role'>) {
+    if (isUnlimitedAccount(user)) return;
+    const userId = user.id;
     const now = Date.now();
     const [lastMinute, lastHour] = await Promise.all([
       this.prisma.message.count({ where: { senderId: userId, createdAt: { gt: new Date(now - 60_000) } } }),
@@ -641,7 +644,9 @@ export class MessagesService implements OnModuleInit {
     if (lastHour >= MESSAGE_LIMITS.perHour) throw tooMany('Du hast in der letzten Stunde sehr viele Nachrichten geschickt. Bitte versuche es später wieder.');
   }
 
-  private async assertConversationLimit(userId: string) {
+  private async assertConversationLimit(user: Pick<AuthUser, 'id' | 'role'>) {
+    if (isUnlimitedAccount(user)) return;
+    const userId = user.id;
     const now = Date.now();
     const [lastHour, lastDay] = await Promise.all([
       this.prisma.conversation.count({ where: { buyerId: userId, createdAt: { gt: new Date(now - 3600_000) } } }),
