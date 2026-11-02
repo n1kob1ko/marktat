@@ -211,9 +211,9 @@ interface Rule {
 const RULES: readonly Rule[] = [
   // Marktplatz
   { path: 'marktplatz', itemCondition: true },
-  { path: 'marktplatz/elektronik/handys-smartphones', fields: [{ key: 'brand', label: 'Marke', kind: 'select', options: PHONE_BRANDS, highlight: true, filter: { param: 'marke' } }, storage] },
+  { path: 'marktplatz/smartphones-telefonie/smartphones', fields: [{ key: 'brand', label: 'Marke', kind: 'select', options: PHONE_BRANDS, highlight: true, filter: { param: 'marke' } }, storage] },
   {
-    path: 'marktplatz/elektronik/computer-laptops',
+    path: 'marktplatz/computer-software/laptops-pcs',
     fields: [
       { key: 'computerType', label: 'Gerätetyp', kind: 'select', options: COMPUTER_TYPES, highlight: true, filter: { param: 'geraet' } },
       textBrand,
@@ -222,30 +222,40 @@ const RULES: readonly Rule[] = [
       screenSize(7, 49),
     ],
   },
-  { path: 'marktplatz/elektronik/tablets-e-reader', fields: [textBrand, storage, screenSize(4, 20)] },
-  { path: 'marktplatz/elektronik/tv-audio', fields: [textBrand, screenSize(10, 120)] },
-  { path: 'marktplatz/elektronik/foto-kamera', fields: [textBrand] },
-  { path: 'marktplatz/elektronik/konsolen-games', fields: [{ key: 'platform', label: 'Plattform', kind: 'select', options: CONSOLE_PLATFORMS, highlight: true, filter: { param: 'plattform' } }] },
-  { path: 'marktplatz/moebel-wohnen', fields: dimensions },
-  { path: 'marktplatz/moebel-wohnen/deko-accessoires', fields: [] },
+  { path: 'marktplatz/computer-software/tablets-e-reader', fields: [textBrand, storage, screenSize(4, 20)] },
+  { path: 'marktplatz/kameras-tv-multimedia/fernseher', fields: [textBrand, screenSize(10, 120)] },
+  { path: 'marktplatz/kameras-tv-multimedia/beamer-leinwaende', fields: [textBrand] },
+  { path: 'marktplatz/kameras-tv-multimedia/audio-hifi', fields: [textBrand] },
+  { path: 'marktplatz/kameras-tv-multimedia/fotokameras', fields: [textBrand] },
+  { path: 'marktplatz/kameras-tv-multimedia/objektive', fields: [textBrand] },
+  { path: 'marktplatz/kameras-tv-multimedia/videokameras', fields: [textBrand] },
+  { path: 'marktplatz/kameras-tv-multimedia/drohnen', fields: [textBrand] },
+  { path: 'marktplatz/computer-software/monitore', fields: [textBrand, screenSize(10, 57)] },
+  { path: 'marktplatz/games-konsolen', fields: [{ key: 'platform', label: 'Plattform', kind: 'select', options: CONSOLE_PLATFORMS, highlight: true, filter: { param: 'plattform' } }] },
+  ...[
+    'sofas-sessel', 'tische-stuehle', 'betten-matratzen', 'schraenke-regale', 'kuechen',
+  ].map((slug) => ({ path: `marktplatz/wohnen-haushalt-gastronomie/${slug}`, fields: dimensions })),
+  { path: 'marktplatz/antiquitaeten-kunst/antike-moebel', fields: dimensions },
+  { path: 'marktplatz/baby-kind/kindermoebel', fields: dimensions },
+  { path: 'marktplatz/haus-garten-werkstatt/garten/gartenmoebel', fields: dimensions },
   {
-    path: 'marktplatz/kleidung-mode/damenmode',
+    path: 'marktplatz/mode-accessoires/damenmode',
     fields: [{ key: 'size', label: 'Größe', kind: 'text', maxLength: 20, placeholder: 'z. B. M oder 38', highlight: true }, textBrand],
   },
   {
-    path: 'marktplatz/kleidung-mode/herrenmode',
+    path: 'marktplatz/mode-accessoires/herrenmode',
     fields: [{ key: 'size', label: 'Größe', kind: 'text', maxLength: 20, placeholder: 'z. B. L oder 52', highlight: true }, textBrand],
   },
   {
-    path: 'marktplatz/kleidung-mode/schuhe',
+    path: 'marktplatz/mode-accessoires/schuhe',
     fields: [
       { key: 'shoeSizeEu', label: 'Schuhgröße (EU)', kind: 'number', min: 15, max: 52, decimals: 1, step: 0.5, highlight: true, filter: { param: 'schuhgroesse' } },
       textBrand,
     ],
   },
-  { path: 'marktplatz/baby-kind/kinderkleidung', fields: [{ key: 'childSize', label: 'Größe', kind: 'select', options: CHILD_SIZES, highlight: true, filter: { param: 'groesse' } }] },
+  { path: 'marktplatz/baby-kind/kinderbekleidung', fields: [{ key: 'childSize', label: 'Größe', kind: 'select', options: CHILD_SIZES, highlight: true, filter: { param: 'groesse' } }] },
   {
-    path: 'marktplatz/sport-freizeit/fahrraeder',
+    path: 'marktplatz/sport-sportgeraete/fahrraeder',
     fields: [
       { key: 'bikeType', label: 'Art', kind: 'select', options: BIKE_TYPES, highlight: true, filter: { param: 'radtyp', label: 'Fahrradart' } },
       { key: 'frameSize', label: 'Rahmengröße', kind: 'text', maxLength: 20, placeholder: 'z. B. 56 cm oder M', highlight: true },
@@ -257,7 +267,11 @@ const RULES: readonly Rule[] = [
     itemCondition: false,
     fields: [{ key: 'pricePer', label: 'Preis gilt', kind: 'select', options: SERVICE_PRICE_UNITS, hiddenInDetails: true }],
   },
-  { path: 'marktplatz/weitere-kategorien/tickets-gutscheine', itemCondition: false },
+  { path: 'marktplatz/freizeit-instrumente-kulinarik/tickets-gutscheine', itemCondition: false },
+  { path: 'marktplatz/freizeit-instrumente-kulinarik/reise-urlaub', itemCondition: false },
+  { path: 'marktplatz/boote-yachten-jetskis/liegeplaetze', itemCondition: false },
+  { path: 'marktplatz/tiere-tierbedarf', itemCondition: false },
+  { path: 'marktplatz/tiere-tierbedarf/tierbedarf', itemCondition: true },
 
   // Auto & Motor
   { path: 'auto-motor', itemCondition: false },

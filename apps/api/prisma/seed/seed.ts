@@ -7,7 +7,7 @@
  */
 import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DEAL_CATEGORIES, SERVICE_CATEGORIES, STATES, slugify, VERTICAL_SLUGS, type Vertical } from '@marktat/shared';
+import { DEAL_CATEGORIES, LEGACY_CATEGORY_PATHS, SERVICE_CATEGORIES, STATES, slugify, VERTICAL_SLUGS, type Vertical } from '@marktat/shared';
 import { createPrismaClient } from '../../src/prisma/create-client.js';
 import type { PrismaClient } from '../../src/generated/prisma/client.js';
 import { CATEGORY_TREE, type CategorySeed } from './categories.js';
@@ -41,6 +41,7 @@ async function seedCategoryLevel(
   vertical: Vertical,
   nodes: CategorySeed[],
   parent: { id: string; path: string } | null,
+  seeded: Set<string>,
 ): Promise<number> {
   let count = 0;
   for (const [sortOrder, node] of nodes.entries()) {
@@ -53,6 +54,7 @@ async function seedCategoryLevel(
       icon: node.icon ?? null,
       sortOrder,
       parentId: parent?.id ?? null,
+      isActive: true,
     };
     const category = await prisma.category.upsert({
       where: { path },
@@ -60,11 +62,35 @@ async function seedCategoryLevel(
       create: { path, ...data },
     });
     count += 1;
+    seeded.add(path);
     if (node.children) {
-      count += await seedCategoryLevel(prisma, vertical, node.children, { id: category.id, path });
+      count += await seedCategoryLevel(prisma, vertical, node.children, { id: category.id, path }, seeded);
     }
   }
   return count;
+}
+
+/**
+ * Umbau des Kategoriebaums: Inserate aus alten Kategorien in die neuen umziehen (LEGACY_CATEGORY_PATHS),
+ * danach alle Kategorien, die nicht mehr im Baum stehen, deaktivieren (nie löschen – Verlauf und alte Links).
+ * Gespeicherte Suchen mit alten Pfaden übersetzt die API beim Suchen. Der Suchindex zieht beim nächsten Start
+ * der API nach (geänderte Inserate, neue Dokumentversion).
+ */
+async function retireOldCategories(prisma: PrismaClient, seeded: Set<string>) {
+  let moved = 0;
+  for (const [from, to] of Object.entries(LEGACY_CATEGORY_PATHS)) {
+    if (seeded.has(from)) continue;
+    const [oldCategory, newCategory] = await Promise.all([
+      prisma.category.findUnique({ where: { path: from }, select: { id: true } }),
+      prisma.category.findUnique({ where: { path: to }, select: { id: true } }),
+    ]);
+    if (!oldCategory) continue;
+    if (!newCategory) throw new Error(`Kategorie ${to} (Ersatz für ${from}) fehlt im Kategoriebaum.`);
+    const { count } = await prisma.listing.updateMany({ where: { categoryId: oldCategory.id }, data: { categoryId: newCategory.id } });
+    moved += count;
+  }
+  const { count: retired } = await prisma.category.updateMany({ where: { path: { notIn: [...seeded] }, isActive: true }, data: { isActive: false } });
+  if (moved || retired) console.log(`Kategorien umgebaut: ${moved} Inserate umgezogen, ${retired} alte Kategorien deaktiviert`);
 }
 
 /** Kategorien der Deals (Phase 10) – Schlüssel ist der Slug; entfernte Einträge werden nur deaktiviert. */
@@ -102,10 +128,12 @@ async function main() {
   try {
     await seedGeo(prisma);
     let total = 0;
+    const seeded = new Set<string>();
     for (const [vertical, nodes] of Object.entries(CATEGORY_TREE) as [Vertical, CategorySeed[]][]) {
-      total += await seedCategoryLevel(prisma, vertical, nodes, null);
+      total += await seedCategoryLevel(prisma, vertical, nodes, null, seeded);
     }
     console.log(`Kategorien: ${total}`);
+    await retireOldCategories(prisma, seeded);
     await seedDealCategories(prisma);
     await seedServiceCategories(prisma);
     if (process.argv.includes('--demo')) {

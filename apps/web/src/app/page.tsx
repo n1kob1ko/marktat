@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { ArrowRight, Briefcase, ChevronRight, LayoutGrid, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
+import { ArrowRight, Briefcase, ChevronRight, Gift, LayoutGrid, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { VERTICAL_SLUGS } from '@marktat/shared';
 import { SearchHero } from '@/components/search-hero';
@@ -231,6 +231,14 @@ async function MarketplaceCategories() {
             />
           </li>
         ))}
+        <li>
+          <CategoryRow
+            href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}&preis_bis=0`}
+            icon={<Gift className="size-5" aria-hidden="true" />}
+            name="Zu verschenken"
+            hint="Kostenlos abzuholen"
+          />
+        </li>
         <li>
           <CategoryRow
             href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}

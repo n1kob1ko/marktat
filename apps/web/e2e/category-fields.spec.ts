@@ -36,7 +36,7 @@ test('Kategorieabhängige Felder: Auto anlegen, als Mietwohnung bearbeiten, Job-
 
   // 1. Gebrauchtwagen: Fahrzeugfelder erscheinen, Marktplatz-Zustand verschwindet
   await page.goto('/inserieren');
-  await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Freizeit' });
+  await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Sportgeräte' });
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
   await expect(page.getByLabel('Zustand')).toBeVisible();
   await expect(page.getByLabel('Rahmengröße')).toBeVisible();

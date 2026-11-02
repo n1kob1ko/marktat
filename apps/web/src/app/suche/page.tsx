@@ -5,6 +5,7 @@ import { Suspense } from 'react';
 import { ChevronRight, SearchX, X } from 'lucide-react';
 import { Container, Skeleton, buttonClasses } from '@marktat/ui';
 import {
+  LEGACY_CATEGORY_PATHS,
   SEARCH_RADII,
   hasActiveFilters,
   isCategoryPath,
@@ -74,14 +75,14 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
   const params = await searchParams;
   const categories = await getCategories();
 
-  // Alte Links mit Kategorie-ID (…?kategorie=ck…) auf den sprechenden Pfad umleiten
+  // Alte Links mit Kategorie-ID (…?kategorie=ck…) oder einem Pfad vor dem Umbau des Kategoriebaums umleiten
   const rawCategory = [params.kategorie].flat()[0];
-  if (rawCategory && !isCategoryPath(rawCategory)) {
-    const legacy = findCategory(categories, rawCategory);
+  if (rawCategory && (!isCategoryPath(rawCategory) || LEGACY_CATEGORY_PATHS[rawCategory])) {
+    const target = isCategoryPath(rawCategory) ? LEGACY_CATEGORY_PATHS[rawCategory] : findCategory(categories, rawCategory)?.path;
     const next = new URLSearchParams();
     for (const [key, value] of Object.entries(params)) if (typeof value === 'string' && key !== 'kategorie') next.set(key, value);
-    if (legacy) next.set('kategorie', legacy.path);
-    redirect(`/suche${next.size ? `?${next}` : ''}`);
+    if (target) next.set('kategorie', target);
+    redirect(`/suche${next.size ? `?${next.toString().replace(/%2F/gi, '/')}` : ''}`);
   }
 
   // Ungültige oder unbekannte Werte werden still ignoriert – die Seite zeigt dann ohne diesen Filter an
@@ -263,14 +264,18 @@ function EmptyState({
 }) {
   const hasLocation = Boolean(query.locationId || query.postalCode);
   const nextRadius = hasLocation ? SEARCH_RADII.find((km) => km > (query.radiusKm ?? 0)) : undefined;
+  // Nur eine Kategorie bzw. ein Bereich gewählt: hier wurde noch nichts inseriert
+  const emptyCategory = hasActiveFilters(query) && !hasActiveFilters({ ...query, vertical: undefined, category: undefined });
   return (
     <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface px-6 py-12 text-center sm:py-14">
       <SearchX className="mx-auto size-8 text-ink-300" aria-hidden="true" />
-      <p className="mt-3 font-semibold text-ink-900">Keine passenden Anzeigen gefunden</p>
+      <p className="mt-3 font-semibold text-ink-900">{emptyCategory ? 'Noch keine Anzeigen in dieser Kategorie' : 'Keine passenden Anzeigen gefunden'}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
         {query.q
           ? 'Prüfe die Schreibweise oder versuche einen allgemeineren Suchbegriff.'
-          : hasActiveFilters(query)
+          : emptyCategory
+            ? 'Sei die erste Person, die hier etwas anbietet – Inserieren ist kostenlos.'
+            : hasActiveFilters(query)
             ? 'Mit diesen Filtern gibt es gerade keine Anzeigen. Lockere die Filter oder schau später wieder vorbei.'
             : 'Hier gibt es noch keine Anzeigen.'}
         {hasLocation && !nextRadius ? ' Auch im größten Umkreis gibt es nichts – versuche es ohne Ort.' : ''}
@@ -281,12 +286,12 @@ function EmptyState({
             Umkreis auf {nextRadius} km erweitern
           </Link>
         ) : null}
-        {filtersActive ? (
+        {filtersActive && !emptyCategory ? (
           <Link href={resetHref(query)} className={buttonClasses({ variant: hasLocation ? 'ghost' : 'outline' })}>
             Alle Filter zurücksetzen
           </Link>
         ) : null}
-        <Link href="/inserieren" className={buttonClasses({ variant: 'ghost' })}>
+        <Link href="/inserieren" className={buttonClasses({ variant: emptyCategory ? 'primary' : 'ghost' })}>
           Selbst etwas inserieren
         </Link>
       </div>

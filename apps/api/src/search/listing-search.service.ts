@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import {
+  currentCategoryPath,
   filterScope,
   isCategoryPath,
   parseSearchParams,
@@ -123,7 +124,9 @@ export class ListingSearchService {
    */
   async resolveParams(raw: RawSearchParams): Promise<{ query: SearchQuery; categoryPath: string | null; filters: SearchFilter[] }> {
     let scope = peekFilterScope(raw);
-    const categoryParam = [raw.kategorie, raw.categoryId].flat().find(Boolean)?.trim();
+    const rawCategory = [raw.kategorie, raw.categoryId].flat().find(Boolean)?.trim();
+    // Alte Pfade (vor dem Umbau des Kategoriebaums), z. B. aus gespeicherten Suchen und Lesezeichen
+    const categoryParam = rawCategory && isCategoryPath(rawCategory) ? currentCategoryPath(rawCategory) : rawCategory;
     let categoryPath: string | null = null;
     if (categoryParam) {
       const category = isCategoryPath(categoryParam)

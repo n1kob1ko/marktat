@@ -29,7 +29,7 @@ describe('Sitemap', () => {
     expect(ids).not.toContain(draft.body.id);
     expect(res.body.dealers.map((d: { id: string }) => d.id)).toEqual([dealer.id]);
     expect(res.body.dealers).not.toContainEqual(expect.objectContaining({ id: idleDealer.id }));
-    expect(res.body.categories).toContain('marktplatz/sport-freizeit/fahrraeder');
+    expect(res.body.categories).toContain('marktplatz/sport-sportgeraete/fahrraeder');
     expect(res.headers['cache-control']).toContain('max-age=900');
   });
 });

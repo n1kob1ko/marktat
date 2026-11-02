@@ -211,7 +211,7 @@ model Category {
   parentId        String?    @map("parent_id")
   vertical        Vertical
   slug            String
-  /// Eindeutiger Pfad für SEO-URLs, z. B. "marktplatz/elektronik/handys-smartphones"
+  /// Eindeutiger Pfad für SEO-URLs, z. B. "marktplatz/smartphones-telefonie/smartphones"
   path            String     @unique
   name            String
   icon            String?

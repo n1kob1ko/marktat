@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { formToSearch } from '@/components/search/search-filters';
 import { activeFilters, browseChildren, browseTrail, findCategoryByPath, formatFilterNumber, resetHref, scopeHref, searchHref } from './search';
 
-const BIKES = 'marktplatz/sport-freizeit/fahrraeder';
+const BIKES = 'marktplatz/sport-sportgeraete/fahrraeder';
 const VIENNA: LocationSummary = {
   id: 1,
   postalCode: '1010',
@@ -89,7 +89,7 @@ describe('Links', () => {
   });
 
   it('findet Kategorien über ihren Pfad', () => {
-    const tree = [node('marktplatz', 'Marktplatz', [node('marktplatz/sport-freizeit', 'Sport & Freizeit', [node(BIKES, 'Fahrräder')])])];
+    const tree = [node('marktplatz', 'Marktplatz', [node('marktplatz/sport-sportgeraete', 'Sport & Freizeit', [node(BIKES, 'Fahrräder')])])];
     expect(findCategoryByPath(tree, BIKES)?.name).toBe('Fahrräder');
     expect(findCategoryByPath(tree, 'gibt/es/nicht')).toBeUndefined();
   });
@@ -123,15 +123,15 @@ describe('formToSearch', () => {
 
 describe('Kategorienavigation', () => {
   const tree = [
-    node('marktplatz/sport-freizeit', 'Sport & Freizeit', [node(BIKES, 'Fahrräder'), node('marktplatz/sport-freizeit/fitness', 'Fitness')]),
-    node('marktplatz/elektronik', 'Elektronik', [node('marktplatz/elektronik/handys-smartphones', 'Handys & Smartphones')]),
+    node('marktplatz/sport-sportgeraete', 'Sport & Freizeit', [node(BIKES, 'Fahrräder'), node('marktplatz/sport-sportgeraete/fitness-kraftsport', 'Fitness')]),
+    node('marktplatz/computer-software', 'Elektronik', [node('marktplatz/smartphones-telefonie/smartphones', 'Handys & Smartphones')]),
   ];
 
   it('zeigt je Ebene die nächsten Einträge: Bereiche, Hauptkategorien, Unterkategorien', () => {
     expect(browseChildren(tree, null).map((e) => e.key)).toEqual(['marktplatz', 'auto-motor', 'immobilien', 'jobs']);
     expect(browseChildren(tree, { vertical: 'MARKETPLACE' }).map((e) => e.label)).toEqual(['Sport & Freizeit', 'Elektronik']);
     expect(browseChildren(tree, { vertical: 'JOBS' })).toEqual([]);
-    expect(browseChildren(tree, { category: 'marktplatz/sport-freizeit' }).map((e) => e.key)).toEqual([BIKES, 'marktplatz/sport-freizeit/fitness']);
+    expect(browseChildren(tree, { category: 'marktplatz/sport-sportgeraete' }).map((e) => e.key)).toEqual([BIKES, 'marktplatz/sport-sportgeraete/fitness-kraftsport']);
     expect(browseChildren(tree, { category: BIKES })).toEqual([]);
   });
 
@@ -142,8 +142,8 @@ describe('Kategorienavigation', () => {
 
   it('behält beim Wechsel Suchbegriff, Ort und Preis, aber keine Filter, die dort nicht gelten', () => {
     const { query } = parse(`/suche?q=rad&kategorie=${BIKES}&plz=1010&umkreis=25&preis_bis=500&radtyp=city&seite=3`);
-    expect(scopeHref(query, { category: 'marktplatz/elektronik' })).toBe(
-      '/suche?q=rad&kategorie=marktplatz/elektronik&plz=1010&umkreis=25&preis_bis=500',
+    expect(scopeHref(query, { category: 'marktplatz/computer-software' })).toBe(
+      '/suche?q=rad&kategorie=marktplatz/computer-software&plz=1010&umkreis=25&preis_bis=500',
     );
     expect(scopeHref(query, { vertical: 'MARKETPLACE' })).toBe('/suche?q=rad&bereich=marktplatz&plz=1010&umkreis=25&preis_bis=500');
     expect(scopeHref(query, null)).toBe('/suche?q=rad&plz=1010&umkreis=25&preis_bis=500');

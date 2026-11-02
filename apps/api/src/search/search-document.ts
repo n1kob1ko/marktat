@@ -31,7 +31,7 @@ export interface SearchDocument {
   categoryNames: string[];
   place: string | null;
   vertical: Vertical;
-  /** Kategorie und alle Oberkategorien, z. B. ["marktplatz", "marktplatz/sport-freizeit", …] */
+  /** Kategorie und alle Oberkategorien, z. B. ["marktplatz", "marktplatz/sport-sportgeraete", …] */
   categoryPaths: string[];
   /** Cent; „zu verschenken“ = 0, „Preis auf Anfrage“ = null */
   priceCents: number | null;
@@ -77,8 +77,8 @@ export function ancestorPaths(path: string): string[] {
 
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
-/** Erhöhen, wenn sich der Aufbau der Dokumente ändert (2 = Phase 7: sortedAt, topUntil) */
-export const SEARCH_DOCUMENT_VERSION = 2;
+/** Erhöhen, wenn sich der Aufbau der Dokumente ändert (2 = Phase 7: sortedAt, topUntil; 3 = neuer Kategoriebaum) */
+export const SEARCH_DOCUMENT_VERSION = 3;
 
 export function toSearchDocument(listing: IndexableListing, categoryNames: (path: string) => string[]): SearchDocument {
   const path = listing.category?.path ?? null;

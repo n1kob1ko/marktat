@@ -54,7 +54,7 @@ describe('searchFiltersFor', () => {
   it('zeigt im Marktplatz erst in der Kategorie Eigenschaftsfilter', () => {
     expect(searchFiltersFor('marktplatz')).toEqual([]);
     expect(searchFiltersFor(null)).toEqual([]);
-    expect(keys('marktplatz/sport-freizeit/fahrraeder')).toEqual(['bikeType', 'wheelSize']);
+    expect(keys('marktplatz/sport-sportgeraete/fahrraeder')).toEqual(['bikeType', 'wheelSize']);
     expect(hasItemCondition('marktplatz')).toBe(true);
     expect(hasItemCondition('auto-motor/gebrauchtwagen')).toBe(false);
     expect(hasItemCondition('auto-motor')).toBe(true); // Zubehör
@@ -80,12 +80,12 @@ describe('searchFiltersFor', () => {
 describe('parseSearchParams', () => {
   it('liest allgemeine Filter und Umkreis', () => {
     const { query, issues } = params([], {
-      q: '  Damen  Fahrrad ', kategorie: 'marktplatz/sport-freizeit/fahrraeder', ort: '42', umkreis: '25',
+      q: '  Damen  Fahrrad ', kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', ort: '42', umkreis: '25',
       preis_ab: '50', preis_bis: '1.000', anbieter: 'privat', zustand: 'neu,gut', seite: '2',
     });
     expect(issues).toEqual([]);
     expect(query).toMatchObject({
-      q: 'Damen Fahrrad', category: 'marktplatz/sport-freizeit/fahrraeder', locationId: 42, radiusKm: 25,
+      q: 'Damen Fahrrad', category: 'marktplatz/sport-sportgeraete/fahrraeder', locationId: 42, radiusKm: 25,
       priceMin: 50, priceMax: 1000, seller: 'privat', conditions: ['NEW', 'GOOD'], sort: 'relevanz', page: 2,
     });
   });

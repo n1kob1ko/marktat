@@ -112,7 +112,7 @@ export function browseTrail(categories: CategoryNode[], scope: BrowseScope): Bro
 
 export function searchHref(query: SearchQuery, filters: readonly SearchFilter[]): string {
   const params = new URLSearchParams(toSearchParams(query, filters));
-  // Kategoriepfade lesbar lassen (…?kategorie=marktplatz/elektronik) – „/“ ist in Abfragen erlaubt
+  // Kategoriepfade lesbar lassen (…?kategorie=marktplatz/computer-software) – „/“ ist in Abfragen erlaubt
   const text = params.toString().replace(/%2F/gi, '/');
   return text ? `/suche?${text}` : '/suche';
 }

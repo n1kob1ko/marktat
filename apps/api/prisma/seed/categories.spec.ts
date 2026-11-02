@@ -1,6 +1,7 @@
 import {
   ATTRIBUTE_RULE_PATHS,
   DEAL_CATEGORIES,
+  LEGACY_CATEGORY_PATHS,
   categoryAttributeSchema,
   missingRequiredAttributes,
   parseListingAttributes,
@@ -31,6 +32,17 @@ describe('Zusatzfelder und Kategoriebaum', () => {
   it('Deal-Kategorien verweisen nur auf existierende Kategorien der Kleinanzeigen', () => {
     const known = new Set(paths.map((p) => p.path));
     expect(DEAL_CATEGORIES.filter((c) => c.relatedCategoryPath && !known.has(c.relatedCategoryPath)).map((c) => c.slug)).toEqual([]);
+  });
+
+  it('alte Kategoriepfade zeigen auf existierende, nicht mehr verwendete auf neue Kategorien', () => {
+    const byPath = new Map(paths.map((p) => [p.path, p]));
+    const targets = Object.entries(LEGACY_CATEGORY_PATHS);
+    expect(targets.filter(([, to]) => !byPath.has(to)).map(([from]) => from)).toEqual([]);
+    // Alte Pfade, die es im Baum noch gibt, würden nie umgezogen
+    expect(targets.filter(([from]) => byPath.has(from)).map(([from]) => from)).toEqual([]);
+    // Inserate stehen nur in Unterkategorien ohne weitere Ebene: alte Blätter ziehen in neue Blätter
+    const oldLeaves = targets.filter(([from]) => !targets.some(([other]) => other.startsWith(`${from}/`)));
+    expect(oldLeaves.filter(([, to]) => !byPath.get(to)?.leaf).map(([from]) => from)).toEqual([]);
   });
 
   it('jede Regel verweist auf eine existierende Kategorie', () => {

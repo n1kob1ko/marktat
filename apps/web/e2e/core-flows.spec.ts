@@ -50,7 +50,7 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
 
   // 3. Inserat aufgeben
   await page.goto('/inserieren');
-  await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Freizeit' });
+  await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Sportgeräte' });
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
   await page.getByLabel('Titel').fill(title);
   await page.getByLabel('Beschreibung').fill('Gepflegtes Trekkingrad, 28 Zoll, frisch serviciert. Abholung in Graz.');

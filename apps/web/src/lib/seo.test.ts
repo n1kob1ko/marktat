@@ -12,7 +12,7 @@ const listing = {
   priceCents: 89_000,
   condition: 'GOOD',
   expiresAt: '2026-12-26T10:00:00.000Z',
-  category: { id: 'c1', name: 'Fahrräder', slug: 'fahrraeder', path: 'marktplatz/sport-freizeit/fahrraeder' },
+  category: { id: 'c1', name: 'Fahrräder', slug: 'fahrraeder', path: 'marktplatz/sport-sportgeraete/fahrraeder' },
   images: [{ id: 'i1', url: 'https://api.example/v1/images/i1/large', thumbUrl: '', width: 1600, height: 1200, position: 0 }],
   seller: { id: 'u1', displayName: 'Verena', accountType: 'PRIVATE', companyName: null, avatarUrl: null, memberSince: '' },
 } as unknown as ListingDetail;
