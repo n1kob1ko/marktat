@@ -1,7 +1,7 @@
 'use client';
 
 import { useActionState, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
-import { ArrowLeft, ArrowRight, Eye, Lightbulb, MapPin } from 'lucide-react';
+import { Eye, Lightbulb, MapPin } from 'lucide-react';
 import { Alert, Button, Card, cn, Field, Input, Select, Textarea } from '@marktat/ui';
 import {
   categoryAttributeSchema,
@@ -11,7 +11,6 @@ import {
   formatPriceCents,
   formatSalary,
   listingFacts,
-  missingRequiredAttributes,
   parseEuroInputToCents,
   priceFieldLabel,
   priceSuffix,
@@ -34,7 +33,6 @@ import { clearPendingPhoto, savePendingPhoto } from '@/lib/pending-photo';
 import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
 import { PhotoAssistant } from './photo-assistant';
 import { ChoiceChips } from './choice-chips';
-import { ListingSteps, listingStepLabels } from './listing-steps';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -61,9 +59,6 @@ const DESCRIPTION_HINTS: Record<Vertical, string> = {
   JOBS: 'Aufgaben, Anforderungen und was du bietest.',
 };
 
-/** Felder des zweiten Schritts; alle anderen Fehler gehören zum ersten (Kategorie, Titel, Beschreibung, Zustand, Details). */
-const STEP_2_FIELDS = new Set(['priceType', 'price', 'priceCents', 'postalCode', 'locationId']);
-
 function centsToInput(cents: number | null | undefined) {
   if (cents === null || cents === undefined) return '';
   return (cents / 100).toLocaleString('de-AT', { minimumFractionDigits: cents % 100 ? 2 : 0 });
@@ -73,20 +68,6 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   const [state, formAction, isPending] = useActionState(action, initialFormState);
   const [, startTransition] = useTransition();
   const [intent, setIntent] = useState<'draft' | 'publish'>('publish');
-  // Neues Inserat in Schritten (Angaben → Preis & Ort, danach Fotos); Bearbeiten zeigt alles auf einer Seite
-  const stepped = !listing;
-  const [step, setStep] = useState<1 | 2>(1);
-  const [stepErrors, setStepErrors] = useState<Record<string, string[]>>({});
-  const stepRefs = useRef<(HTMLDivElement | null)[]>([]);
-  const formRef = useRef<HTMLFormElement>(null);
-  // Nach einer Antwort des Servers zum Schritt mit dem ersten markierten Feld springen
-  const [handledState, setHandledState] = useState(state);
-  if (handledState !== state) {
-    setHandledState(state);
-    setStepErrors({});
-    const keys = Object.keys(state.fieldErrors ?? {});
-    if (stepped && keys.length) setStep(keys.some((key) => !STEP_2_FIELDS.has(key)) ? 1 : 2);
-  }
 
   // Bewusst onSubmit statt action-Prop: React setzt Formulare nach einer Action sonst zurück,
   // was bei kontrollierten Auswahllisten die sichtbare Auswahl verliert.
@@ -145,6 +126,18 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
 
   // Foto-Assistent: Vorschläge übernehmen, vorherigen Stand für „Rückgängig“ merken
   const assistantPhoto = useRef<Blob | null>(null);
+  // Vorschau zeigt das Foto, das ins Inserat kommt
+  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
+  useEffect(
+    () => () => {
+      if (previewPhoto) URL.revokeObjectURL(previewPhoto);
+    },
+    [previewPhoto],
+  );
+  const handlePhoto = (photo: Blob | null) => {
+    assistantPhoto.current = photo;
+    setPreviewPhoto(photo ? URL.createObjectURL(photo) : null);
+  };
   const beforeSuggestion = useRef<{
     selection: string[];
     title: string;
@@ -232,8 +225,8 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     return () => controller.abort();
   }, [postalCode]);
 
-  // Preisvorschlag aus ähnlichen Inseraten (erst im Schritt „Preis & Ort“, dann mit dem gewählten Ort)
-  const hintKey = categoryId && hasPrice && (!stepped || step === 2) ? `${categoryId}:${locationId}` : '';
+  // Preisvorschlag aus ähnlichen Inseraten (mit dem gewählten Ort genauer)
+  const hintKey = categoryId && hasPrice ? `${categoryId}:${locationId}` : '';
   const [priceHint, setPriceHint] = useState<{ key: string; hint: PriceHint | null } | null>(null);
   useEffect(() => {
     if (!hintKey) return;
@@ -251,68 +244,21 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   }, [hintKey]);
   const hint = hintKey && priceHint?.key === hintKey ? priceHint.hint : null;
 
-  const goToStep = (next: 1 | 2) => {
-    if (next === 2) {
-      const found: Record<string, string[]> = {};
-      if (!categoryId) found.categoryId = [selection.length ? 'Bitte wähle eine genauere Kategorie.' : 'Bitte wähle eine Kategorie.'];
-      const titleLength = title.trim().length;
-      if (titleLength < 5) found.title = [titleLength ? 'Der Titel muss mindestens 5 Zeichen lang sein.' : 'Bitte gib einen Titel ein.'];
-      const descriptionLength = description.trim().length;
-      if (descriptionLength < 20) {
-        found.description = [descriptionLength ? 'Die Beschreibung muss mindestens 20 Zeichen lang sein.' : 'Bitte gib eine Beschreibung ein.'];
-      }
-      for (const issue of [...attributeForm.issues, ...missingRequiredAttributes(schema, typedAttributes)]) found[issue.path] ??= [issue.message];
-      setStepErrors(found);
-      if (Object.keys(found).length) {
-        requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
-        return;
-      }
-    }
-    setStep(next);
-    requestAnimationFrame(() => {
-      stepRefs.current[next - 1]?.focus({ preventScroll: true });
-      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
-  };
-  const stepLabels = listingStepLabels(schema.locationLabel, hasPrice);
-
   const lookup = isAustrianPostalCode(postalCode) && lookupResult.postalCode !== postalCode ? 'loading' : lookupResult.status;
   const selectedLocation = locations.find((l) => String(l.id) === locationId);
   const previewCents = needsPrice ? parseEuroInputToCents(price) : null;
   const previewFacts = listingFacts(schema, typedAttributes);
   const previewSalary = formatSalary(typedAttributes, true);
-  const errors: Record<string, string[] | undefined> = { ...state.fieldErrors, ...stepErrors };
+  const errors = state.fieldErrors ?? {};
 
   return (
-    <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      onKeyDown={(event) => {
-        // Eingabetaste im ersten Schritt führt weiter statt zu speichern
-        if (stepped && step === 1 && event.key === 'Enter' && event.target instanceof HTMLInputElement && event.target.type !== 'file') {
-          event.preventDefault();
-          goToStep(2);
-        }
-      }}
-      className="grid scroll-mt-24 gap-8 lg:grid-cols-[1fr_20rem]"
-      noValidate
-    >
+    <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_20rem]" noValidate>
       {listing ? <input type="hidden" name="id" value={listing.id} /> : <ClientIdField name="clientRequestId" />}
       <div className="space-y-6">
-        {stepped ? <ListingSteps current={step} labels={stepLabels} /> : null}
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
 
-        <div
-          ref={(el) => {
-            stepRefs.current[0] = el;
-          }}
-          tabIndex={-1}
-          hidden={stepped && step !== 1}
-          className="space-y-6 outline-none"
-        >
-          {photoAssistant && !listing ? (
-            <PhotoAssistant onSuggestion={applySuggestion} onUndo={undoSuggestion} onPhoto={(photo) => (assistantPhoto.current = photo)} />
-          ) : null}
+        <div className="space-y-6">
+          {photoAssistant && !listing ? <PhotoAssistant onSuggestion={applySuggestion} onUndo={undoSuggestion} onPhoto={handlePhoto} /> : null}
 
           <Card className="space-y-5 p-5 sm:p-7">
             <h2 className="font-sans text-lg font-semibold tracking-normal">Was bietest du an?</h2>
@@ -388,14 +334,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
           </Card>
         </div>
 
-        <div
-          ref={(el) => {
-            stepRefs.current[1] = el;
-          }}
-          tabIndex={-1}
-          hidden={stepped && step !== 2}
-          className="space-y-6 outline-none"
-        >
+        <div className="space-y-6">
           {hasPrice ? (
             <Card className="space-y-5 p-5 sm:p-7">
               <h2 className="font-sans text-lg font-semibold tracking-normal">Preis</h2>
@@ -454,26 +393,13 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
         </div>
 
         <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          {stepped && step === 2 ? (
-            <Button type="button" variant="ghost" size="lg" onClick={() => goToStep(1)} disabled={isPending} className="sm:mr-auto">
-              <ArrowLeft className="size-4" aria-hidden="true" /> Zurück
-            </Button>
-          ) : null}
           <Button type="submit" name="intent" value="draft" variant="outline" size="lg" loading={isPending && intent === 'draft'} disabled={isPending}>
             Als Entwurf speichern
           </Button>
-          {stepped && step === 1 ? (
-            // Eigener key: sonst verwendet React denselben Knopf weiter, und der Klick auf „Weiter“ würde als Absenden zählen
-            <Button key="next" type="button" size="lg" onClick={() => goToStep(2)}>
-              Weiter zu {stepLabels[1]} <ArrowRight className="size-4" aria-hidden="true" />
-            </Button>
-          ) : (
-            <Button key="publish" type="submit" name="intent" value="publish" size="lg" loading={isPending && intent === 'publish'} disabled={isPending}>
-              {listing && listing.status !== 'DRAFT' ? 'Speichern & veröffentlichen' : 'Anzeige veröffentlichen'}
-            </Button>
-          )}
+          <Button type="submit" name="intent" value="publish" size="lg" loading={isPending && intent === 'publish'} disabled={isPending}>
+            {listing && listing.status !== 'DRAFT' ? 'Speichern & veröffentlichen' : 'Anzeige veröffentlichen'}
+          </Button>
         </div>
-        {stepped && step === 2 ? <p className="text-right text-sm text-ink-500">Fotos fügst du im nächsten Schritt hinzu.</p> : null}
       </div>
 
       <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Anzeigenvorschau">
@@ -481,7 +407,12 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
           <Eye className="size-4" aria-hidden="true" /> Vorschau
         </p>
         <Card className="overflow-hidden">
-          <div className="aspect-[4/3] bg-canvas" />
+          {previewPhoto ? (
+            // eslint-disable-next-line @next/next/no-img-element -- lokales Foto (blob:), noch nicht hochgeladen
+            <img src={previewPhoto} alt="" className="aspect-[4/3] w-full object-cover" />
+          ) : (
+            <div className="aspect-[4/3] bg-canvas" />
+          )}
           <div className="space-y-2 p-4">
             <p className={cn('line-clamp-2 font-semibold', title ? 'text-ink-900' : 'text-ink-500')}>{title || 'Dein Titel'}</p>
             {previewFacts.length ? <p className="text-sm text-ink-600">{previewFacts.join(' · ')}</p> : null}

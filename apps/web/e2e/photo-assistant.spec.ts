@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { expect, test } from '@playwright/test';
-import { nextListingStep, registerConfirmed } from './accounts';
+import { registerConfirmed } from './accounts';
 import { startFakeClaude } from './fake-claude';
 
 /**
@@ -42,7 +42,6 @@ test('Foto füllt das Inserat aus und wird zum ersten Bild der Anzeige', async (
     // Noch einmal auswerten und veröffentlichen
     await page.getByLabel('Bild auswählen').setInputFiles(PHOTO);
     await expect(page.getByLabel('Titel')).toHaveValue('ASUS Dual GeForce RTX 4070 Super 12 GB', { timeout: 30_000 });
-    await nextListingStep(page);
     await page.getByText('Verhandlungsbasis').click();
     await page.getByLabel('Preis in Euro').fill('520');
     await page.getByLabel('Postleitzahl').fill('1010');
