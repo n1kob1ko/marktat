@@ -1,13 +1,15 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { ArrowRight, Briefcase, ChevronRight, Gift, LayoutGrid, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
+import { ArrowRight, Briefcase, Gift, LayoutGrid, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { VERTICAL_SLUGS } from '@marktat/shared';
 import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
+import { CATEGORY_PHOTOS, categoryPhotoUrl, type CategoryPhoto } from '@/content/category-photos';
 import { getCategories, getCategoryCounts, getCategoryListings, getLatestDeals, getLatestListings } from '@/lib/data';
 import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
@@ -73,8 +75,18 @@ export default function HomePage() {
       </Suspense>
 
       <Container className="mt-14">
-        <SectionHeading title="Alle Kategorien im Marktplatz" />
-        <Suspense fallback={<GridSkeleton count={9} className="h-16" />}>
+        <SectionHeading
+          title="Alle Kategorien im Marktplatz"
+          action={
+            <Link
+              href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}&preis_bis=0`}
+              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+            >
+              <Gift className="size-4" aria-hidden="true" /> Zu verschenken
+            </Link>
+          }
+        />
+        <Suspense fallback={<GridSkeleton count={8} className="aspect-[4/3]" />}>
           <MarketplaceCategories />
         </Suspense>
       </Container>
@@ -238,60 +250,78 @@ async function MarketplaceCategories() {
   }
   const total = counts[VERTICAL_SLUGS.MARKETPLACE] ?? 0;
   return (
-    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-2 sm:p-3">
-      <ul className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
-        {categories.map((category) => (
-          <li key={category.id}>
-            <CategoryRow
-              href={`/suche?kategorie=${category.path}`}
-              icon={<CategoryIcon name={category.icon} className="size-5" />}
-              name={category.name}
-              count={counts[category.path]}
-              hint={category.children.slice(0, 3).map((c) => c.name).join(', ')}
-            />
-          </li>
-        ))}
-        <li>
-          <CategoryRow
-            href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}&preis_bis=0`}
-            icon={<Gift className="size-5" aria-hidden="true" />}
-            name="Zu verschenken"
-            hint="Kostenlos abzuholen"
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4" aria-label="Kategorien im Marktplatz">
+      {categories.map((category) => (
+        <li key={category.id}>
+          <CategoryTile
+            href={`/suche?kategorie=${category.path}`}
+            name={category.name}
+            count={counts[category.path]}
+            hint={category.children
+              .slice(0, 3)
+              .map((c) => c.name)
+              .join(', ')}
+            photo={CATEGORY_PHOTOS[category.path]}
+            icon={<CategoryIcon name={category.icon} className="size-7" />}
           />
         </li>
-        <li>
-          <CategoryRow
-            href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}
-            icon={<LayoutGrid className="size-5" aria-hidden="true" />}
-            name="Alle Anzeigen"
-            count={total}
-            hint="Alles aus dem Marktplatz, neueste zuerst"
-          />
-        </li>
-      </ul>
-    </div>
+      ))}
+      <li>
+        <CategoryTile
+          href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}
+          name="Alle Anzeigen"
+          count={total}
+          hint="Alles aus dem Marktplatz, neueste zuerst"
+          icon={<LayoutGrid className="size-7" aria-hidden="true" />}
+        />
+      </li>
+    </ul>
   );
 }
 
-function CategoryRow({ href, icon, name, count, hint }: { href: string; icon: React.ReactNode; name: string; count?: number; hint?: string }) {
+/** Kachel mit Foto (oder Symbol, wenn es für die Kategorie keins gibt); Name und Anzahl stehen unten auf dem Bild */
+function CategoryTile({
+  href,
+  name,
+  count,
+  hint,
+  photo,
+  icon,
+}: {
+  href: string;
+  name: string;
+  count?: number;
+  hint?: string;
+  photo?: CategoryPhoto;
+  icon: React.ReactNode;
+}) {
   return (
-    <Link href={href} className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-brand-50 sm:px-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition-colors group-hover:bg-primary group-hover:text-white">
-        {icon}
+    <Link
+      href={href}
+      title={hint}
+      className="group relative flex aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+      style={photo ? { backgroundColor: photo.color } : undefined}
+    >
+      {photo ? (
+        <Image
+          src={categoryPhotoUrl(photo)}
+          alt=""
+          fill
+          sizes="(min-width: 1024px) 18rem, (min-width: 640px) 33vw, 50vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+        />
+      ) : (
+        <span className="absolute inset-0 grid place-items-center pb-8 text-white/90">{icon}</span>
+      )}
+      <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" aria-hidden="true" />
+      <span className="relative mt-auto block w-full p-3 sm:p-4">
+        <span className="block text-sm leading-snug font-semibold text-white sm:text-base">{name}</span>
+        {count ? (
+          <span className="mt-0.5 block text-xs text-white/80 tabular-nums">
+            {count.toLocaleString('de-AT')} {count === 1 ? 'Anzeige' : 'Anzeigen'}
+          </span>
+        ) : null}
       </span>
-      <span className="min-w-0 flex-1">
-        <span className="flex items-baseline gap-2">
-          <span className="font-semibold text-ink-900 group-hover:text-brand-800">{name}</span>
-          {count ? (
-            <span className="text-xs text-ink-500 tabular-nums">
-              {count.toLocaleString('de-AT')}
-              <span className="sr-only"> {count === 1 ? 'Anzeige' : 'Anzeigen'}</span>
-            </span>
-          ) : null}
-        </span>
-        {hint ? <span className="mt-0.5 block truncate text-xs text-ink-500">{hint}</span> : null}
-      </span>
-      <ChevronRight className="size-4 shrink-0 text-ink-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true" />
     </Link>
   );
 }
