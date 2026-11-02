@@ -24,7 +24,7 @@ async function newPage(browser: Browser, testInfo: TestInfo) {
 async function openAccountNav(page: Page) {
   const nav = page.getByRole('navigation', { name: 'Kontobereich' });
   const toggle = nav.getByText('Bereich wechseln');
-  await expect(nav.getByRole('link', { name: 'Profil' }).or(toggle)).toBeVisible();
+  await expect(nav.getByRole('link', { name: 'Profil' }).or(toggle).filter({ visible: true })).toBeVisible();
   if (await toggle.isVisible()) await toggle.click();
   return nav;
 }
