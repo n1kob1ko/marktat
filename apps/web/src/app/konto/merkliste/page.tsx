@@ -50,7 +50,7 @@ async function Favorites({ searchParams }: Pick<PageProps<'/konto/merkliste'>, '
             aria-current={t.art === tab ? 'page' : undefined}
             className={cn(
               'flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold whitespace-nowrap transition-colors',
-              t.art === tab ? 'bg-brand-600 text-white' : 'text-ink-700 hover:bg-ink-900/5',
+              t.art === tab ? 'bg-primary text-white' : 'text-ink-700 hover:bg-ink-900/5',
             )}
           >
             {t.label}

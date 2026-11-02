@@ -40,13 +40,13 @@ export function SearchHero() {
         </select>
         <button
           type="submit"
-          className="h-13 rounded-xl bg-accent-500 px-7 text-base font-semibold text-ink-950 transition-colors hover:bg-accent-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="h-13 rounded-xl bg-accent-500 px-7 text-base font-semibold text-on-accent transition-colors hover:bg-accent-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Suchen
         </button>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-brand-100">Beliebt:</span>
+        <span className="text-hero-muted">Beliebt:</span>
         {QUICK_SEARCHES.map((term) => (
           <a
             key={term}

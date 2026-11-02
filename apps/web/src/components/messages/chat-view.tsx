@@ -270,7 +270,7 @@ export function ChatView({ conversation, initial, backHref }: ChatViewProps) {
           <button
             type="button"
             onClick={() => scrollToBottom('smooth')}
-            className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-brand-700 px-3.5 py-2 text-sm font-semibold text-white shadow-lg hover:bg-brand-800"
+            className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-lg hover:bg-brand-800"
           >
             <ArrowDown className="size-4" aria-hidden="true" /> Neue Nachricht
           </button>
@@ -305,7 +305,7 @@ function MessageBubble({
       <div
         className={cn(
           'max-w-[85%] rounded-2xl px-3.5 py-2 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap sm:max-w-[70%]',
-          mine ? 'rounded-br-md bg-brand-700 text-white' : 'rounded-bl-md bg-surface text-ink-900 ring-1 ring-line',
+          mine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md bg-surface text-ink-900 ring-1 ring-line',
           message.status === 'sending' && 'opacity-70',
           message.status === 'failed' && 'bg-danger-50 text-danger-700 ring-1 ring-danger-600/30',
         )}

@@ -53,7 +53,7 @@ function SaveSearchDialog({ kind = 'LISTINGS', params, labels, defaultName, retu
         if (!dialog.current?.open) onClose();
       }}
       aria-labelledby={titleId}
-      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-[var(--radius-card)] border border-line bg-surface p-0 text-ink-900 shadow-xl backdrop:bg-ink-950/40"
+      className="m-auto w-[min(30rem,calc(100vw-2rem))] rounded-[var(--radius-card)] border border-line bg-surface p-0 text-ink-900 shadow-xl backdrop:bg-black/50"
     >
       <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
         <h2 id={titleId} className="font-sans text-lg font-semibold tracking-normal">

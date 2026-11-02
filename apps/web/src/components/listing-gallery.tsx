@@ -23,7 +23,7 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
 
   return (
     <section aria-label="Bilder" className="space-y-3">
-      <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[var(--radius-card)] border border-line bg-ink-950">
+      <div className="flex aspect-[16/10] items-center justify-center overflow-hidden rounded-[var(--radius-card)] border border-line bg-ink-950 dark:bg-black">
         {/* eslint-disable-next-line @next/next/no-img-element -- serverseitig optimiertes WebP (max. 1600 px) */}
         <img
           key={current.id}

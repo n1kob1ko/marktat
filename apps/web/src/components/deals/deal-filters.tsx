@@ -120,7 +120,7 @@ export function DealFilters({
         >
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filter
-          {activeCount ? <span className="rounded-full bg-brand-700 px-2 py-0.5 text-xs font-semibold text-white">{activeCount}</span> : null}
+          {activeCount ? <span className="rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">{activeCount}</span> : null}
         </button>
       </div>
 

@@ -62,7 +62,7 @@ function EntryLink({ entry, href, count }: { entry: BrowseEntry; href: string; c
       )}
     >
       {icon ? (
-        <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-white sm:flex">
+        <span className="hidden size-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 transition-colors group-hover:bg-surface sm:flex">
           <CategoryIcon name={icon} className="size-4" />
         </span>
       ) : null}

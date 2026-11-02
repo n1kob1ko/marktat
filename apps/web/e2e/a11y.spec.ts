@@ -31,6 +31,34 @@ test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({
   }
 });
 
+test('Dunkelmodus: Umschalter im Kopf, Wahl bleibt erhalten, Seiten ohne WCAG-Verstöße', async ({ page }, testInfo) => {
+  test.setTimeout(240_000);
+  await page.goto('/');
+  const html = page.locator('html');
+  const toggle = page.getByRole('banner').getByRole('button', { name: 'Dunkelmodus' });
+  await expect(toggle).toHaveAttribute('aria-pressed', 'false');
+  await toggle.click();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  await page.reload();
+  await expect(html).toHaveAttribute('data-theme', 'dark');
+
+  for (const path of ['/', '/suche?q=rad', '/deals', '/dienstleistungen', '/anmelden', '/registrieren']) {
+    await page.goto(path);
+    await expectNoViolations(page, `dunkel ${path}`);
+  }
+  const email = `a11y-dark-${testInfo.project.name}-${Date.now()}@example.test`;
+  await registerConfirmed(page, 'Dunkel Modus', email);
+  for (const path of ['/inserieren', '/konto/anzeigen', '/konto/merkliste', '/konto/suchen', '/nachrichten']) {
+    await page.goto(path);
+    await expectNoViolations(page, `dunkel ${path}`);
+  }
+
+  // Zurück auf hell
+  await page.getByRole('banner').getByRole('button', { name: 'Dunkelmodus' }).click();
+  await expect(html).toHaveAttribute('data-theme', 'light');
+});
+
 test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im Bild', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
   for (const path of ['/', '/suche?q=rad', '/deals', '/deals/werbung', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {

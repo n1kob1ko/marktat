@@ -43,12 +43,83 @@
   --color-warning-50: #fffaeb;
   --color-warning-700: #b54708;
 
+  /* Flächen mit weißer Schrift: bleiben in beiden Modi dunkel genug (nicht invertieren) */
+  --color-primary: #0f4c3a;
+  --color-primary-hover: #0b3a2c;
+  --color-primary-active: #072a20;
+  --color-hero: #0b3a2c;
+  --color-hero-deep: #072a20;
+  --color-hero-muted: #d2ebdf;
+  --color-tooltip: #121715;
+  --color-on-accent: #121715;
+  --color-danger-fill: #b42318;
+  --color-danger-fill-hover: #912018;
+
   --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-display: 'Bricolage Grotesque Variable', 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
 
   --radius-card: 1rem;
   --shadow-card: 0 1px 2px rgb(18 23 21 / 0.04), 0 4px 16px -4px rgb(18 23 21 / 0.08);
   --shadow-card-hover: 0 2px 4px rgb(18 23 21 / 0.06), 0 12px 32px -8px rgb(18 23 21 / 0.16);
+}
+
+/*
+ * Dunkelmodus: <html data-theme="dark"> (gesetzt vom Skript im Layout, Umschalter im Kopf).
+ * Die Skalen werden gespiegelt, damit „text-ink-900“ & Co. auf dunklem Grund hell sind;
+ * Flächen mit weißer Schrift nutzen die festen Token oben (primary, hero, tooltip).
+ */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-brand-50: #11241c;
+  --color-brand-100: #163126;
+  --color-brand-200: #1e4434;
+  --color-brand-300: #2b5f48;
+  --color-brand-400: #3d8a69;
+  --color-brand-500: #52a882;
+  --color-brand-600: #6fb999;
+  --color-brand-700: #8dcdaf;
+  --color-brand-800: #a9dac2;
+  --color-brand-900: #d2ebdf;
+
+  --color-accent-50: #2c2015;
+  --color-accent-100: #44301c;
+  --color-accent-300: #f7b177;
+  --color-accent-500: #f28c38;
+  --color-accent-600: #d9731f;
+  --color-accent-700: #f7b177;
+
+  --color-ink-950: #f3f6f4;
+  --color-ink-900: #e4e9e6;
+  --color-ink-800: #d0d7d4;
+  --color-ink-700: #bcc4c0;
+  --color-ink-600: #a6afab;
+  --color-ink-500: #939c98;
+  --color-ink-400: #767f7b;
+  --color-ink-300: #5a635f;
+
+  --color-canvas: #0e1311;
+  --color-surface: #161d1a;
+  --color-line: #29322f;
+  --color-line-strong: #3b4642;
+
+  --color-danger-50: #2c1513;
+  --color-danger-600: #f97066;
+  --color-danger-700: #fda29b;
+  --color-success-50: #0f2a1d;
+  --color-success-700: #6ce9a6;
+  --color-warning-50: #2d2210;
+  --color-warning-700: #fdb022;
+
+  --color-primary: #1f7a5b;
+  --color-primary-hover: #19694e;
+  --color-primary-active: #156249;
+  --color-hero: #0b2a20;
+  --color-hero-deep: #08201a;
+  --color-tooltip: #3b4642;
+
+  --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px -4px rgb(0 0 0 / 0.4);
+  --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 12px 32px -8px rgb(0 0 0 / 0.55);
 }
 
 /* Pfeil für native Auswahllisten (Select) */

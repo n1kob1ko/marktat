@@ -4,6 +4,9 @@
 /* Komponenten aus dem Designsystem-Paket für Tailwind sichtbar machen */
 @source '../../../../packages/ui/src';
 
+/* dark:-Klassen gelten, wenn <html data-theme="dark"> gesetzt ist (Umschalter im Kopf) */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;

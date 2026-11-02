@@ -82,7 +82,7 @@ export function PromotionBadges({ listing, className }: { listing: Pick<ListingS
   return (
     <div className={cn('flex flex-wrap gap-1.5', className)}>
       {listing.top ? (
-        <Badge tone="accent" className="bg-accent-500 text-ink-950 shadow-sm">
+        <Badge tone="accent" className="bg-accent-500 text-on-accent shadow-sm">
           Top
         </Badge>
       ) : null}
