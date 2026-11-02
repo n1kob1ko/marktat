@@ -96,3 +96,15 @@ Details und die Regeln für Oberkategorien stehen in [suche.md](suche.md).
 2. Bei Auswahlfeldern die Liste in `options.ts` ergänzen; gespeicherte Werte nicht umbenennen.
 3. `pnpm --filter @marktat/shared test` und `pnpm --filter @marktat/api test` prüfen u. a., dass jede Regel auf eine
    existierende Kategorie zeigt und die Demo-Inserate gültig sind.
+
+## Inserieren in Schritten und Preisvorschlag
+
+Ein neues Inserat wird in drei Schritten angelegt: 1. „Was bietest du an?“ (Kategorie, Titel, Beschreibung, Zustand, Details),
+2. „Preis & Ort“ (bei Jobs nur der Arbeitsort), 3. Fotos auf der Bilder-Seite nach dem Speichern. „Weiter“ prüft die Angaben des
+ersten Schritts im Browser mit denselben Regeln wie der Server (Pflichtfelder der Kategorie, Mindestlängen). Meldet der Server
+Fehler, springt das Formular zum Schritt mit dem ersten markierten Feld. Als Entwurf speichern geht in jedem Schritt.
+Das Bearbeiten bestehender Inserate zeigt weiterhin alles auf einer Seite.
+
+Der Preisvorschlag kommt von `GET /v1/listings/price-hint?kategorie=<ID>&ort=<Orts-ID>`: unteres Viertel, Mitte (Median) und oberes
+Viertel der Festpreise und VB öffentlich sichtbarer Inserate derselben Kategorie, zuerst im Umkreis von 50 km, sonst in ganz
+Österreich, auf ganze Euro gerundet. Unter 3 vergleichbaren Inseraten gibt es keine Spanne (sonst ließen sich einzelne Preise ablesen).

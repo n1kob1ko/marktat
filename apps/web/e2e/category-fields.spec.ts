@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { waitForMailLink } from './mailpit';
+import { nextListingStep } from './accounts';
 
 const PASSWORD = 'Sicheres-Passwort-2026';
 
@@ -23,9 +24,12 @@ async function registerAndConfirm(page: Page, email: string) {
   await expect(page).toHaveURL(/\/konto\?bestaetigt=1/);
 }
 
-async function fillBasics(page: Page, title: string, postalCode = '1070') {
+async function fillBasics(page: Page, title: string) {
   await page.getByLabel('Titel').fill(title);
   await page.getByLabel('Beschreibung').fill('Ausführliche Beschreibung für den Test, gepflegt und sofort verfügbar.');
+}
+
+async function fillPlace(page: Page, postalCode: string) {
   await page.getByLabel('Postleitzahl').fill(postalCode);
   await expect(page.getByLabel(/^Ort/)).toHaveValue(/\d+/);
 }
@@ -38,29 +42,27 @@ test('Kategorieabhängige Felder: Auto anlegen, als Mietwohnung bearbeiten, Job-
   await page.goto('/inserieren');
   await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Sportgeräte' });
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
-  await expect(page.getByLabel('Zustand')).toBeVisible();
+  await expect(page.getByRole('radiogroup', { name: 'Zustand' })).toBeVisible();
   await expect(page.getByLabel('Rahmengröße')).toBeVisible();
   await page.getByLabel('Rahmengröße').fill('56 cm');
 
   await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Gebrauchtwagen' });
   await expect(page.getByLabel('Rahmengröße')).toHaveCount(0);
-  await expect(page.getByLabel(/^Zustand/)).toHaveCount(0);
+  await expect(page.getByRole('radiogroup', { name: 'Zustand' })).toHaveCount(0);
   await expect(page.getByLabel('Unterkategorie')).toHaveCount(0);
 
   const title = `E2E VW Golf ${stamp}`;
-  await fillBasics(page, title, '4020');
+  await fillBasics(page, title);
   await page.getByLabel('Marke').selectOption({ label: 'VW' });
   await page.getByLabel('Modell').fill('Golf 1.5 TSI');
   await page.getByLabel(/^Erstzulassung/).fill('2019');
   await page.getByLabel('Monat der Erstzulassung').selectOption({ label: 'März' });
   await page.getByLabel('Kilometerstand').fill('viel');
-  await page.getByText('Verhandlungsbasis').click();
-  await page.getByLabel('Preis in Euro').fill('16.900');
-  await page.getByRole('button', { name: 'Anzeige veröffentlichen' }).click();
-  // Ungültige Zahl und fehlende Pflichtangaben auf einmal
+  await page.getByRole('button', { name: /^Weiter zu / }).click();
+  // Ungültige Zahl und fehlende Pflichtangaben auf einmal, noch vor dem zweiten Schritt
+  await expect(page.getByText(/^Schritt 1 von 3/)).toBeVisible();
   await expect(page.getByText('Bitte gib bei „Kilometerstand“ eine Zahl ein.')).toBeVisible();
   await page.getByLabel('Kilometerstand').fill('85.000');
-  await page.getByRole('button', { name: 'Anzeige veröffentlichen' }).click();
   await expect(page.getByText('Bitte wähle „Kraftstoff“.')).toBeVisible();
   await expect(page.getByText('Bitte wähle „Fahrzeugzustand“.')).toBeVisible();
   await snap(page, '1-auto-fehler');
@@ -70,6 +72,10 @@ test('Kategorieabhängige Felder: Auto anlegen, als Mietwohnung bearbeiten, Job-
   await page.getByLabel('Leistung').fill('110');
   await page.getByLabel('Fahrzeugzustand').selectOption({ label: 'Gebrauchtfahrzeug' });
   await expect(page.getByLabel('Anzeigenvorschau')).toContainText('03/2019 · 85.000 km · Benzin');
+  await nextListingStep(page);
+  await page.getByText('Verhandlungsbasis').click();
+  await page.getByLabel('Preis in Euro').fill('16.900');
+  await fillPlace(page, '4020');
   await page.getByRole('button', { name: 'Anzeige veröffentlichen' }).click();
   await expect(page).toHaveURL(/\/anzeige\/\w+\/bilder\?neu=veroeffentlicht/);
   await page.getByRole('link', { name: 'Fertig' }).click();
@@ -123,7 +129,7 @@ test('Kategorieabhängige Felder: Auto anlegen, als Mietwohnung bearbeiten, Job-
   await page.goto('/inserieren');
   await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Vollzeit' });
   await expect(page.getByRole('heading', { name: 'Preis' })).toHaveCount(0);
-  await expect(page.getByRole('heading', { name: 'Arbeitsort' })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Weiter zu Arbeitsort' })).toBeVisible();
   await page.getByLabel('Titel').fill(`E2E Bürokraft ${stamp}`);
   await page.getByLabel('Berufsbezeichnung').fill('Bürokauffrau/-mann');
   await page.getByLabel('Gehalt (brutto)').fill('2.400');

@@ -125,6 +125,19 @@ export interface LocationSummary {
   stateCode: string;
 }
 
+/** Preisspanne ähnlicher aktiver Inserate (gleiche Kategorie) für den Preisvorschlag beim Inserieren. */
+export interface PriceHint {
+  /** Anzahl der berücksichtigten Inserate; unter PRICE_HINT_MIN_LISTINGS gibt es keine Spanne */
+  count: number;
+  /** „nearby“: im Umkreis von radiusKm um den Ort, „austria“: ganz Österreich (zu wenige in der Nähe) */
+  scope: 'nearby' | 'austria';
+  radiusKm: number | null;
+  /** Unteres und oberes Viertel sowie Mitte (Median), in Cent; null bei zu wenigen Inseraten */
+  lowCents: number | null;
+  medianCents: number | null;
+  highCents: number | null;
+}
+
 export interface ListingSummary {
   id: string;
   slug: string;

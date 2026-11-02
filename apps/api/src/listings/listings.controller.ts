@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Query, Req } from '@nestjs/common';
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
@@ -45,6 +45,22 @@ export class ListingsController {
   @ApiOperation({ summary: 'Aktive Inserate je Bereich und Kategoriepfad (inklusive Unterkategorien), ohne Filter' })
   categoryCounts() {
     return this.search.categoryCounts();
+  }
+
+  @Public()
+  @Get('price-hint')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @ApiOperation({
+    summary: 'Preisvorschlag: Preisspanne ähnlicher Inserate',
+    description:
+      'kategorie (ID einer Kategorie), optional ort (Orts-ID). Liefert unteres Viertel, Mitte und oberes Viertel der Festpreise/VB aktiver ' +
+      'Inserate derselben Kategorie im Umkreis von 50 km, bei zu wenigen Treffern in ganz Österreich; unter 3 Inseraten keine Spanne.',
+  })
+  priceHint(@Query('kategorie') categoryId?: string, @Query('ort') locationId?: string) {
+    if (!categoryId || !/^[a-z0-9]{1,40}$/.test(categoryId)) throw new BadRequestException('Bitte gib eine Kategorie an.');
+    const ort = locationId ? Number(locationId) : undefined;
+    if (ort !== undefined && (!Number.isInteger(ort) || ort <= 0)) throw new BadRequestException('Ungültiger Ort.');
+    return this.listings.priceHint(categoryId, ort);
   }
 
   @Get('mine')

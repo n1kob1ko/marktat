@@ -28,6 +28,12 @@ export async function signInHere(page: Page, email: string) {
   await page.getByRole('button', { name: 'Anmelden' }).click();
 }
 
+/** Inserieren: vom Schritt „Was bietest du an?“ weiter zu Preis & Ort */
+export async function nextListingStep(page: Page) {
+  await page.getByRole('button', { name: /^Weiter zu / }).click();
+  await expect(page.getByText(/^Schritt 2 von 3/)).toBeVisible();
+}
+
 /** Veröffentlicht ein Fahrrad-Inserat in Graz und gibt die URL der Detailseite zurück. */
 export async function publishBike(page: Page, title: string): Promise<string> {
   await page.goto('/inserieren');
@@ -35,6 +41,7 @@ export async function publishBike(page: Page, title: string): Promise<string> {
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
   await page.getByLabel('Titel').fill(title);
   await page.getByLabel('Beschreibung').fill('Gepflegtes Trekkingrad, 28 Zoll, frisch serviciert. Abholung in Graz.');
+  await nextListingStep(page);
   await page.getByText('Verhandlungsbasis').click();
   await page.getByLabel('Preis in Euro').fill('320');
   await page.getByLabel('Postleitzahl').fill('8010');

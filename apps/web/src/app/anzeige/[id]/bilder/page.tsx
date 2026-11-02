@@ -4,11 +4,12 @@ import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ArrowRight, Pencil } from 'lucide-react';
 import { Alert, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
-import type { ListingDetail, ListingImage } from '@marktat/shared';
+import { categoryAttributeSchema, type ListingDetail, type ListingImage } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { ImageManager } from '@/components/image-manager/image-manager';
 import { ListingStatusBadge } from '@/components/listing-status-badge';
+import { ListingSteps, listingStepLabels } from '@/components/listing-form/listing-steps';
 
 export const metadata: Metadata = { title: 'Bilder verwalten', robots: { index: false } };
 
@@ -54,9 +55,11 @@ async function Content({
   }
   if (!listing.isOwner) notFound();
   const neu = typeof query.neu === 'string' ? query.neu : undefined;
+  const schema = categoryAttributeSchema(listing.category?.path);
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
+      {neu ? <ListingSteps current={3} labels={listingStepLabels(schema.locationLabel, schema.price !== 'none')} /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="flex items-center gap-2 text-sm text-ink-500">

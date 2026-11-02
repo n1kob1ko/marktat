@@ -23,6 +23,9 @@ import {
   type ListingStatus,
   type PriceType,
   type ListingSummary,
+  type PriceHint,
+  PRICE_HINT_MIN_LISTINGS,
+  PRICE_HINT_RADIUS_KM,
   type UpdateListingInput,
 } from '@marktat/shared';
 import { Prisma, type Category, type Listing } from '../generated/prisma/client.js';
@@ -283,6 +286,55 @@ export class ListingsService implements OnModuleInit {
     });
     this.audit.log({ action: 'listing.deleted', actorId: user.id, entityType: 'listing', entityId: id, ip });
     this.searchIndex.sync(id);
+  }
+
+  /**
+   * Preisvorschlag beim Inserieren: Spanne der Festpreise/VB öffentlich sichtbarer Inserate derselben Kategorie,
+   * zuerst im Umkreis um den Ort, bei zu wenigen Treffern in ganz Österreich. Unter PRICE_HINT_MIN_LISTINGS
+   * Inseraten gibt es keine Spanne, damit sich keine einzelnen Preise ablesen lassen.
+   */
+  async priceHint(categoryId: string, locationId?: number): Promise<PriceHint> {
+    const category = await this.prisma.category.findUnique({ where: { id: categoryId } });
+    if (!category || !category.isActive) throw new NotFoundException('Diese Kategorie gibt es nicht.');
+    if (categoryAttributeSchema(category.path).price === 'none') {
+      return { count: 0, scope: 'austria', radiusKm: null, lowCents: null, medianCents: null, highCents: null };
+    }
+    const location = locationId ? await this.prisma.location.findUnique({ where: { id: locationId } }) : null;
+    const stats = async (near: Prisma.Sql) => {
+      const [row] = await this.prisma.$queryRaw<{ count: bigint; low: number | null; median: number | null; high: number | null }[]>`
+        SELECT count(*) AS count,
+          percentile_cont(0.25) WITHIN GROUP (ORDER BY l.price_cents) AS low,
+          percentile_cont(0.5) WITHIN GROUP (ORDER BY l.price_cents) AS median,
+          percentile_cont(0.75) WITHIN GROUP (ORDER BY l.price_cents) AS high
+        FROM listings l
+        JOIN users u ON u.id = l.seller_id
+        LEFT JOIN locations loc ON loc.id = l.location_id
+        WHERE l.category_id = ${category.id}
+          AND l.status = 'ACTIVE' AND l.deleted_at IS NULL AND l.expires_at > now()
+          AND u.status = 'ACTIVE' AND u.deleted_at IS NULL
+          AND l.price_type IN ('FIXED', 'NEGOTIABLE') AND l.price_cents > 0
+          AND ${near}`;
+      return { count: Number(row?.count ?? 0), low: row?.low ?? null, median: row?.median ?? null, high: row?.high ?? null };
+    };
+    // Preise auf ganze Euro runden: ein Vorschlag soll keine Scheingenauigkeit zeigen
+    const euro = (cents: number | null) => (cents === null ? null : Math.round(Number(cents) / 100) * 100);
+    const result = (scope: PriceHint['scope'], row: Awaited<ReturnType<typeof stats>>): PriceHint => {
+      const enough = row.count >= PRICE_HINT_MIN_LISTINGS;
+      return {
+        count: row.count,
+        scope,
+        radiusKm: scope === 'nearby' ? PRICE_HINT_RADIUS_KM : null,
+        lowCents: enough ? euro(row.low) : null,
+        medianCents: enough ? euro(row.median) : null,
+        highCents: enough ? euro(row.high) : null,
+      };
+    };
+    if (location) {
+      const point = Prisma.sql`ST_SetSRID(ST_MakePoint(${location.longitude}, ${location.latitude}), 4326)::geography`;
+      const nearby = await stats(Prisma.sql`ST_DWithin(loc.geom, ${point}, ${PRICE_HINT_RADIUS_KM * 1000})`);
+      if (nearby.count >= PRICE_HINT_MIN_LISTINGS) return result('nearby', nearby);
+    }
+    return result('austria', await stats(Prisma.sql`TRUE`));
   }
 
   async findMine(user: AuthUser): Promise<ListingSummary[]> {
