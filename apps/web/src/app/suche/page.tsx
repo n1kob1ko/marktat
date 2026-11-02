@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { ChevronRight, SearchX, X } from 'lucide-react';
-import { Container, Skeleton, buttonClasses } from '@marktat/ui';
+import { Container, Skeleton, buttonClasses, cn } from '@marktat/ui';
 import {
   LEGACY_CATEGORY_PATHS,
   SEARCH_RADII,
@@ -17,11 +18,13 @@ import {
   type SearchQuery,
   type SearchResult,
   type SearchSort,
+  VERTICAL_SLUGS,
 } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { findCategory, getCategories } from '@/lib/data';
 import { activeFilters, browseTrail, currentScope, findCategoryByPath, resetHref, scopeHref, scopeLabel, searchHref } from '@/lib/search';
 import { CategoryBrowser } from '@/components/search/category-browser';
+import { categoryPhotoUrl, nearestCategoryPhoto } from '@/content/category-photos';
 import { ListingCard } from '@/components/listing-card';
 import { SearchFilters } from '@/components/search/search-filters';
 import { SortSelect } from '@/components/search/sort-select';
@@ -266,34 +269,50 @@ function EmptyState({
   const nextRadius = hasLocation ? SEARCH_RADII.find((km) => km > (query.radiusKm ?? 0)) : undefined;
   // Nur eine Kategorie bzw. ein Bereich gewählt: hier wurde noch nichts inseriert
   const emptyCategory = hasActiveFilters(query) && !hasActiveFilters({ ...query, vertical: undefined, category: undefined });
+  // Leere Kategorie: ihr Foto (bzw. das der übergeordneten) statt der kahlen Lupe
+  const scope = currentScope(query);
+  const photo = emptyCategory && scope ? nearestCategoryPhoto(scope.category ?? VERTICAL_SLUGS[scope.vertical]) : undefined;
   return (
-    <div className="rounded-[var(--radius-card)] border border-dashed border-line-strong bg-surface px-6 py-12 text-center sm:py-14">
-      <SearchX className="mx-auto size-8 text-ink-300" aria-hidden="true" />
-      <p className="mt-3 font-semibold text-ink-900">{emptyCategory ? 'Noch keine Anzeigen in dieser Kategorie' : 'Keine passenden Anzeigen gefunden'}</p>
-      <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
-        {query.q
-          ? 'Prüfe die Schreibweise oder versuche einen allgemeineren Suchbegriff.'
-          : emptyCategory
-            ? 'Sei die erste Person, die hier etwas anbietet – Inserieren ist kostenlos.'
-            : hasActiveFilters(query)
-            ? 'Mit diesen Filtern gibt es gerade keine Anzeigen. Lockere die Filter oder schau später wieder vorbei.'
-            : 'Hier gibt es noch keine Anzeigen.'}
-        {hasLocation && !nextRadius ? ' Auch im größten Umkreis gibt es nichts – versuche es ohne Ort.' : ''}
-      </p>
-      <div className="mt-5 flex flex-wrap justify-center gap-2">
-        {nextRadius ? (
-          <Link href={hrefFor({ radiusKm: nextRadius })} className={buttonClasses({ variant: 'outline' })}>
-            Umkreis auf {nextRadius} km erweitern
+    <div
+      className={cn(
+        'overflow-hidden rounded-[var(--radius-card)] border bg-surface text-center',
+        photo ? 'border-line' : 'border-dashed border-line-strong',
+      )}
+    >
+      {photo ? (
+        <div className="relative h-32 sm:h-44" style={{ backgroundColor: photo.color }}>
+          <Image src={categoryPhotoUrl(photo, 1200)} alt="" fill sizes="(min-width: 1024px) 50rem, 100vw" className="object-cover" />
+          <span className="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent" aria-hidden="true" />
+        </div>
+      ) : null}
+      <div className={photo ? 'px-6 pt-1 pb-10' : 'px-6 py-12 sm:py-14'}>
+        {photo ? null : <SearchX className="mx-auto size-8 text-ink-300" aria-hidden="true" />}
+        <p className={cn('font-semibold text-ink-900', photo ? 'text-lg' : 'mt-3')}>{emptyCategory ? 'Noch keine Anzeigen in dieser Kategorie' : 'Keine passenden Anzeigen gefunden'}</p>
+        <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
+          {query.q
+            ? 'Prüfe die Schreibweise oder versuche einen allgemeineren Suchbegriff.'
+            : emptyCategory
+              ? 'Sei die erste Person, die hier etwas anbietet – Inserieren ist kostenlos.'
+              : hasActiveFilters(query)
+              ? 'Mit diesen Filtern gibt es gerade keine Anzeigen. Lockere die Filter oder schau später wieder vorbei.'
+              : 'Hier gibt es noch keine Anzeigen.'}
+          {hasLocation && !nextRadius ? ' Auch im größten Umkreis gibt es nichts – versuche es ohne Ort.' : ''}
+        </p>
+        <div className="mt-5 flex flex-wrap justify-center gap-2">
+          {nextRadius ? (
+            <Link href={hrefFor({ radiusKm: nextRadius })} className={buttonClasses({ variant: 'outline' })}>
+              Umkreis auf {nextRadius} km erweitern
+            </Link>
+          ) : null}
+          {filtersActive && !emptyCategory ? (
+            <Link href={resetHref(query)} className={buttonClasses({ variant: hasLocation ? 'ghost' : 'outline' })}>
+              Alle Filter zurücksetzen
+            </Link>
+          ) : null}
+          <Link href="/inserieren" className={buttonClasses({ variant: emptyCategory ? 'primary' : 'ghost' })}>
+            Selbst etwas inserieren
           </Link>
-        ) : null}
-        {filtersActive && !emptyCategory ? (
-          <Link href={resetHref(query)} className={buttonClasses({ variant: hasLocation ? 'ghost' : 'outline' })}>
-            Alle Filter zurücksetzen
-          </Link>
-        ) : null}
-        <Link href="/inserieren" className={buttonClasses({ variant: emptyCategory ? 'primary' : 'ghost' })}>
-          Selbst etwas inserieren
-        </Link>
+        </div>
       </div>
     </div>
   );
