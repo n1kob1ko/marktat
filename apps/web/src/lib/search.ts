@@ -7,14 +7,20 @@ import {
   ITEM_CONDITION_LABELS,
   SELLER_TYPES,
   STATES,
+  VERTICALS,
   VERTICAL_LABELS,
+  VERTICAL_SLUGS,
   formatPriceCents,
+  hasItemCondition,
+  hasPrice,
   isCategoryPath,
+  searchFiltersFor,
   toSearchParams,
   type CategoryNode,
   type LocationSummary,
   type SearchFilter,
   type SearchQuery,
+  type Vertical,
 } from '@marktat/shared';
 
 export interface FlatCategory {
@@ -35,9 +41,79 @@ export function findCategoryByPath(tree: CategoryNode[], path: string): Category
   return flattenCategories(tree).find((c) => c.node.path === path)?.node;
 }
 
+/** Wohin die Kategorienavigation führt: alle Bereiche, ein Bereich oder eine Kategorie (Pfad) */
+export type BrowseScope = { vertical: Vertical; category?: undefined } | { vertical?: undefined; category: string } | null;
+
+/** Bereich bzw. Kategorie, in der gerade gesucht wird */
+export function currentScope(query: SearchQuery): BrowseScope {
+  if (query.category && isCategoryPath(query.category)) return { category: query.category };
+  if (query.vertical) return { vertical: query.vertical };
+  return null;
+}
+
+/**
+ * Link zu einem anderen Bereich bzw. einer anderen Kategorie mit denselben Filtern (Suchbegriff, Ort, Preis …).
+ * Filter, die dort nicht gelten (z. B. Fahrradart beim Wechsel zu Elektronik), fallen weg; Seite wieder 1.
+ */
+export function scopeHref(query: SearchQuery, scope: BrowseScope): string {
+  const key = scope?.category ?? (scope?.vertical ? VERTICAL_SLUGS[scope.vertical] : null);
+  const filters = searchFiltersFor(key);
+  const next: SearchQuery = { ...query, page: 1, vertical: undefined, category: undefined, attributes: {} };
+  if (scope?.category) {
+    next.category = scope.category;
+    next.vertical = VERTICALS.find((v) => scope.category.startsWith(`${VERTICAL_SLUGS[v]}/`));
+  } else if (scope?.vertical) next.vertical = scope.vertical;
+  for (const filter of filters) {
+    const value = query.attributes[filter.key];
+    if (value) next.attributes[filter.key] = value;
+  }
+  if (!hasPrice(key)) {
+    delete next.priceMin;
+    delete next.priceMax;
+  }
+  if (!hasItemCondition(key)) delete next.conditions;
+  return searchHref(next, filters);
+}
+
+/** Ein Eintrag der Kategorienavigation */
+export interface BrowseEntry {
+  key: string;
+  label: string;
+  icon: string | null;
+  scope: NonNullable<BrowseScope>;
+}
+
+/** Nächste Ebene unter dem aktuellen Bereich bzw. der Kategorie (leer bei Kategorien ohne Unterkategorien) */
+export function browseChildren(categories: CategoryNode[], scope: BrowseScope): BrowseEntry[] {
+  const nodes = scope?.category
+    ? (findCategoryByPath(categories, scope.category)?.children ?? [])
+    : scope?.vertical
+      ? categories.filter((c) => c.vertical === scope.vertical)
+      : null;
+  if (!nodes) {
+    return VERTICALS.map((vertical) => ({ key: VERTICAL_SLUGS[vertical], label: VERTICAL_LABELS[vertical], icon: null, scope: { vertical } }));
+  }
+  return nodes.map((node) => ({ key: node.path, label: node.name, icon: node.icon, scope: { category: node.path } }));
+}
+
+/** Weg von „Alle Kategorien“ bis zur aktuellen Kategorie, z. B. Alle › Marktplatz › Elektronik › Handys */
+export function browseTrail(categories: CategoryNode[], scope: BrowseScope): BrowseEntry[] {
+  if (!scope) return [];
+  if (scope.vertical) return [{ key: VERTICAL_SLUGS[scope.vertical], label: VERTICAL_LABELS[scope.vertical], icon: null, scope }];
+  const segments = scope.category.split('/');
+  const vertical = VERTICALS.find((v) => VERTICAL_SLUGS[v] === segments[0]);
+  const trail: BrowseEntry[] = vertical ? [{ key: segments[0]!, label: VERTICAL_LABELS[vertical], icon: null, scope: { vertical } }] : [];
+  for (let i = 2; i <= segments.length; i++) {
+    const node = findCategoryByPath(categories, segments.slice(0, i).join('/'));
+    if (node) trail.push({ key: node.path, label: node.name, icon: node.icon, scope: { category: node.path } });
+  }
+  return trail;
+}
+
 export function searchHref(query: SearchQuery, filters: readonly SearchFilter[]): string {
   const params = new URLSearchParams(toSearchParams(query, filters));
-  const text = params.toString();
+  // Kategoriepfade lesbar lassen (…?kategorie=marktplatz/elektronik) – „/“ ist in Abfragen erlaubt
+  const text = params.toString().replace(/%2F/gi, '/');
   return text ? `/suche?${text}` : '/suche';
 }
 

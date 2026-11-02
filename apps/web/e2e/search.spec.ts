@@ -71,6 +71,39 @@ test('Umkreissuche: Fahrräder 25 km um 1010 Wien, Filter teilen und entfernen',
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Alle Anzeigen');
 });
 
+test('Kategorien durchklicken: Bereich → Kategorie → Unterkategorie, Filter bleiben sichtbar', async ({ page }) => {
+  await page.goto('/');
+  await page.getByRole('link', { name: /^Sport & Freizeit/ }).first().click();
+  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-freizeit$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sport & Freizeit');
+  const path = page.getByRole('navigation', { name: 'Kategoriepfad' });
+  await expect(path.getByRole('link', { name: 'Marktplatz' })).toBeVisible();
+
+  // Unterkategorien mit Anzahl der Anzeigen
+  const sub = page.getByRole('navigation', { name: 'Unterkategorien in Sport & Freizeit' });
+  await expect(sub.getByRole('link', { name: /^Wintersport/ })).toBeVisible();
+  await sub.getByRole('link', { name: /^Fahrräder \d+ Anzeigen?$/ }).click();
+  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-freizeit\/fahrraeder$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fahrräder');
+  await expect(card(page, /Kinderrad 20 Zoll/).first()).toBeVisible();
+
+  // Filter der Kategorie stehen weiterhin zur Verfügung; die Kategorie zeigt den Weg zurück
+  const filters = await openFilters(page);
+  await expect(filters.getByRole('group', { name: 'Fahrradart' })).toBeVisible();
+  const trail = filters.getByRole('navigation', { name: 'Kategorie', exact: true });
+  await expect(trail.locator('[aria-current="page"]')).toHaveText('Fahrräder');
+  await trail.getByRole('link', { name: 'Marktplatz' }).click();
+  await expect(page).toHaveURL(/bereich=marktplatz$/);
+  await expect(page.getByRole('navigation', { name: 'Unterkategorien in Marktplatz' }).getByRole('link', { name: /^Elektronik/ })).toBeVisible();
+
+  // Mit Suchbegriff: nur Kategorien mit Treffern, der Suchbegriff bleibt beim Wechsel erhalten
+  await page.goto('/suche?q=kinderrad');
+  const areas = page.getByRole('navigation', { name: 'Alle Bereiche' });
+  await expect(areas.getByRole('link', { name: /^Immobilien/ })).toHaveCount(0);
+  await areas.getByRole('link', { name: /^Marktplatz/ }).click();
+  await expect(page).toHaveURL(/\?q=kinderrad&bereich=marktplatz$/);
+});
+
 test('Bereichsfilter für Auto, Jobs und Immobilien', async ({ page }) => {
   await page.goto('/suche?bereich=auto-motor&kraftstoff=petrol');
   await expect(card(page, /VW Golf 1.5 TSI/)).toBeVisible();

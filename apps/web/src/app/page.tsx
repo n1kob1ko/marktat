@@ -1,14 +1,14 @@
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
-import { ArrowRight, Briefcase, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
+import { ArrowRight, Briefcase, ChevronRight, LayoutGrid, Car, Camera, House, MessageCircle, Percent, ShieldCheck, ShoppingBag, Store, Tag, Wrench } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { VERTICAL_SLUGS } from '@marktat/shared';
 import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
-import { getCategories, getLatestDeals, getLatestListings } from '@/lib/data';
+import { getCategories, getCategoryCounts, getLatestDeals, getLatestListings } from '@/lib/data';
 import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
@@ -69,8 +69,8 @@ export default function HomePage() {
       </Container>
 
       <Container className="mt-16">
-        <SectionHeading title="Kategorien im Marktplatz" />
-        <Suspense fallback={<GridSkeleton count={9} className="h-24" />}>
+        <SectionHeading title="Alle Kategorien im Marktplatz" />
+        <Suspense fallback={<GridSkeleton count={9} className="h-16" />}>
           <MarketplaceCategories />
         </Suspense>
       </Container>
@@ -206,25 +206,65 @@ function GridSkeleton({ count, className }: { count: number; className: string }
   );
 }
 
+/**
+ * Alle Kategorien des Marktplatzes als Liste mit Icon, Anzahl der Anzeigen und den ersten Unterkategorien.
+ * Jede Zeile führt auf die Kategorieseite (Unterkategorien mit Anzahl, darunter die Anzeigen mit Filtern).
+ */
 async function MarketplaceCategories() {
-  const categories = (await getCategories()).filter((c) => c.vertical === 'MARKETPLACE');
+  const [all, counts] = await Promise.all([getCategories(), getCategoryCounts()]);
+  const categories = all.filter((c) => c.vertical === 'MARKETPLACE');
   if (!categories.length) {
     return <p className="text-ink-500">Kategorien sind gerade nicht verfügbar.</p>;
   }
+  const total = counts[VERTICAL_SLUGS.MARKETPLACE] ?? 0;
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-      {categories.map((category) => (
-        <li key={category.id}>
-          <Link
-            href={`/suche?kategorie=${category.path}`}
-            className="flex h-full items-center gap-3 rounded-xl border border-line bg-surface px-3 py-3.5 sm:px-4 transition-colors hover:border-brand-300 hover:bg-brand-50"
-          >
-            <CategoryIcon name={category.icon} className="size-5 shrink-0 text-brand-700" />
-            <span className="min-w-0 text-sm font-semibold break-words hyphens-auto text-ink-900">{category.name}</span>
-          </Link>
+    <div className="rounded-[var(--radius-card)] border border-line bg-surface p-2 sm:p-3">
+      <ul className="grid grid-cols-1 gap-x-4 sm:grid-cols-2 lg:grid-cols-3">
+        {categories.map((category) => (
+          <li key={category.id}>
+            <CategoryRow
+              href={`/suche?kategorie=${category.path}`}
+              icon={<CategoryIcon name={category.icon} className="size-5" />}
+              name={category.name}
+              count={counts[category.path]}
+              hint={category.children.slice(0, 3).map((c) => c.name).join(', ')}
+            />
+          </li>
+        ))}
+        <li>
+          <CategoryRow
+            href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}
+            icon={<LayoutGrid className="size-5" aria-hidden="true" />}
+            name="Alle Anzeigen"
+            count={total}
+            hint="Alles aus dem Marktplatz, neueste zuerst"
+          />
         </li>
-      ))}
-    </ul>
+      </ul>
+    </div>
+  );
+}
+
+function CategoryRow({ href, icon, name, count, hint }: { href: string; icon: React.ReactNode; name: string; count?: number; hint?: string }) {
+  return (
+    <Link href={href} className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-brand-50 sm:px-3">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
+        {icon}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="flex items-baseline gap-2">
+          <span className="font-semibold text-ink-900 group-hover:text-brand-800">{name}</span>
+          {count ? (
+            <span className="text-xs text-ink-500 tabular-nums">
+              {count.toLocaleString('de-AT')}
+              <span className="sr-only"> {count === 1 ? 'Anzeige' : 'Anzeigen'}</span>
+            </span>
+          ) : null}
+        </span>
+        {hint ? <span className="mt-0.5 block truncate text-xs text-ink-500">{hint}</span> : null}
+      </span>
+      <ChevronRight className="size-4 shrink-0 text-ink-300 transition-transform group-hover:translate-x-0.5 group-hover:text-brand-600" aria-hidden="true" />
+    </Link>
   );
 }
 

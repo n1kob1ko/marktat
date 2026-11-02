@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { flushSync } from 'react-dom';
-import { Loader2, SlidersHorizontal, X } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { Input, Select, buttonClasses, cn } from '@marktat/ui';
 import {
   CONDITION_PARAMS,
@@ -12,8 +13,6 @@ import {
   SEARCH_RADII,
   SELLER_TYPES,
   STATES,
-  VERTICALS,
-  VERTICAL_LABELS,
   VERTICAL_SLUGS,
   categoryAttributeSchema,
   hasItemCondition,
@@ -24,9 +23,9 @@ import {
   type OptionsFilter,
   type SearchFilter,
   type SearchQuery,
-  type Vertical,
 } from '@marktat/shared';
-import { flattenCategories } from '@/lib/search';
+import { browseTrail, currentScope, scopeHref, type BrowseScope } from '@/lib/search';
+import { CategoryIcon } from '@/components/category-icon';
 import { LocationInput } from './location-input';
 
 const COLLAPSED_OPTIONS = 6;
@@ -60,7 +59,7 @@ export function formToSearch(entries: Iterable<[string, FormDataEntryValue]>): s
   }
   const params = new URLSearchParams();
   for (const [key, values] of grouped) if (allowed.has(key)) params.set(key, values.join(','));
-  const text = params.toString();
+  const text = params.toString().replace(/%2F/gi, '/');
   return text ? `/suche?${text}` : '/suche';
 }
 
@@ -98,16 +97,12 @@ export function SearchFilters({
   const [open, setOpen] = useState(false);
   const [pending, startTransition] = useTransition();
 
-  const initialCategory = query.category?.includes('/') ? query.category : '';
-  const [vertical, setVertical] = useState<Vertical | ''>(
-    initialCategory ? (VERTICALS.find((v) => initialCategory.startsWith(`${VERTICAL_SLUGS[v]}/`)) ?? '') : (query.vertical ?? ''),
-  );
-  const [categoryPath, setCategoryPath] = useState(initialCategory);
   const [hasLocation, setHasLocation] = useState(Boolean(query.locationId || query.postalCode));
 
-  const scope = categoryPath || (vertical ? VERTICAL_SLUGS[vertical] : null);
+  // Bereich und Kategorie wechseln über die Kategorienavigation (Links); das Formular behält sie bei
+  const browse = currentScope(query);
+  const scope = browse?.category ?? (browse?.vertical ? VERTICAL_SLUGS[browse.vertical] : null);
   const filters = useMemo(() => searchFiltersFor(scope), [scope]);
-  const flat = useMemo(() => flattenCategories(categories), [categories]);
   const showCondition = hasItemCondition(scope);
   const showPrice = hasPrice(scope);
   const rentOnly = categoryAttributeSchema(scope).fields.some((f) => f.key === 'offerType' && f.kind === 'select' && f.fixed === 'RENT');
@@ -148,8 +143,6 @@ export function SearchFilters({
       trigger?.focus();
     };
   }, [open, desktop]);
-
-  const categoryOptions = flat.filter((c) => !vertical || c.node.vertical === vertical);
 
   return (
     <>
@@ -218,48 +211,7 @@ export function SearchFilters({
               <Input id="f-q" name="q" type="search" defaultValue={query.q ?? ''} placeholder="z. B. Rennrad, Sofa" maxLength={100} />
             </Group>
 
-            <fieldset className="space-y-3">
-              <legend className="mb-1.5 text-sm font-semibold text-ink-900">Kategorie</legend>
-              <div className="space-y-1.5">
-                <label htmlFor="f-bereich" className="sr-only">Bereich</label>
-                <Select
-                  id="f-bereich"
-                  name="bereich"
-                  value={vertical ? VERTICAL_SLUGS[vertical] : ''}
-                  onChange={(e) => {
-                    const next = VERTICALS.find((v) => VERTICAL_SLUGS[v] === e.target.value) ?? '';
-                    setVertical(next);
-                    if (categoryPath && next && !categoryPath.startsWith(`${VERTICAL_SLUGS[next]}/`)) setCategoryPath('');
-                    if (!next) setCategoryPath('');
-                  }}
-                >
-                  <option value="">Alle Bereiche</option>
-                  {VERTICALS.map((v) => (
-                    <option key={v} value={VERTICAL_SLUGS[v]}>{VERTICAL_LABELS[v]}</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="f-kategorie" className="sr-only">Kategorie</label>
-                <Select
-                  id="f-kategorie"
-                  name="kategorie"
-                  value={categoryPath}
-                  onChange={(e) => {
-                    setCategoryPath(e.target.value);
-                    const match = flat.find((c) => c.node.path === e.target.value);
-                    if (match) setVertical(match.node.vertical);
-                  }}
-                >
-                  <option value="">Alle Kategorien</option>
-                  {categoryOptions.map(({ node, depth }) => (
-                    <option key={node.id} value={node.path}>
-                      {`${' '.repeat(depth)}${node.name}`}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            </fieldset>
+            <CategoryTrail query={query} categories={categories} />
 
             <fieldset className="space-y-3">
               <legend className="mb-1.5 text-sm font-semibold text-ink-900">Standort</legend>
@@ -342,6 +294,8 @@ export function SearchFilters({
               ))}
             </fieldset>
 
+            {browse?.category ? <input type="hidden" name="kategorie" value={browse.category} /> : null}
+            {browse?.vertical ? <input type="hidden" name="bereich" value={VERTICAL_SLUGS[browse.vertical]} /> : null}
             {query.sort !== (query.q ? 'relevanz' : 'neueste') ? <input type="hidden" name="sortierung" value={query.sort} /> : null}
 
             <button type="submit" className={buttonClasses({ className: 'hidden w-full lg:inline-flex' })}>
@@ -361,6 +315,43 @@ export function SearchFilters({
         </form>
       </div>
     </>
+  );
+}
+
+/**
+ * Kategorie in der Filterleiste: der Weg zurück (Alle Kategorien › Bereich › Oberkategorie) und die aktuelle Auswahl.
+ * Unterkategorien stehen mit Trefferzahlen über den Ergebnissen. Filter wie Ort oder Preis bleiben beim Wechsel erhalten.
+ */
+function CategoryTrail({ query, categories }: { query: SearchQuery; categories: CategoryNode[] }) {
+  const scope = currentScope(query);
+  const trail = browseTrail(categories, scope);
+  const current = trail.at(-1);
+  const back = [{ key: 'alle', label: 'Alle Kategorien', scope: null as BrowseScope }, ...trail.slice(0, -1)];
+  return (
+    <nav aria-labelledby="f-kategorie-label">
+      <h3 id="f-kategorie-label" className="mb-1.5 font-sans text-sm font-semibold tracking-normal text-ink-900">Kategorie</h3>
+      <ul className="space-y-0.5 text-sm">
+        {current
+          ? back.map((entry) => (
+              <li key={entry.key}>
+                <Link
+                  href={scopeHref(query, entry.scope)}
+                  className="-mx-2 flex items-center gap-1 rounded-lg px-2 py-1.5 text-ink-700 hover:bg-brand-50 hover:text-brand-800"
+                >
+                  <ChevronLeft className="size-4 shrink-0 text-ink-400" aria-hidden="true" />
+                  {entry.label}
+                </Link>
+              </li>
+            ))
+          : null}
+        <li>
+          <span aria-current="page" className="-mx-2 flex items-center gap-2 rounded-lg bg-brand-50 px-2 py-1.5 font-semibold text-brand-800">
+            {current?.icon ? <CategoryIcon name={current.icon} className="size-4 shrink-0" /> : null}
+            {current?.label ?? 'Alle Kategorien'}
+          </span>
+        </li>
+      </ul>
+    </nav>
   );
 }
 

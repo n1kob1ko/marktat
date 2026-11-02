@@ -135,6 +135,32 @@ describe('Suche', () => {
     expect((await search({ q: 'pausiertes' })).total).toBe(0);
   });
 
+  it('zählt Treffer je Kategorie mit denselben Filtern – Meilisearch und PostgreSQL gleich', async () => {
+    const counts = async (query: Record<string, string | number>, target = server()) => {
+      const res = await request(target).get('/v1/listings').query(query).expect(200);
+      return res.body.categoryCounts as Record<string, number>;
+    };
+    const all = await counts({});
+    expect(all).toMatchObject({
+      marktplatz: 4,
+      'marktplatz/sport-freizeit': 4,
+      'marktplatz/sport-freizeit/fahrraeder': 4,
+      'auto-motor': 2,
+      'immobilien/wohnungen': 3,
+      'immobilien/wohnungen/mietwohnungen': 2,
+      'jobs/vollzeit': 2,
+    });
+    expect(await counts({}, fallback.getHttpServer())).toEqual(all);
+
+    // In einer Kategorie: Unterkategorien mit Filtern (Graz: Rennrad, Audi, Garçonnière, Bürokraft)
+    const graz = { kategorie: 'immobilien/wohnungen', plz: '8010' };
+    expect(await counts(graz)).toEqual({ immobilien: 1, 'immobilien/wohnungen': 1, 'immobilien/wohnungen/mietwohnungen': 1 });
+    expect(await counts(graz, fallback.getHttpServer())).toEqual(await counts(graz));
+
+    const overview = await request(server()).get('/v1/listings/category-counts').expect(200);
+    expect(overview.body).toEqual(all);
+  });
+
   it('Fahrräder im Umkreis von 25 km um 1010 Wien, nach Entfernung', async () => {
     const result = await search({ kategorie: 'marktplatz/sport-freizeit/fahrraeder', plz: '1010', umkreis: 25, sortierung: 'entfernung' });
     expect(titles(result)).toEqual(['Damen Fahrrad 28 Zoll, 7-Gang', 'E-Bike Trekking mit neuem Akku']);

@@ -30,6 +30,8 @@ export interface MeiliSearchResponse<T> {
   page?: number;
   hitsPerPage?: number;
   processingTimeMs: number;
+  /** Nur bei Anfragen mit `facets` */
+  facetDistribution?: Record<string, Record<string, number>>;
 }
 
 export class MeiliClient {

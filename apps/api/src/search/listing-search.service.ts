@@ -9,6 +9,8 @@ import {
   type SearchFilter,
   type SearchQuery,
   type SearchResult,
+  type Vertical,
+  VERTICAL_SLUGS,
 } from '@marktat/shared';
 import { Prisma } from '../generated/prisma/client.js';
 import { CategoriesService } from '../categories/categories.service.js';
@@ -16,7 +18,7 @@ import { GeoService, locationInclude, toLocationSummary } from '../geo/geo.servi
 import { ImageUrls } from '../images/image-urls.js';
 import { listingInclude, toListingSummary } from '../listings/listings.mapper.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { MAX_TOTAL_HITS } from './search-document.js';
+import { MAX_TOTAL_HITS, ancestorPaths } from './search-document.js';
 import { SearchIndexService } from './search-index.service.js';
 import { meiliFilters, meiliSort, sqlConditions, sqlOrder, type ResolvedSearch } from './search-query.js';
 
@@ -27,6 +29,33 @@ const TOP_ADS_SHOWN = 3;
 const TOP_ADS_POOL = 100;
 /** Die Auswahl wechselt in diesem Takt, damit jede Top-Anzeige gleich oft vorne steht */
 const TOP_ADS_ROTATION_MS = 10 * 60_000;
+/** Trefferzahlen ohne Filter (Startseite) werden so lange zwischengespeichert */
+const CATEGORY_COUNTS_TTL_MS = 60_000;
+
+/**
+ * Trefferzahlen je Bereich bzw. Kategorie aus Zeilen (Bereich, Kategoriepfad, Anzahl): jede Zeile zählt für
+ * ihren Bereich und alle Kategorien auf dem Pfad – wie `vertical` und `categoryPaths` im Suchindex.
+ */
+export function rollUpCategoryCounts(rows: { vertical: Vertical; path: string | null; count: number }[]): Record<string, number> {
+  const counts: Record<string, number> = {};
+  const add = (key: string, n: number) => (counts[key] = (counts[key] ?? 0) + n);
+  for (const row of rows) {
+    add(VERTICAL_SLUGS[row.vertical], row.count);
+    if (row.path) for (const path of ancestorPaths(row.path).slice(1)) add(path, row.count);
+  }
+  return counts;
+}
+
+/** Facetten aus Meilisearch in dieselbe Form bringen: Bereiche über `vertical`, Kategorien über `categoryPaths` */
+export function facetCategoryCounts(facets: Record<string, Record<string, number>> | undefined): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const [path, n] of Object.entries(facets?.categoryPaths ?? {})) if (path.includes('/')) counts[path] = n;
+  for (const [vertical, n] of Object.entries(facets?.vertical ?? {})) {
+    const slug = VERTICAL_SLUGS[vertical as Vertical];
+    if (slug) counts[slug] = n;
+  }
+  return counts;
+}
 
 /**
  * Faire, vorhersagbare Rotation: Reihenfolge nach einem Hash aus Zeitfenster und ID. Innerhalb eines Fensters
@@ -61,6 +90,7 @@ type Center = NonNullable<ResolvedSearch['center']> & { summary: SearchResult['l
 export class ListingSearchService {
   private readonly logger = new Logger(ListingSearchService.name);
   private meiliUnavailableUntil = 0;
+  private overallCounts?: { at: number; counts: Promise<Record<string, number>> };
 
   constructor(
     private readonly prisma: PrismaService,
@@ -73,7 +103,18 @@ export class ListingSearchService {
   /** Prüft die Parameter (400 bei ungültigen Werten) und sucht. */
   async searchParams(raw: RawSearchParams): Promise<SearchResult> {
     const { query, categoryPath } = await this.resolveParams(raw);
-    return this.search(query, categoryPath);
+    return this.search(query, categoryPath, { categoryCounts: true });
+  }
+
+  /** Aktive Inserate je Bereich und Kategorie ohne Filter (Startseite, Kategorieübersicht); kurz zwischengespeichert. */
+  async categoryCounts(): Promise<Record<string, number>> {
+    if (!this.overallCounts || Date.now() - this.overallCounts.at > CATEGORY_COUNTS_TTL_MS) {
+      const { query } = parseSearchParams({ pageSize: '1' });
+      const counts = this.search(query, null, { categoryCounts: true, topAds: false }).then((result) => result.categoryCounts ?? {});
+      counts.catch(() => (this.overallCounts = undefined));
+      this.overallCounts = { at: Date.now(), counts };
+    }
+    return this.overallCounts.counts;
   }
 
   /**
@@ -109,7 +150,7 @@ export class ListingSearchService {
   async search(
     query: SearchQuery,
     categoryPath: string | null,
-    options: { publishedAfter?: Date; publishedUntil?: Date; topAds?: boolean } = {},
+    options: { publishedAfter?: Date; publishedUntil?: Date; topAds?: boolean; categoryCounts?: boolean } = {},
   ): Promise<SearchResult> {
     const center = await this.resolveCenter(query);
     const search: ResolvedSearch = {
@@ -121,15 +162,16 @@ export class ListingSearchService {
       publishedUntil: options.publishedUntil,
     };
 
-    let page: { ids: string[]; total: number; engine: SearchResult['engine'] } | null = null;
+    const withCounts = Boolean(options.categoryCounts);
+    let page: { ids: string[]; total: number; engine: SearchResult['engine']; categoryCounts?: Record<string, number> } | null = null;
     if (this.index.enabled && Date.now() >= this.meiliUnavailableUntil) {
-      page = await this.searchMeili(search).catch((error: Error) => {
+      page = await this.searchMeili(search, withCounts).catch((error: Error) => {
         this.meiliUnavailableUntil = Date.now() + BACKOFF_MS;
         this.logger.warn(`Meilisearch-Suche fehlgeschlagen, Ausweichbetrieb über PostgreSQL: ${error.message}`);
         return null;
       });
     }
-    page ??= await this.searchPostgres(search);
+    page ??= await this.searchPostgres(search, withCounts);
 
     const rows = await this.loadVisible(page.ids);
     const byId = new Map(rows.map((row) => [row.id, row]));
@@ -161,6 +203,7 @@ export class ListingSearchService {
       totalPages: Math.min(Math.ceil(Math.max(0, page.total - stale.length) / query.pageSize), Math.floor(MAX_TOTAL_HITS / query.pageSize)),
       location: center?.summary ?? null,
       engine: page.engine,
+      ...(page.categoryCounts ? { categoryCounts: page.categoryCounts } : {}),
     };
   }
 
@@ -218,7 +261,7 @@ export class ListingSearchService {
     });
   }
 
-  private async searchMeili(search: ResolvedSearch) {
+  private async searchMeili(search: ResolvedSearch, withCounts = false) {
     const client = this.index.client!;
     if (!(await this.index.ensureReady())) throw new Error('Suchindex nicht bereit');
     const { query } = search;
@@ -230,11 +273,17 @@ export class ListingSearchService {
       hitsPerPage: query.pageSize,
       attributesToRetrieve: ['id'],
       matchingStrategy: 'all',
+      ...(withCounts ? { facets: ['categoryPaths', 'vertical'] } : {}),
     });
-    return { ids: response.hits.map((hit) => hit.id), total: response.totalHits ?? 0, engine: 'meilisearch' as const };
+    return {
+      ids: response.hits.map((hit) => hit.id),
+      total: response.totalHits ?? 0,
+      engine: 'meilisearch' as const,
+      ...(withCounts ? { categoryCounts: facetCategoryCounts(response.facetDistribution) } : {}),
+    };
   }
 
-  private async searchPostgres(search: ResolvedSearch) {
+  private async searchPostgres(search: ResolvedSearch, withCounts = false) {
     const { query } = search;
     const from = Prisma.sql`
       FROM listings l
@@ -245,11 +294,20 @@ export class ListingSearchService {
       LEFT JOIN states s ON s.id = d.state_id
       WHERE ${Prisma.join(sqlConditions(search), ' AND ')}`;
     const offset = (query.page - 1) * query.pageSize;
-    const [rows, count] = await Promise.all([
+    const [rows, count, groups] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>`SELECT l.id ${from} ORDER BY ${sqlOrder(search)} LIMIT ${query.pageSize} OFFSET ${offset}`,
       this.prisma.$queryRaw<{ total: bigint }[]>`SELECT count(*) AS total ${from}`,
+      withCounts
+        ? this.prisma.$queryRaw<{ vertical: Vertical; path: string | null; count: bigint }[]>`
+            SELECT l.vertical::text AS vertical, c.path, count(*) AS count ${from} GROUP BY l.vertical, c.path`
+        : Promise.resolve(null),
     ]);
-    return { ids: rows.map((r) => r.id), total: Number(count[0]?.total ?? 0), engine: 'postgres' as const };
+    return {
+      ids: rows.map((r) => r.id),
+      total: Number(count[0]?.total ?? 0),
+      engine: 'postgres' as const,
+      ...(groups ? { categoryCounts: rollUpCategoryCounts(groups.map((g) => ({ ...g, count: Number(g.count) }))) } : {}),
+    };
   }
 
   /** Ort aus `ort` (ID) bzw. Hauptort der `plz` */

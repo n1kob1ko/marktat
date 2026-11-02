@@ -1,7 +1,7 @@
 import { parseSearchParams, searchFiltersFor, type CategoryNode, type LocationSummary } from '@marktat/shared';
 import { describe, expect, it } from 'vitest';
 import { formToSearch } from '@/components/search/search-filters';
-import { activeFilters, findCategoryByPath, formatFilterNumber, resetHref, searchHref } from './search';
+import { activeFilters, browseChildren, browseTrail, findCategoryByPath, formatFilterNumber, resetHref, scopeHref, searchHref } from './search';
 
 const BIKES = 'marktplatz/sport-freizeit/fahrraeder';
 const VIENNA: LocationSummary = {
@@ -108,7 +108,7 @@ describe('formToSearch', () => {
       ['preis_ab', ''],
       ['preis_bis', '500'],
     ]);
-    expect(href).toBe(`/suche?q=rad&kategorie=${encodeURIComponent(BIKES)}&radtyp=city%2Ce-bike&preis_bis=500`);
+    expect(href).toBe(`/suche?q=rad&kategorie=${BIKES}&radtyp=city%2Ce-bike&preis_bis=500`);
   });
 
   it('verlangt für den Umkreis einen Ort und bevorzugt den gewählten Ort vor der PLZ', () => {
@@ -118,5 +118,36 @@ describe('formToSearch', () => {
 
   it('kennt bei Jobs kein Preisfeld', () => {
     expect(formToSearch([['bereich', 'jobs'], ['preis_bis', '100'], ['gehalt_ab', '2500']])).toBe('/suche?bereich=jobs&gehalt_ab=2500');
+  });
+});
+
+describe('Kategorienavigation', () => {
+  const tree = [
+    node('marktplatz/sport-freizeit', 'Sport & Freizeit', [node(BIKES, 'Fahrräder'), node('marktplatz/sport-freizeit/fitness', 'Fitness')]),
+    node('marktplatz/elektronik', 'Elektronik', [node('marktplatz/elektronik/handys-smartphones', 'Handys & Smartphones')]),
+  ];
+
+  it('zeigt je Ebene die nächsten Einträge: Bereiche, Hauptkategorien, Unterkategorien', () => {
+    expect(browseChildren(tree, null).map((e) => e.key)).toEqual(['marktplatz', 'auto-motor', 'immobilien', 'jobs']);
+    expect(browseChildren(tree, { vertical: 'MARKETPLACE' }).map((e) => e.label)).toEqual(['Sport & Freizeit', 'Elektronik']);
+    expect(browseChildren(tree, { vertical: 'JOBS' })).toEqual([]);
+    expect(browseChildren(tree, { category: 'marktplatz/sport-freizeit' }).map((e) => e.key)).toEqual([BIKES, 'marktplatz/sport-freizeit/fitness']);
+    expect(browseChildren(tree, { category: BIKES })).toEqual([]);
+  });
+
+  it('beschreibt den Weg bis zur aktuellen Kategorie', () => {
+    expect(browseTrail(tree, null)).toEqual([]);
+    expect(browseTrail(tree, { category: BIKES }).map((e) => e.label)).toEqual(['Marktplatz', 'Sport & Freizeit', 'Fahrräder']);
+  });
+
+  it('behält beim Wechsel Suchbegriff, Ort und Preis, aber keine Filter, die dort nicht gelten', () => {
+    const { query } = parse(`/suche?q=rad&kategorie=${BIKES}&plz=1010&umkreis=25&preis_bis=500&radtyp=city&seite=3`);
+    expect(scopeHref(query, { category: 'marktplatz/elektronik' })).toBe(
+      '/suche?q=rad&kategorie=marktplatz/elektronik&plz=1010&umkreis=25&preis_bis=500',
+    );
+    expect(scopeHref(query, { vertical: 'MARKETPLACE' })).toBe('/suche?q=rad&bereich=marktplatz&plz=1010&umkreis=25&preis_bis=500');
+    expect(scopeHref(query, null)).toBe('/suche?q=rad&plz=1010&umkreis=25&preis_bis=500');
+    // Jobs haben keinen Preis: der Preisfilter fällt weg
+    expect(scopeHref(query, { vertical: 'JOBS' })).toBe('/suche?q=rad&bereich=jobs&plz=1010&umkreis=25');
   });
 });
