@@ -13,8 +13,8 @@ import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import sharp from 'sharp';
 import {
-  AUTOFILL_IMAGE_TYPES,
   AUTOFILL_MAX_BYTES,
+  AUTOFILL_MAX_PHOTOS,
   categoryAttributeSchema,
   coerceAttributeSuggestions,
   type AutofillStatus,
@@ -30,6 +30,7 @@ import { autofillOutputSchema, systemPrompt, type AutofillOutput } from './autof
 const MODEL_EDGE = 1568;
 const MIN_EDGE = 200;
 const MAX_INPUT_PIXELS = 60_000_000;
+const IMAGE_FORMATS = new Set(['jpeg', 'png', 'webp']);
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Modelle, die die serverseitige Ausweichlösung bei Ablehnungen unterstützen (`fallbacks: "default"`) */
@@ -42,8 +43,8 @@ export class AutofillDisabledError extends ServiceUnavailableException {
 }
 
 /**
- * Foto-Assistent: Foto → Vorschläge für Kategorie, Titel, Beschreibung, Zustand und Zusatzangaben.
- * Das Foto wird nur für diese eine Anfrage an die Claude-API (Anthropic) geschickt und nirgends gespeichert.
+ * Foto-Assistent: ein bis vier Fotos → Vorschläge für Kategorie, Titel, Beschreibung und Zusatzangaben.
+ * Die Fotos werden nur für diese eine Anfrage an die Claude-API (Anthropic) geschickt und nirgends gespeichert.
  */
 @Injectable()
 export class AutofillService {
@@ -76,28 +77,42 @@ export class AutofillService {
     return { enabled: this.client !== null };
   }
 
-  async suggest(user: AuthUser, body: unknown, contentType: string | undefined): Promise<AutofillSuggestion> {
+  async suggest(user: AuthUser, body: unknown): Promise<AutofillSuggestion> {
     if (!this.client) throw new AutofillDisabledError();
-    const image = await this.prepareImage(body, contentType);
+    const images = await Promise.all(this.readImages(body).map((image) => this.prepareImage(image)));
+    // Eine Auswertung zählt einmal, egal wie viele Fotos sie enthält
     await this.countUsage(user.id);
 
     const tree = await this.categories.tree();
-    const output = await this.ask(this.client, image, systemPrompt(tree));
+    const output = await this.ask(this.client, images, systemPrompt(tree));
     return this.toSuggestion(output);
   }
 
-  /** Datei prüfen, drehen (EXIF), Metadaten entfernen und verkleinern – es geht nur ein frisches JPEG hinaus. */
-  private async prepareImage(body: unknown, contentType: string | undefined): Promise<Buffer> {
-    const type = contentType?.split(';')[0]?.trim().toLowerCase();
-    if (!type || !(AUTOFILL_IMAGE_TYPES as readonly string[]).includes(type) || !Buffer.isBuffer(body) || body.length === 0) {
-      throw new BadRequestException('Bitte schicke ein Foto als JPEG, PNG oder WebP.');
+  /** `{ images: [Base64, …] }` mit ein bis vier Fotos */
+  private readImages(body: unknown): Buffer[] {
+    const images = (body as { images?: unknown } | null)?.images;
+    if (!Array.isArray(images) || images.length === 0 || !images.every((i) => typeof i === 'string' && i.length > 0)) {
+      throw new BadRequestException('Bitte schicke mindestens ein Foto.');
     }
-    if (body.length > AUTOFILL_MAX_BYTES) throw new BadRequestException('Das Foto ist zu groß.');
+    if (images.length > AUTOFILL_MAX_PHOTOS) throw new BadRequestException(`Bitte schicke höchstens ${AUTOFILL_MAX_PHOTOS} Fotos.`);
+    return (images as string[]).map((image) => {
+      // Die Länge vor dem Dekodieren prüfen: Base64 ist ein Drittel größer als die Datei
+      if (image.length > Math.ceil((AUTOFILL_MAX_BYTES * 4) / 3) + 4) throw new BadRequestException('Ein Foto ist zu groß.');
+      return Buffer.from(image, 'base64');
+    });
+  }
+
+  /** Datei prüfen, drehen (EXIF), Metadaten entfernen und verkleinern – es geht nur ein frisches JPEG hinaus. */
+  private async prepareImage(image: Buffer): Promise<Buffer> {
+    if (image.length === 0) throw new BadRequestException('Ein Foto ist leer.');
     try {
-      const input = sharp(body, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' });
+      const input = sharp(image, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' });
       const meta = await input.metadata();
+      if (!meta.format || !IMAGE_FORMATS.has(meta.format)) {
+        throw new BadRequestException('Bitte verwende Fotos als JPEG, PNG oder WebP.');
+      }
       if (!meta.width || !meta.height || Math.min(meta.width, meta.height) < MIN_EDGE) {
-        throw new BadRequestException('Das Foto ist zu klein. Bitte mach ein schärferes Foto aus der Nähe.');
+        throw new BadRequestException('Ein Foto ist zu klein. Bitte mach ein schärferes Foto aus der Nähe.');
       }
       return await input
         .rotate()
@@ -106,7 +121,7 @@ export class AutofillService {
         .toBuffer();
     } catch (error) {
       if (error instanceof HttpException) throw error;
-      throw new BadRequestException('Das Foto konnte nicht gelesen werden. Bitte versuche ein anderes Foto.');
+      throw new BadRequestException('Ein Foto konnte nicht gelesen werden. Bitte versuche ein anderes Foto.');
     }
   }
 
@@ -140,7 +155,7 @@ export class AutofillService {
     return next;
   }
 
-  private async ask(client: Anthropic, image: Buffer, system: string): Promise<AutofillOutput> {
+  private async ask(client: Anthropic, images: Buffer[], system: string): Promise<AutofillOutput> {
     const model = this.env.AI_MODEL;
     const fallback = FALLBACK_MODELS.test(model);
     let response;
@@ -157,8 +172,17 @@ export class AutofillService {
           {
             role: 'user',
             content: [
-              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image.toString('base64') } },
-              { type: 'text', text: 'Das ist mein Foto. Bitte schlag die Angaben für mein Inserat vor.' },
+              ...images.map((image) => ({
+                type: 'image' as const,
+                source: { type: 'base64' as const, media_type: 'image/jpeg' as const, data: image.toString('base64') },
+              })),
+              {
+                type: 'text',
+                text:
+                  images.length === 1
+                    ? 'Das ist mein Foto. Bitte schlag die Angaben für mein Inserat vor.'
+                    : `Das sind ${images.length} Fotos von demselben Artikel. Bitte schlag die Angaben für mein Inserat vor.`,
+              },
             ],
           },
         ],
@@ -182,7 +206,7 @@ export class AutofillService {
 
     const { usage } = response;
     this.logger.log(
-      `Foto ausgewertet (${response.model}): ${usage.input_tokens} Eingabe-, ${usage.cache_read_input_tokens ?? 0} Cache-, ${usage.output_tokens} Ausgabe-Tokens`,
+      `${images.length} Foto(s) ausgewertet (${response.model}): ${usage.input_tokens} Eingabe-, ${usage.cache_read_input_tokens ?? 0} Cache-, ${usage.output_tokens} Ausgabe-Tokens`,
     );
     if (response.stop_reason === 'refusal') {
       throw new UnprocessableEntityException('Dieses Foto können wir nicht auswerten. Bitte fülle die Angaben selbst aus.');
@@ -196,7 +220,7 @@ export class AutofillService {
 
   /** Antwort des Modells mit denselben Regeln wie beim Speichern prüfen; Ungültiges fällt weg. */
   async toSuggestion(output: AutofillOutput): Promise<AutofillSuggestion> {
-    const empty: AutofillSuggestion = { recognized: false, categoryId: null, categoryPath: null, title: '', description: '', condition: null, attributes: {} };
+    const empty: AutofillSuggestion = { recognized: false, categoryId: null, categoryPath: null, title: '', description: '', attributes: {} };
     if (!output.recognized) return empty;
 
     const category = output.categoryPath ? await this.categories.findByPath(output.categoryPath.trim()) : undefined;
@@ -209,7 +233,6 @@ export class AutofillService {
       categoryPath: leaf?.path ?? null,
       title: title.length >= 3 ? title : '',
       description: output.description.trim().slice(0, 5000),
-      condition: leaf && schema.itemCondition && output.condition ? output.condition : null,
       attributes: leaf ? coerceAttributeSuggestions(schema, output.attributes) : {},
     };
   }

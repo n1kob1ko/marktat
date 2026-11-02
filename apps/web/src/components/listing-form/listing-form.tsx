@@ -29,9 +29,9 @@ import {
 import { PriceTag } from '@/components/price-tag';
 import { ClientIdField } from '@/components/client-id-field';
 import { initialFormState, type FormState } from '@/lib/form-state';
-import { clearPendingPhoto, savePendingPhoto } from '@/lib/pending-photo';
+import { clearPendingPhotos, savePendingPhotos } from '@/lib/pending-photo';
 import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
-import { PhotoAssistant } from './photo-assistant';
+import { PhotoPicker, type PickedPhoto } from './photo-picker';
 import { ChoiceChips } from './choice-chips';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
@@ -42,7 +42,7 @@ interface ListingFormProps {
   listing?: ListingDetail;
   /** Laufzeit und ob das Veröffentlichen gerade kostenlos ist (aus den Preisen im Admin-Bereich) */
   terms?: { days: number; free: boolean };
-  /** Foto-Assistent anbieten (nur beim Anlegen und wenn er in der API eingeschaltet ist) */
+  /** „Mit KI ausfüllen“ anbieten (nur beim Anlegen und wenn der Foto-Assistent in der API eingeschaltet ist) */
   photoAssistant?: boolean;
 }
 
@@ -71,14 +71,14 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
 
   // Bewusst onSubmit statt action-Prop: React setzt Formulare nach einer Action sonst zurück,
   // was bei kontrollierten Auswahllisten die sichtbare Auswahl verliert.
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isPending) return;
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const formData = new FormData(event.currentTarget, submitter);
     setIntent(formData.get('intent') === 'draft' ? 'draft' : 'publish');
-    // Foto aus dem Assistenten für den Bilder-Schritt nach dem Anlegen merken (IndexedDB ist schneller als die Anfrage)
-    if (assistantPhoto.current) void savePendingPhoto(assistantPhoto.current);
+    // Fotos für den Bilder-Schritt nach dem Anlegen merken, bevor die Anfrage dorthin weiterleitet
+    if (!listing) await savePendingPhotos(photos.map((p) => p.blob));
     startTransition(() => formAction(formData));
   };
   const v = state.values;
@@ -124,37 +124,25 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     status: 'idle',
   });
 
+  // Fotos aus dem Formular (werden nach dem Anlegen hochgeladen); die Vorschau zeigt das Titelbild
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
+  const previewPhoto = photos[0]?.url ?? null;
   // Foto-Assistent: Vorschläge übernehmen, vorherigen Stand für „Rückgängig“ merken
-  const assistantPhoto = useRef<Blob | null>(null);
-  // Vorschau zeigt das Foto, das ins Inserat kommt
-  const [previewPhoto, setPreviewPhoto] = useState<string | null>(null);
-  useEffect(
-    () => () => {
-      if (previewPhoto) URL.revokeObjectURL(previewPhoto);
-    },
-    [previewPhoto],
-  );
-  const handlePhoto = (photo: Blob | null) => {
-    assistantPhoto.current = photo;
-    setPreviewPhoto(photo ? URL.createObjectURL(photo) : null);
-  };
   const beforeSuggestion = useRef<{
     selection: string[];
     title: string;
     description: string;
-    condition: string;
     attributes: AttributeInputValues;
   } | null>(null);
   useEffect(() => {
-    // Ein altes, nicht verwendetes Foto eines früheren Versuchs soll nicht in diesem Inserat landen
-    if (photoAssistant) void clearPendingPhoto();
-  }, [photoAssistant]);
+    // Alte, nicht verwendete Fotos eines früheren Versuchs sollen nicht in diesem Inserat landen
+    if (!listing) void clearPendingPhotos();
+  }, [listing]);
   const applySuggestion = (suggestion: AutofillSuggestion): string[] => {
     beforeSuggestion.current = {
       selection,
       title,
       description,
-      condition,
       attributes: attributeValues,
     };
     const filled: string[] = [];
@@ -171,10 +159,6 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     if (suggestion.description) {
       setDescription(suggestion.description);
       filled.push('Beschreibung');
-    }
-    if (suggestion.condition) {
-      setCondition(suggestion.condition);
-      filled.push('Zustand');
     }
     const keys = Object.keys(suggestion.attributes);
     if (keys.length) {
@@ -193,7 +177,6 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     setSelection(before.selection);
     setTitle(before.title);
     setDescription(before.description);
-    setCondition(before.condition);
     setAttributeValues(before.attributes);
     beforeSuggestion.current = null;
   };
@@ -258,7 +241,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
 
         <div className="space-y-6">
-          {photoAssistant && !listing ? <PhotoAssistant onSuggestion={applySuggestion} onUndo={undoSuggestion} onPhoto={handlePhoto} /> : null}
+          {!listing ? <PhotoPicker ai={photoAssistant} onPhotosChange={setPhotos} onSuggestion={applySuggestion} onUndo={undoSuggestion} /> : null}
 
           <Card className="space-y-5 p-5 sm:p-7">
             <h2 className="font-sans text-lg font-semibold tracking-normal">Was bietest du an?</h2>

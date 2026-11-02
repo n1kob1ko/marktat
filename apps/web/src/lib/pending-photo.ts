@@ -1,7 +1,7 @@
 /**
- * Foto aus dem Foto-Assistenten bis zum Bilder-Schritt merken: Beim Anlegen gibt es noch kein Inserat, an das man es
- * hochladen könnte. Liegt nur im Browser (IndexedDB), höchstens zehn Minuten, und wird beim Übernehmen gelöscht.
- * Fehler (privates Fenster, gesperrter Speicher) werden ignoriert – dann lädt man das Foto eben selbst hoch.
+ * Fotos aus dem Inserieren-Formular bis zum Bilder-Schritt merken: Beim Anlegen gibt es noch kein Inserat, an das man
+ * sie hochladen könnte. Liegen nur im Browser (IndexedDB), höchstens zehn Minuten, und werden beim Übernehmen gelöscht.
+ * Fehler (privates Fenster, gesperrter Speicher) werden ignoriert – dann lädt man die Fotos eben selbst hoch.
  */
 const DB = 'markterl';
 const STORE = 'pending-photo';
@@ -9,7 +9,9 @@ const KEY = 'new-listing';
 const MAX_AGE_MS = 10 * 60_000;
 
 interface Entry {
-  blob: Blob;
+  /** Ältere Einträge (ein Foto) hatten `blob` statt `blobs` */
+  blobs?: Blob[];
+  blob?: Blob;
   savedAt: number;
 }
 
@@ -35,19 +37,21 @@ async function run<T>(mode: IDBTransactionMode, action: (store: IDBObjectStore) 
   }
 }
 
-export async function savePendingPhoto(blob: Blob) {
-  await run('readwrite', (store) => store.put({ blob, savedAt: Date.now() } satisfies Entry, KEY));
+export async function savePendingPhotos(blobs: Blob[]) {
+  if (!blobs.length) return clearPendingPhotos();
+  await run('readwrite', (store) => store.put({ blobs, savedAt: Date.now() } satisfies Entry, KEY));
 }
 
-export async function clearPendingPhoto() {
+export async function clearPendingPhotos() {
   await run('readwrite', (store) => store.delete(KEY));
 }
 
-/** Holt das gemerkte Foto (falls frisch genug) und löscht es, damit es nur einmal übernommen wird. */
-export async function takePendingPhoto(): Promise<File | null> {
+/** Holt die gemerkten Fotos (falls frisch genug) und löscht sie, damit sie nur einmal übernommen werden. */
+export async function takePendingPhotos(): Promise<File[]> {
   const entry = (await run('readonly', (store) => store.get(KEY))) as Entry | undefined;
-  if (!entry) return null;
-  await clearPendingPhoto();
-  if (!(entry.blob instanceof Blob) || Date.now() - entry.savedAt > MAX_AGE_MS) return null;
-  return new File([entry.blob], 'foto.jpg', { type: entry.blob.type || 'image/jpeg' });
+  if (!entry) return [];
+  await clearPendingPhotos();
+  if (Date.now() - entry.savedAt > MAX_AGE_MS) return [];
+  const blobs = (entry.blobs ?? (entry.blob ? [entry.blob] : [])).filter((b): b is Blob => b instanceof Blob);
+  return blobs.map((blob, i) => new File([blob], `foto-${i + 1}.jpg`, { type: blob.type || 'image/jpeg' }));
 }
