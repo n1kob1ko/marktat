@@ -20,6 +20,15 @@ async function newPage(browser: Browser, testInfo: TestInfo) {
   return { context, page: await context.newPage() };
 }
 
+/** Navigation im Kontobereich; auf dem Handy ist sie ein Menü, das erst aufgeklappt werden muss */
+async function openAccountNav(page: Page) {
+  const nav = page.getByRole('navigation', { name: 'Kontobereich' });
+  const toggle = nav.getByText('Bereich wechseln');
+  await expect(nav.getByRole('link', { name: 'Profil' }).or(toggle)).toBeVisible();
+  if (await toggle.isVisible()) await toggle.click();
+  return nav;
+}
+
 /** Richtet auf /konto/sicherheit ein Gerät ein und gibt den Schlüssel zurück */
 async function enroll(page: Page, name: string): Promise<string> {
   await page.goto('/konto/sicherheit');
@@ -61,11 +70,12 @@ test('2FA einrichten, mit Code anmelden, kritische Aktion bestätigen und Zurüc
 
   // Normale Konten sehen den Reiter nicht
   await moderator.page.goto('/konto');
+  await expect((await openAccountNav(moderator.page)).getByRole('link', { name: 'Datenschutz' })).toBeVisible();
   await expect(moderator.page.getByRole('link', { name: 'Sicherheit' })).toHaveCount(0);
 
   // --- Einrichten ---
   await admin.page.goto('/konto');
-  await admin.page.getByRole('navigation', { name: 'Kontobereich' }).getByRole('link', { name: 'Sicherheit' }).click();
+  await (await openAccountNav(admin.page)).getByRole('link', { name: 'Sicherheit' }).click();
   const secret = await enroll(admin.page, 'Handy');
 
   // --- Anmelden: nach dem Passwort wird der Code verlangt, ohne Code kein Zugriff ---
@@ -97,7 +107,7 @@ test('2FA einrichten, mit Code anmelden, kritische Aktion bestätigen und Zurüc
 
   // --- Moderation richtet 2FA ein und verliert das Gerät: die Administration setzt zurück ---
   await moderator.page.goto('/konto');
-  await expect(moderator.page.getByRole('link', { name: 'Sicherheit' })).toBeVisible();
+  await expect((await openAccountNav(moderator.page)).getByRole('link', { name: 'Sicherheit' })).toBeVisible();
   await enroll(moderator.page, 'Diensthandy');
   await admin.page.goto(targetUrl);
   await expect(admin.page.getByText('Diensthandy · eingerichtet', { exact: false })).toBeVisible();
