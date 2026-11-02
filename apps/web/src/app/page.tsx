@@ -8,7 +8,7 @@ import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
-import { getCategories, getCategoryCounts, getLatestDeals, getLatestListings } from '@/lib/data';
+import { getCategories, getCategoryCounts, getCategoryListings, getLatestDeals, getLatestListings } from '@/lib/data';
 import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
@@ -67,6 +67,10 @@ export default function HomePage() {
           <LatestListings />
         </Suspense>
       </Container>
+
+      <Suspense fallback={null}>
+        <CategoryShelves />
+      </Suspense>
 
       <Container className="mt-14">
         <SectionHeading title="Alle Kategorien im Marktplatz" />
@@ -342,5 +346,54 @@ async function LatestDeals() {
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Ab so vielen aktiven Inseraten bekommt eine Kategorie ein eigenes Regal auf der Startseite */
+const SHELF_MIN_LISTINGS = 4;
+const SHELF_MAX = 4;
+
+/**
+ * Kategorie-Regale: die Hauptkategorien mit den meisten Inseraten, je eine waagrecht wischbare Reihe der neuesten.
+ * Solange es wenige Inserate gibt, erscheint nichts – leere Regale wirken schlechter als keine.
+ */
+async function CategoryShelves() {
+  const [all, counts] = await Promise.all([getCategories(), getCategoryCounts()]);
+  const candidates = all
+    .filter((c) => c.vertical !== 'JOBS' && (counts[c.path] ?? 0) >= SHELF_MIN_LISTINGS)
+    .sort((a, b) => (counts[b.path] ?? 0) - (counts[a.path] ?? 0))
+    .slice(0, SHELF_MAX);
+  if (!candidates.length) return null;
+  const shelves = await Promise.all(candidates.map(async (category) => ({ category, listings: await getCategoryListings(category.path) })));
+  return (
+    <>
+      {shelves
+        .filter((shelf) => shelf.listings.length >= SHELF_MIN_LISTINGS)
+        .map(({ category, listings }) => (
+          <Container key={category.id} className="mt-12">
+            <section aria-labelledby={`regal-${category.id}`}>
+              <div className="mb-4 flex items-end justify-between gap-4">
+                <h2 id={`regal-${category.id}`} className="flex items-center gap-2.5 font-sans text-xl font-semibold tracking-normal text-ink-950 sm:text-2xl">
+                  <span className="flex size-9 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                    <CategoryIcon name={category.icon} className="size-5" />
+                  </span>
+                  {category.name}
+                </h2>
+                <Link href={`/suche?kategorie=${category.path}`} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                  Alle {(counts[category.path] ?? 0).toLocaleString('de-AT')} <span className="sr-only">Anzeigen in {category.name}</span>
+                  <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
+              <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+                {listings.map((listing) => (
+                  <li key={listing.id} className="flex w-[11.5rem] shrink-0 snap-start sm:w-56">
+                    <ListingCard listing={listing} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </Container>
+        ))}
+    </>
   );
 }

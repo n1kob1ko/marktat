@@ -50,6 +50,20 @@ export async function getLatestListings(pageSize = 12): Promise<ListingSummary[]
   }
 }
 
+/** Neueste Inserate einer Kategorie (inklusive Unterkategorien) – für die Kategorie-Regale der Startseite */
+export async function getCategoryListings(path: string, pageSize = 8): Promise<ListingSummary[]> {
+  'use cache';
+  cacheTag('listings');
+  try {
+    const page = await api<Paginated<ListingSummary>>(`/listings?kategorie=${encodeURIComponent(path)}&pageSize=${pageSize}`);
+    cacheLife('minutes');
+    return page.items;
+  } catch {
+    cacheLife('seconds');
+    return [];
+  }
+}
+
 export async function getDealCategories(): Promise<DealCategoryView[]> {
   'use cache';
   cacheTag('deal-categories');

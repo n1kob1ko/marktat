@@ -5,6 +5,7 @@ import type { ListingSummary } from '@marktat/shared';
 import { FavoriteButton } from './favorites/favorite-button';
 import { PriceTag } from './price-tag';
 import { RelativeDate } from './relative-date';
+import { NewBadge } from './new-badge';
 
 /** `favorite`: bekannter Merkstatus (sonst wird er nachgeladen), `false` bei `showFavorite={false}` blendet das Herz aus. */
 export function ListingCard({ listing, favorite, showFavorite = true }: { listing: ListingSummary; favorite?: boolean; showFavorite?: boolean }) {
@@ -27,7 +28,10 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
             <ImageIcon className="size-8 text-ink-300" aria-hidden="true" />
           </div>
         )}
-        <PromotionBadges listing={listing} className="absolute top-3 left-3" />
+        <div className="absolute top-3 left-3 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5">
+          {listing.publishedAt ? <NewBadge publishedAt={listing.publishedAt} /> : null}
+          <PromotionBadges listing={listing} />
+        </div>
         {!isJob ? (
           <PriceTag
             priceType={listing.priceType}
