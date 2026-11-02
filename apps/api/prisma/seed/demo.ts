@@ -9,14 +9,14 @@ export const DEMO_SELLER_ID = '00000000-0000-4000-8000-000000000001';
 const DEMO_NOTE = '\n\n[Testdaten – nur für die Entwicklung]';
 
 export const DEMO_LISTINGS = [
-  { title: 'Citybike Damen 28 Zoll, 7-Gang', path: 'marktplatz/sport-freizeit/fahrraeder', price: 18000, priceType: 'NEGOTIABLE', postalCode: '1070', condition: 'GOOD' },
-  { title: 'Ecksofa grau mit Schlaffunktion', path: 'marktplatz/moebel-wohnen/sofas-sessel', price: 35000, priceType: 'FIXED', postalCode: '8010', condition: 'GOOD' },
-  { title: 'iPhone 14, 128 GB, sehr guter Zustand', path: 'marktplatz/elektronik/handys-smartphones', price: 42000, priceType: 'FIXED', postalCode: '4020', condition: 'LIKE_NEW' },
-  { title: 'Kinderwagen Kombi inkl. Babywanne', path: 'marktplatz/baby-kind/kinderwagen', price: 12000, priceType: 'NEGOTIABLE', postalCode: '5020', condition: 'GOOD' },
-  { title: 'Ski Allmountain 170 cm mit Bindung', path: 'marktplatz/sport-freizeit/wintersport', price: 15000, priceType: 'FIXED', postalCode: '6020', condition: 'GOOD' },
-  { title: 'Gartenmöbel-Set Teak, 4 Sessel', path: 'marktplatz/garten/gartenmoebel', price: null, priceType: 'FREE', postalCode: '9020', condition: 'ACCEPTABLE' },
+  { title: 'Citybike Damen 28 Zoll, 7-Gang', path: 'marktplatz/sport-sportgeraete/fahrraeder', price: 18000, priceType: 'NEGOTIABLE', postalCode: '1070', condition: 'GOOD' },
+  { title: 'Ecksofa grau mit Schlaffunktion', path: 'marktplatz/wohnen-haushalt-gastronomie/sofas-sessel', price: 35000, priceType: 'FIXED', postalCode: '8010', condition: 'GOOD' },
+  { title: 'iPhone 14, 128 GB, sehr guter Zustand', path: 'marktplatz/smartphones-telefonie/smartphones', price: 42000, priceType: 'FIXED', postalCode: '4020', condition: 'LIKE_NEW' },
+  { title: 'Kinderwagen Kombi inkl. Babywanne', path: 'marktplatz/baby-kind/kinderwagen-buggys', price: 12000, priceType: 'NEGOTIABLE', postalCode: '5020', condition: 'GOOD' },
+  { title: 'Ski Allmountain 170 cm mit Bindung', path: 'marktplatz/sport-sportgeraete/wintersport/ski', price: 15000, priceType: 'FIXED', postalCode: '6020', condition: 'GOOD' },
+  { title: 'Gartenmöbel-Set Teak, 4 Sessel', path: 'marktplatz/haus-garten-werkstatt/garten/gartenmoebel', price: null, priceType: 'FREE', postalCode: '9020', condition: 'ACCEPTABLE' },
   { title: 'Nachhilfe Mathematik Oberstufe', path: 'marktplatz/dienstleistungen/nachhilfe-unterricht', price: 2500, priceType: 'FIXED', postalCode: '1090', condition: null },
-  { title: 'Waschmaschine 7 kg, A+++', path: 'marktplatz/haushalt/haushaltsgeraete', price: 19000, priceType: 'NEGOTIABLE', postalCode: '6850', condition: 'GOOD' },
+  { title: 'Waschmaschine 7 kg, A+++', path: 'marktplatz/wohnen-haushalt-gastronomie/haushaltsgeraete/waschmaschinen-trockner', price: 19000, priceType: 'NEGOTIABLE', postalCode: '6850', condition: 'GOOD' },
   {
     title: 'VW Golf 1.5 TSI Comfortline, Service neu', path: 'auto-motor/gebrauchtwagen', price: 1_690_000, priceType: 'NEGOTIABLE', postalCode: '4020', condition: null,
     attributes: { brand: 'vw', model: 'Golf 1.5 TSI', firstRegistrationYear: 2019, firstRegistrationMonth: '03', mileageKm: 85_000, fuelType: 'petrol', transmission: 'manual', powerKw: 110, vehicleCondition: 'used' },
@@ -31,11 +31,11 @@ export const DEMO_LISTINGS = [
   },
   // Für die Umkreissuche: Räder rund um Wien
   {
-    title: 'E-Bike Trekking, Akku neu', path: 'marktplatz/sport-freizeit/fahrraeder', price: 120_000, priceType: 'NEGOTIABLE', postalCode: '2340', place: 'Mödling', condition: 'LIKE_NEW',
+    title: 'E-Bike Trekking, Akku neu', path: 'marktplatz/sport-sportgeraete/fahrraeder', price: 120_000, priceType: 'NEGOTIABLE', postalCode: '2340', place: 'Mödling', condition: 'LIKE_NEW',
     attributes: { bikeType: 'e-bike', wheelSize: '28' },
   },
   {
-    title: 'Kinderrad 20 Zoll mit Stützrädern', path: 'marktplatz/sport-freizeit/fahrraeder', price: 6_000, priceType: 'FIXED', postalCode: '3100', condition: 'ACCEPTABLE',
+    title: 'Kinderrad 20 Zoll mit Stützrädern', path: 'marktplatz/sport-sportgeraete/fahrraeder', price: 6_000, priceType: 'FIXED', postalCode: '3100', condition: 'ACCEPTABLE',
     attributes: { bikeType: 'kids', wheelSize: '20' },
   },
   {

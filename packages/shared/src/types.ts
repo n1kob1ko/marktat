@@ -42,7 +42,7 @@ export interface SearchResult extends Paginated<ListingSummary> {
   topAds: ListingSummary[];
   /**
    * Treffer je Kategoriepfad mit denselben Filtern, inklusive Unterkategorien und Bereich
-   * (z. B. „marktplatz“: 120, „marktplatz/elektronik“: 40). Fehlt bei internen Suchen.
+   * (z. B. „marktplatz“: 120, „marktplatz/computer-software“: 40). Fehlt bei internen Suchen.
    */
   categoryCounts?: Record<string, number>;
 }
@@ -721,7 +721,7 @@ export interface ListingStats {
 export interface SitemapEntries {
   listings: { id: string; updatedAt: string }[];
   dealers: { id: string; updatedAt: string }[];
-  /** Kategoriepfade, z. B. "marktplatz/sport-freizeit/fahrraeder" */
+  /** Kategoriepfade, z. B. "marktplatz/sport-sportgeraete/fahrraeder" */
   categories: string[];
 }
 

@@ -61,7 +61,7 @@ Status, Inserate je Kategorie, Ablaufdatum (für einen späteren Ablauf-Job).
 
 ## Seeds
 
-- `pnpm db:seed` – Stammdaten: Bundesländer, Bezirke, vollständiges PLZ-Verzeichnis (~20.900 Orte), 84 Kategorien. Idempotent.
+- `pnpm db:seed` – Stammdaten: Bundesländer, Bezirke, vollständiges PLZ-Verzeichnis (~20.900 Orte), 279 Kategorien. Idempotent. Nicht mehr verwendete Kategorien werden deaktiviert, ihre Inserate nach `LEGACY_CATEGORY_PATHS` (`packages/shared/src/search/legacy-categories.ts`) umgezogen.
 - `pnpm db:seed -- --demo` – zusätzlich 15 Demo-Inserate eines Demo-Verkäufers. Jede Beschreibung endet mit „[Testdaten – nur für die Entwicklung]“, der Verkäufer heißt „Demo-Verkäufer (Testdaten)“; mit `NODE_ENV=production` verweigert das Skript den Lauf.
 - `pnpm --filter @marktat/api geo:build` / `geo:import --file AT.txt` – PLZ-Verzeichnis aus einem neueren GeoNames-Download, siehe [geodaten.md](geodaten.md).
 - `pnpm --filter @marktat/api search:reindex` – Suchindex neu aufbauen, siehe [suche.md](suche.md).

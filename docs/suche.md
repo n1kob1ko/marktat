@@ -27,7 +27,7 @@ Browser /suche?…  ──►  Next.js (Server)  ──►  GET /v1/listings?…
 | --- | --- | --- |
 | `q` | Suchbegriff (Titel, Beschreibung, Eigenschaften, Kategorie, Ort) | `q=rennrad` |
 | `bereich` | Marktplatz, Auto & Motor, Immobilien, Jobs | `bereich=auto-motor` |
-| `kategorie` | Kategoriepfad, schließt Unterkategorien ein | `kategorie=marktplatz/sport-freizeit/fahrraeder` |
+| `kategorie` | Kategoriepfad, schließt Unterkategorien ein | `kategorie=marktplatz/sport-sportgeraete/fahrraeder` |
 | `bundesland` | Bundesland-Slug | `bundesland=tirol` |
 | `ort` / `plz` | Ort-ID aus der Ortssuche bzw. PLZ (dann der Hauptort der PLZ) | `plz=1010` |
 | `umkreis` | 5, 10, 25, 50, 100 oder 200 km, nur mit Ort | `umkreis=25` |

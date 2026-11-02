@@ -121,7 +121,7 @@ Umgesetzt:
 - Profil bearbeiten (inkl. Firmenangaben)
 - Inserat anlegen, als Entwurf speichern, veröffentlichen, bearbeiten, pausieren, fortsetzen, löschen, verlängern
 - Startseite, Detailseite, „Meine Anzeigen“
-- Kategoriebaum (84 Kategorien) für alle vier Bereiche, Bundesländer und Bezirke vollständig
+- Kategoriebaum (279 Kategorien, im Marktplatz bis zu drei Ebenen) für alle vier Bereiche, Bundesländer und Bezirke vollständig
 - Bilder (Phase 2): bis zu 10 pro Inserat über Cloudflare R2, serverseitige Prüfung, EXIF-Entfernung, WebP-Varianten, Hauptbild, Reihenfolge, Löschen
 - Kategorieabhängige Felder (Phase 3): Fahrzeugdaten, Wohnfläche/Zimmer/Ausstattung, Gehalt/Arbeitszeit u. v. m. je Unterkategorie, mit Pflichtfeldern, Prüfung in der API und Anzeige auf Detailseite und Karten
 - Suche (Phase 4): Meilisearch mit Tippfehlertoleranz und Sortierung nach Relevanz, Datum, Preis und Entfernung; Filter nach Kategorie, Bundesland, PLZ/Ort mit Umkreis, Preis, Anbieter, Zustand und den Eigenschaften je Bereich (Auto, Immobilien, Jobs, Marktplatz); teilbare Such-URLs, Filter-Chips, mobiles Filtermenü; Fallback auf PostgreSQL/PostGIS. Siehe [Suche](docs/suche.md)

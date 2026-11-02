@@ -24,7 +24,7 @@ describe('Inserate', () => {
 
   beforeAll(async () => {
     ({ app, prisma } = await createTestApp());
-    const leaf = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-freizeit/fahrraeder' } });
+    const leaf = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-sportgeraete/fahrraeder' } });
     leafCategoryId = leaf.id;
     parentCategoryId = leaf.parentId!;
     locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } })).id;

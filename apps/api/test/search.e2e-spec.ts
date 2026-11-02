@@ -31,7 +31,7 @@ describe('Suche', () => {
     await resetData(prisma);
 
     for (const path of [
-      'marktplatz/sport-freizeit/fahrraeder', 'auto-motor/gebrauchtwagen', 'immobilien/wohnungen/mietwohnungen',
+      'marktplatz/sport-sportgeraete/fahrraeder', 'auto-motor/gebrauchtwagen', 'immobilien/wohnungen/mietwohnungen',
       'immobilien/wohnungen/eigentumswohnungen', 'jobs/vollzeit',
     ]) {
       category[path] = (await prisma.category.findUniqueOrThrow({ where: { path } })).id;
@@ -50,7 +50,7 @@ describe('Suche', () => {
       if (res.status !== 201) throw new Error(`${key}: ${JSON.stringify(res.body)}`);
       ids[key] = res.body.id;
     };
-    const bikes = category['marktplatz/sport-freizeit/fahrraeder']!;
+    const bikes = category['marktplatz/sport-sportgeraete/fahrraeder']!;
     await create('damenrad', privat, {
       title: 'Damen Fahrrad 28 Zoll, 7-Gang', categoryId: bikes, priceCents: 18_000, condition: 'GOOD', locationId: place.wien7,
       attributes: { bikeType: 'city', wheelSize: '28' },
@@ -143,8 +143,8 @@ describe('Suche', () => {
     const all = await counts({});
     expect(all).toMatchObject({
       marktplatz: 4,
-      'marktplatz/sport-freizeit': 4,
-      'marktplatz/sport-freizeit/fahrraeder': 4,
+      'marktplatz/sport-sportgeraete': 4,
+      'marktplatz/sport-sportgeraete/fahrraeder': 4,
       'auto-motor': 2,
       'immobilien/wohnungen': 3,
       'immobilien/wohnungen/mietwohnungen': 2,
@@ -157,19 +157,23 @@ describe('Suche', () => {
     expect(await counts(graz)).toEqual({ immobilien: 1, 'immobilien/wohnungen': 1, 'immobilien/wohnungen/mietwohnungen': 1 });
     expect(await counts(graz, fallback.getHttpServer())).toEqual(await counts(graz));
 
+    // Alte Pfade (vor dem Umbau des Kategoriebaums) funktionieren weiter, z. B. aus gespeicherten Suchen
+    const legacy = await search({ kategorie: 'marktplatz/sport-freizeit/fahrraeder' });
+    expect(legacy.total).toBe(4);
+
     const overview = await request(server()).get('/v1/listings/category-counts').expect(200);
     expect(overview.body).toEqual(all);
   });
 
   it('Fahrräder im Umkreis von 25 km um 1010 Wien, nach Entfernung', async () => {
-    const result = await search({ kategorie: 'marktplatz/sport-freizeit/fahrraeder', plz: '1010', umkreis: 25, sortierung: 'entfernung' });
+    const result = await search({ kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', plz: '1010', umkreis: 25, sortierung: 'entfernung' });
     expect(titles(result)).toEqual(['Damen Fahrrad 28 Zoll, 7-Gang', 'E-Bike Trekking mit neuem Akku']);
     expect(result.location).toMatchObject({ postalCode: '1010', place: 'Wien' });
     expect(result.items[0]!.distanceKm).toBeLessThan(3);
     expect(result.items[1]!.distanceKm).toBeGreaterThan(10);
     expect(result.items[1]!.distanceKm).toBeLessThan(25);
 
-    const wider = await search({ kategorie: 'marktplatz/sport-freizeit/fahrraeder', ort: place.wien1!, umkreis: 100 });
+    const wider = await search({ kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', ort: place.wien1!, umkreis: 100 });
     expect(titles(wider)).toContain('Kinderrad 20 Zoll blau');
     expect(titles(wider)).not.toContain('Rennrad Carbon 56 cm');
     // Ohne Umkreis: genau diese PLZ
@@ -177,7 +181,7 @@ describe('Suche', () => {
   });
 
   it('allgemeine Filter: Preis, Bundesland, Anbieter, Zustand', async () => {
-    const bikes = { kategorie: 'marktplatz/sport-freizeit/fahrraeder' };
+    const bikes = { kategorie: 'marktplatz/sport-sportgeraete/fahrraeder' };
     expect(titles(await search({ ...bikes, preis_bis: 100, sortierung: 'preis_ab' }))).toEqual(['Kinderrad 20 Zoll blau', 'Rennrad Carbon 56 cm']);
     expect(titles(await search({ ...bikes, preis_ab: 100, preis_bis: 500 }))).toEqual(['Damen Fahrrad 28 Zoll, 7-Gang']);
     expect(titles(await search({ ...bikes, bundesland: 'niederoesterreich', sortierung: 'preis_auf' }))).toEqual([
@@ -239,7 +243,7 @@ describe('Suche', () => {
   });
 
   it('versteht weiterhin die alten Parameter und Seiten', async () => {
-    const parent = (await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-freizeit' } })).id;
+    const parent = (await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-sportgeraete' } })).id;
     expect((await search({ categoryId: parent })).total).toBe(4);
     expect((await search({ kategorie: parent })).total).toBe(4);
     expect((await search({ vertical: 'JOBS' })).total).toBe(2);
@@ -254,9 +258,9 @@ describe('Suche', () => {
   it('liefert im Ausweichbetrieb (PostgreSQL) dieselben Treffer', async () => {
     const queries: Record<string, string | number>[] = [
       { pageSize: 50 },
-      { kategorie: 'marktplatz/sport-freizeit/fahrraeder', plz: '1010', umkreis: 25, sortierung: 'entfernung' },
-      { kategorie: 'marktplatz/sport-freizeit/fahrraeder', preis_bis: 100, sortierung: 'preis_ab' },
-      { kategorie: 'marktplatz/sport-freizeit/fahrraeder', zustand: 'wie-neu,akzeptabel', anbieter: 'gewerblich' },
+      { kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', plz: '1010', umkreis: 25, sortierung: 'entfernung' },
+      { kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', preis_bis: 100, sortierung: 'preis_ab' },
+      { kategorie: 'marktplatz/sport-sportgeraete/fahrraeder', zustand: 'wie-neu,akzeptabel', anbieter: 'gewerblich' },
       { bereich: 'auto-motor', kilometer_bis: 100_000, erstzulassung_ab: 2015, modell: 'golf' },
       { bereich: 'immobilien', ausstattung: 'balcony,elevator', sortierung: 'preis_auf' },
       { bereich: 'immobilien', angebot: 'RENT', zimmer_ab: 1, preis_bis: 1000 },
@@ -297,7 +301,7 @@ describe('Suche', () => {
       .set(seller.auth)
       .send({
         publish: true, title: 'Mountainbike Fully 29 Zoll', description: 'Wenig gefahren, frisch serviciert, inkl. Pedale.',
-        categoryId: category['marktplatz/sport-freizeit/fahrraeder'], priceType: 'FIXED', priceCents: 75_000, condition: 'GOOD', locationId: place.graz,
+        categoryId: category['marktplatz/sport-sportgeraete/fahrraeder'], priceType: 'FIXED', priceCents: 75_000, condition: 'GOOD', locationId: place.graz,
       })
       .expect(201);
     const fallbackIndex = fallback.get((await import('../src/search/search-index.service.js')).SearchIndexService);

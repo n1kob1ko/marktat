@@ -1,7 +1,7 @@
 /**
  * Suchparameter: dieselben deutschen Namen in der Such-URL der Website und in `GET /v1/listings`,
  * damit jede Suche als Link geteilt werden kann, z. B.
- *   /suche?kategorie=marktplatz/sport-freizeit/fahrraeder&ort=123&umkreis=25&preis_bis=500
+ *   /suche?kategorie=marktplatz/sport-sportgeraete/fahrraeder&ort=123&umkreis=25&preis_bis=500
  */
 import { stateBySlug, isAustrianPostalCode } from '../austria.js';
 import { parseLocaleNumber } from '../attributes/validation.js';

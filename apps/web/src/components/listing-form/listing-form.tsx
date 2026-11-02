@@ -66,15 +66,32 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     startTransition(() => formAction(formData));
   };
   const v = state.values;
-  const parentOf = useMemo(() => {
-    const map = new Map<string, CategoryNode>();
-    for (const top of categories) for (const child of top.children) map.set(child.id, top);
-    return map;
+  // Kategorie Ebene für Ebene (Hauptkategorie → Unterkategorie → genauere Kategorie); gespeichert wird nur die unterste
+  const nodes = useMemo(() => {
+    const byId = new Map<string, { node: CategoryNode; parentId: string | null }>();
+    const walk = (list: CategoryNode[], parentId: string | null) => {
+      for (const node of list) {
+        byId.set(node.id, { node, parentId });
+        walk(node.children, node.id);
+      }
+    };
+    walk(categories, null);
+    return byId;
   }, [categories]);
 
   const initialCategory = v?.categoryId ?? listing?.category.id ?? '';
-  const [mainId, setMainId] = useState(parentOf.get(initialCategory)?.id ?? (initialCategory || ''));
-  const [categoryId, setCategoryId] = useState(initialCategory);
+  const [selection, setSelection] = useState<string[]>(() => {
+    const chain: string[] = [];
+    for (let id: string | null = initialCategory || null; id && nodes.has(id); id = nodes.get(id)!.parentId) chain.unshift(id);
+    return chain;
+  });
+  const selectedNodes = useMemo(
+    () => selection.map((id) => nodes.get(id)?.node).filter((n): n is CategoryNode => Boolean(n)),
+    [selection, nodes],
+  );
+  const deepest = selectedNodes.at(-1);
+  const categoryId = deepest && deepest.children.length === 0 ? deepest.id : '';
+  const choose = (level: number, id: string) => setSelection((current) => [...current.slice(0, level), ...(id ? [id] : [])]);
   const [title, setTitle] = useState(v?.title ?? listing?.title ?? '');
   const [description, setDescription] = useState(v?.description ?? listing?.description ?? '');
   const [priceType, setPriceType] = useState<PriceType>((v?.priceType as PriceType) || listing?.priceType || 'FIXED');
@@ -91,9 +108,8 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     status: 'idle',
   });
 
-  const main = categories.find((c) => c.id === mainId);
-  const selectedCategory = main?.children.find((c) => c.id === categoryId) ?? main;
-  const schema = useMemo(() => categoryAttributeSchema(selectedCategory?.path), [selectedCategory?.path]);
+  const deepestPath = deepest?.path;
+  const schema = useMemo(() => categoryAttributeSchema(deepestPath), [deepestPath]);
   const typedAttributes = useMemo(
     () => readAttributeForm(schema, (name) => [attributeValues[name.slice('attr.'.length)] ?? []].flat()).attributes,
     [schema, attributeValues],
@@ -135,15 +151,8 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
         <Card className="space-y-5 p-5 sm:p-7">
           <h2 className="font-sans text-lg font-semibold tracking-normal">Was bietest du an?</h2>
           <div className="grid gap-5 sm:grid-cols-2">
-            <Field label="Bereich & Kategorie" error={!categoryId ? errors.categoryId : undefined} required>
-              <Select
-                value={mainId}
-                onChange={(e) => {
-                  setMainId(e.target.value);
-                  const next = categories.find((c) => c.id === e.target.value);
-                  setCategoryId(next && next.children.length === 0 ? next.id : '');
-                }}
-              >
+            <Field label="Bereich & Kategorie" error={!selection.length ? errors.categoryId : undefined} required>
+              <Select value={selection[0] ?? ''} onChange={(e) => choose(0, e.target.value)}>
                 <option value="">Bitte wählen …</option>
                 {(['MARKETPLACE', 'VEHICLES', 'REAL_ESTATE', 'JOBS'] as const).map((vertical) => (
                   <optgroup key={vertical} label={VERTICAL_LABELS[vertical]}>
@@ -158,27 +167,33 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
                 ))}
               </Select>
             </Field>
-            {main && main.children.length > 0 ? (
-              <Field label="Unterkategorie" error={errors.categoryId} required>
-                <Select name="categoryId" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                  <option value="">Bitte wählen …</option>
-                  {main.children.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-            ) : (
-              <input type="hidden" name="categoryId" value={categoryId} />
+            {selectedNodes.map((parent, i) =>
+              parent.children.length > 0 ? (
+                <Field
+                  key={parent.id}
+                  label={i === 0 ? 'Unterkategorie' : 'Genauere Kategorie'}
+                  error={selection.length === i + 1 ? errors.categoryId : undefined}
+                  required
+                >
+                  <Select value={selection[i + 1] ?? ''} onChange={(e) => choose(i + 1, e.target.value)}>
+                    <option value="">Bitte wählen …</option>
+                    {parent.children.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </Select>
+                </Field>
+              ) : null,
             )}
+            <input type="hidden" name="categoryId" value={categoryId} />
           </div>
 
           <Field label="Titel" hint={`${title.length}/90 Zeichen – kurz und konkret, z. B. „Kinderfahrrad 20 Zoll, blau“.`} error={errors.title} required>
             <Input name="title" value={title} onChange={(e) => setTitle(e.target.value)} maxLength={90} />
           </Field>
 
-          <Field label="Beschreibung" hint={`${DESCRIPTION_HINTS[main?.vertical ?? 'MARKETPLACE']} Mindestens 20 Zeichen.`} error={errors.description} required>
+          <Field label="Beschreibung" hint={`${DESCRIPTION_HINTS[selectedNodes[0]?.vertical ?? 'MARKETPLACE']} Mindestens 20 Zeichen.`} error={errors.description} required>
             <Textarea name="description" value={description} onChange={(e) => setDescription(e.target.value)} maxLength={5000} rows={7} />
           </Field>
 

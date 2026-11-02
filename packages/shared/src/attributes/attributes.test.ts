@@ -28,15 +28,15 @@ describe('categoryAttributeSchema', () => {
     expect(keys('immobilien/haeuser/haeuser-kaufen')).not.toContain('floor');
     expect(keys('immobilien/haeuser/haeuser-kaufen')).toContain('plotAreaSqm');
     expect(keys('jobs/vollzeit')).toEqual(expect.arrayContaining(['jobTitle', 'employmentType', 'weeklyHours', 'workplaceType', 'salaryGross', 'experience']));
-    expect(keys('marktplatz/elektronik/handys-smartphones')).toEqual(['brand', 'storageGb']);
-    expect(keys('marktplatz/garten/pflanzen')).toEqual([]);
+    expect(keys('marktplatz/smartphones-telefonie/smartphones')).toEqual(['brand', 'storageGb']);
+    expect(keys('marktplatz/haus-garten-werkstatt/garten/pflanzen-samen')).toEqual([]);
   });
 
   it('erbt Regeln vom übergeordneten Pfad', () => {
-    expect(keys('marktplatz/moebel-wohnen/sofas-sessel')).toEqual(['widthCm', 'depthCm', 'heightCm']);
-    expect(keys('marktplatz/moebel-wohnen/deko-accessoires')).toEqual([]);
+    expect(keys('marktplatz/wohnen-haushalt-gastronomie/sofas-sessel')).toEqual(['widthCm', 'depthCm', 'heightCm']);
+    expect(keys('marktplatz/wohnen-haushalt-gastronomie/deko-accessoires')).toEqual([]);
     expect(categoryAttributeSchema('marktplatz/dienstleistungen/handwerk').itemCondition).toBe(false);
-    expect(categoryAttributeSchema('marktplatz/elektronik/tv-audio').itemCondition).toBe(true);
+    expect(categoryAttributeSchema('marktplatz/kameras-tv-multimedia/fernseher').itemCondition).toBe(true);
     expect(categoryAttributeSchema('auto-motor/fahrzeugzubehoer/ersatzteile').itemCondition).toBe(true);
     expect(categoryAttributeSchema('auto-motor/gebrauchtwagen').itemCondition).toBe(false);
   });
@@ -91,7 +91,7 @@ describe('parseListingAttributes', () => {
   });
 
   it('meldet Felder bei Kategorien ohne Zusatzangaben', () => {
-    const result = parseListingAttributes(categoryAttributeSchema('marktplatz/garten/pflanzen'), { mileageKm: 1 });
+    const result = parseListingAttributes(categoryAttributeSchema('marktplatz/haus-garten-werkstatt/garten/pflanzen-samen'), { mileageKm: 1 });
     expect(result.issues[0]).toEqual({ path: 'attributes.mileageKm', message: 'Für diese Kategorie gibt es keine Zusatzangaben.' });
   });
 
@@ -242,6 +242,6 @@ describe('Darstellung', () => {
     const plot = categoryAttributeSchema('immobilien/grundstuecke');
     expect(priceFieldLabel(plot, { offerType: 'BUY' })).toBe('Kaufpreis in Euro');
     expect(priceSuffix(categoryAttributeSchema('marktplatz/dienstleistungen/handwerk'), { pricePer: 'hour' })).toBe('pro Stunde');
-    expect(priceSuffix(categoryAttributeSchema('marktplatz/garten/pflanzen'), { pricePer: 'hour' })).toBeNull();
+    expect(priceSuffix(categoryAttributeSchema('marktplatz/haus-garten-werkstatt/garten/pflanzen-samen'), { pricePer: 'hour' })).toBeNull();
   });
 });

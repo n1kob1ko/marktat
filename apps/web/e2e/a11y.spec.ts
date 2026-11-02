@@ -25,7 +25,7 @@ async function expectNoViolations(page: Page, label: string) {
 
 test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({ page }) => {
   test.setTimeout(180_000);
-  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-freizeit/fahrraeder', '/deals', '/deals?q=notebook', '/deals/werbung', '/dienstleistungen', '/dienstleistungen?bereich=it-digital', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
+  for (const path of ['/', '/suche?q=rad', '/suche?kategorie=marktplatz/sport-sportgeraete/fahrraeder', '/deals', '/deals?q=notebook', '/deals/werbung', '/dienstleistungen', '/dienstleistungen?bereich=it-digital', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/passwort-vergessen', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await expectNoViolations(page, path);
   }

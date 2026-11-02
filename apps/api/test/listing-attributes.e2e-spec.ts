@@ -16,7 +16,7 @@ describe('Inserate mit Zusatzangaben', () => {
     buy: 'immobilien/wohnungen/eigentumswohnungen',
     plot: 'immobilien/grundstuecke',
     job: 'jobs/vollzeit',
-    bike: 'marktplatz/sport-freizeit/fahrraeder',
+    bike: 'marktplatz/sport-sportgeraete/fahrraeder',
     service: 'marktplatz/dienstleistungen/handwerk',
   } as const;
 

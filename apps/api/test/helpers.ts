@@ -151,7 +151,7 @@ export async function publishListing(
   overrides: Record<string, unknown> = {},
 ): Promise<{ id: string; title: string; sellerId?: string }> {
   const prisma = app.get(PrismaService);
-  const category = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-freizeit/fahrraeder' } });
+  const category = await prisma.category.findUniqueOrThrow({ where: { path: 'marktplatz/sport-sportgeraete/fahrraeder' } });
   const location = await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } });
   const res = await request(app.getHttpServer())
     .post('/v1/listings')

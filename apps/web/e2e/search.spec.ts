@@ -5,7 +5,7 @@ import { expect, test, type Page } from '@playwright/test';
  * E-Bike in 2340 Mödling (~15 km von 1010 Wien), Kinderrad in 3100 St. Pölten (~60 km),
  * VW Golf (Benzin) in Linz, Jobs mit 2.400 € bzw. 48.000 € im Jahr (≈ 3.429 € im Monat).
  */
-const BIKES = 'marktplatz/sport-freizeit/fahrraeder';
+const BIKES = 'marktplatz/sport-sportgeraete/fahrraeder';
 
 const isMobile = () => test.info().project.name === 'mobile';
 const card = (page: Page, title: RegExp) => page.getByRole('link', { name: title });
@@ -73,17 +73,17 @@ test('Umkreissuche: Fahrräder 25 km um 1010 Wien, Filter teilen und entfernen',
 
 test('Kategorien durchklicken: Bereich → Kategorie → Unterkategorie, Filter bleiben sichtbar', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('link', { name: /^Sport & Freizeit/ }).first().click();
-  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-freizeit$/);
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sport & Freizeit');
+  await page.getByRole('link', { name: /^Sport & Sportgeräte/ }).first().click();
+  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-sportgeraete$/);
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sport & Sportgeräte');
   const path = page.getByRole('navigation', { name: 'Kategoriepfad' });
   await expect(path.getByRole('link', { name: 'Marktplatz' })).toBeVisible();
 
   // Unterkategorien mit Anzahl der Anzeigen
-  const sub = page.getByRole('navigation', { name: 'Unterkategorien in Sport & Freizeit' });
+  const sub = page.getByRole('navigation', { name: 'Unterkategorien in Sport & Sportgeräte' });
   await expect(sub.getByRole('link', { name: /^Wintersport/ })).toBeVisible();
   await sub.getByRole('link', { name: /^Fahrräder \d+ Anzeigen?$/ }).click();
-  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-freizeit\/fahrraeder$/);
+  await expect(page).toHaveURL(/kategorie=marktplatz\/sport-sportgeraete\/fahrraeder$/);
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Fahrräder');
   await expect(card(page, /Kinderrad 20 Zoll/).first()).toBeVisible();
 
@@ -94,7 +94,15 @@ test('Kategorien durchklicken: Bereich → Kategorie → Unterkategorie, Filter 
   await expect(trail.locator('[aria-current="page"]')).toHaveText('Fahrräder');
   await trail.getByRole('link', { name: 'Marktplatz' }).click();
   await expect(page).toHaveURL(/bereich=marktplatz$/);
-  await expect(page.getByRole('navigation', { name: 'Unterkategorien in Marktplatz' }).getByRole('link', { name: /^Elektronik/ })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Unterkategorien in Marktplatz' }).getByRole('link', { name: /^Computer & Software/ })).toBeVisible();
+
+  // Dritte Ebene: Computer & Software › PC-Komponenten › Grafikkarten
+  await page.goto('/suche?kategorie=marktplatz/computer-software/pc-komponenten');
+  await expect(page.getByRole('navigation', { name: 'Unterkategorien in PC-Komponenten' }).getByRole('link', { name: /^Grafikkarten/ })).toBeVisible();
+
+  // Alte Links (vor dem Umbau der Kategorien) führen auf die neue Kategorie
+  await page.goto('/suche?kategorie=marktplatz/sport-freizeit/fahrraeder&preis_bis=500');
+  await expect(page).toHaveURL(/\/suche\?preis_bis=500&kategorie=marktplatz\/sport-sportgeraete\/fahrraeder$/);
 
   // Mit Suchbegriff: nur Kategorien mit Treffern, der Suchbegriff bleibt beim Wechsel erhalten
   await page.goto('/suche?q=kinderrad');

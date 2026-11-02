@@ -33,7 +33,7 @@ describe('Inseratsbilder', () => {
     ({ app, prisma } = await createTestApp());
     categoryId = (
       await prisma.category.findUniqueOrThrow({
-        where: { path: 'marktplatz/sport-freizeit/fahrraeder' },
+        where: { path: 'marktplatz/sport-sportgeraete/fahrraeder' },
       })
     ).id;
     locationId = (await prisma.location.findFirstOrThrow({ where: { postalCode: '8010', place: 'Graz' } })).id;
