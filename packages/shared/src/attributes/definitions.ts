@@ -1,5 +1,9 @@
 import {
   BIKE_TYPES,
+  CHIP_MAKERS,
+  DRIVE_TYPES,
+  MEMORY_TYPES,
+  VRAM_SIZES,
   CAMPER_TYPES,
   CAR_BRANDS,
   CHILD_SIZES,
@@ -220,6 +224,52 @@ const RULES: readonly Rule[] = [
       { key: 'ramGb', label: 'Arbeitsspeicher', kind: 'select', options: RAM_SIZES, highlight: true, filter: { param: 'arbeitsspeicher' } },
       storage,
       screenSize(7, 49),
+    ],
+  },
+  // PC-Komponenten: was auf der Verpackung steht (für den Foto-Assistenten und die Filter)
+  {
+    path: 'marktplatz/computer-software/pc-komponenten/grafikkarten',
+    fields: [
+      { key: 'chipMaker', label: 'Chiphersteller', kind: 'select', options: pickOptions(CHIP_MAKERS, ['nvidia', 'amd', 'intel', 'other']), filter: { param: 'chiphersteller' } },
+      { key: 'chipModel', label: 'Grafikchip', kind: 'text', maxLength: 60, placeholder: 'z. B. GeForce RTX 4070 Super', highlight: true },
+      { key: 'vramGb', label: 'Grafikspeicher', kind: 'select', options: VRAM_SIZES, highlight: true, filter: { param: 'grafikspeicher' } },
+      { ...textBrand, placeholder: 'z. B. ASUS, MSI, Sapphire' },
+    ],
+  },
+  {
+    path: 'marktplatz/computer-software/pc-komponenten/prozessoren',
+    fields: [
+      { key: 'chipMaker', label: 'Hersteller', kind: 'select', options: pickOptions(CHIP_MAKERS, ['amd', 'intel', 'other']), filter: { param: 'chiphersteller' } },
+      { key: 'chipModel', label: 'Modell', kind: 'text', maxLength: 60, placeholder: 'z. B. Ryzen 7 7800X3D', highlight: true },
+      { key: 'socket', label: 'Sockel', kind: 'text', maxLength: 20, placeholder: 'z. B. AM5 oder LGA1700', highlight: true },
+    ],
+  },
+  {
+    path: 'marktplatz/computer-software/pc-komponenten/mainboards',
+    fields: [textBrand, { key: 'socket', label: 'Sockel', kind: 'text', maxLength: 20, placeholder: 'z. B. AM5 oder LGA1700', highlight: true }],
+  },
+  {
+    path: 'marktplatz/computer-software/pc-komponenten/arbeitsspeicher',
+    fields: [
+      { key: 'ramGb', label: 'Kapazität (gesamt)', kind: 'select', options: RAM_SIZES, highlight: true, filter: { param: 'arbeitsspeicher' } },
+      { key: 'memoryType', label: 'Speichertyp', kind: 'select', options: MEMORY_TYPES, highlight: true, filter: { param: 'speichertyp' } },
+      textBrand,
+    ],
+  },
+  {
+    path: 'marktplatz/computer-software/pc-komponenten/netzteile',
+    fields: [
+      { key: 'powerW', label: 'Leistung', kind: 'number', min: 50, max: 3000, decimals: 0, unit: 'W', highlight: true, filter: { param: 'watt', label: 'Leistung (W)' } },
+      textBrand,
+    ],
+  },
+  {
+    path: 'marktplatz/computer-software/festplatten-speicher',
+    fields: [
+      { key: 'driveType', label: 'Art', kind: 'select', options: DRIVE_TYPES, highlight: true, filter: { param: 'speicherart' } },
+      { key: 'capacityGb', label: 'Kapazität', kind: 'number', min: 1, max: 100_000, decimals: 0, unit: 'GB', highlight: true,
+        hint: '1 TB = 1.000 GB', filter: { param: 'kapazitaet', label: 'Kapazität (GB)' } },
+      textBrand,
     ],
   },
   { path: 'marktplatz/computer-software/tablets-e-reader', fields: [textBrand, storage, screenSize(4, 20)] },

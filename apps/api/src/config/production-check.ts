@@ -105,7 +105,10 @@ export function checkProductionEnv(env: Env, raw: Record<string, string | undefi
   if (env.STRIPE_SECRET_KEY?.startsWith('sk_live_') || env.STRIPE_SECRET_KEY?.startsWith('rk_live_')) {
     errors.push('STRIPE_SECRET_KEY ist ein Live-Schlüssel – nicht freigegeben.');
   }
-  if (env.AI_ENABLED) warnings.push('AI_ENABLED=true – KI-Funktionen senden Inhalte an einen externen Dienst (Datenschutzerklärung prüfen).');
+  if (env.AI_ENABLED) {
+    warnings.push('AI_ENABLED=true – der Foto-Assistent sendet Fotos an Anthropic (USA). Datenschutzerklärung prüfen, Kostenlimit im Anthropic-Konto setzen.');
+    if (!env.ANTHROPIC_API_KEY) errors.push('AI_ENABLED=true, aber ANTHROPIC_API_KEY fehlt – der Foto-Assistent bliebe abgeschaltet.');
+  }
   if (!raw.BACKUP_PASSPHRASE || raw.BACKUP_PASSPHRASE.length < 32) {
     errors.push('BACKUP_PASSPHRASE fehlt oder ist kürzer als 32 Zeichen (Sicherungen wären unverschlüsselt).');
   }

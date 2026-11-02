@@ -1,0 +1,216 @@
+import {
+  BadRequestException,
+  HttpException,
+  HttpStatus,
+  Inject,
+  Injectable,
+  Logger,
+  Optional,
+  ServiceUnavailableException,
+  UnprocessableEntityException,
+} from '@nestjs/common';
+import Anthropic from '@anthropic-ai/sdk';
+import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
+import sharp from 'sharp';
+import {
+  AUTOFILL_IMAGE_TYPES,
+  AUTOFILL_MAX_BYTES,
+  categoryAttributeSchema,
+  coerceAttributeSuggestions,
+  type AutofillStatus,
+  type AutofillSuggestion,
+} from '@marktat/shared';
+import type { AuthUser } from '../auth/auth.types.js';
+import { CategoriesService } from '../categories/categories.service.js';
+import { loadEnv, type Env } from '../config/env.js';
+import { RATE_LIMIT_STORAGE, type RedisThrottlerStorage } from '../common/redis-throttler.storage.js';
+import { autofillOutputSchema, systemPrompt, type AutofillOutput } from './autofill.prompt.js';
+
+/** Längste Kante des Fotos für das Modell (größer bringt keine bessere Erkennung, kostet aber mehr) */
+const MODEL_EDGE = 1568;
+const MIN_EDGE = 200;
+const MAX_INPUT_PIXELS = 60_000_000;
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Modelle, die die serverseitige Ausweichlösung bei Ablehnungen unterstützen (`fallbacks: "default"`) */
+const FALLBACK_MODELS = /^claude-(opus-5|fable-5|sonnet-5-5)/;
+
+export class AutofillDisabledError extends ServiceUnavailableException {
+  constructor() {
+    super('Der Foto-Assistent ist derzeit nicht verfügbar. Bitte fülle die Angaben selbst aus.');
+  }
+}
+
+/**
+ * Foto-Assistent: Foto → Vorschläge für Kategorie, Titel, Beschreibung, Zustand und Zusatzangaben.
+ * Das Foto wird nur für diese eine Anfrage an die Claude-API (Anthropic) geschickt und nirgends gespeichert.
+ */
+@Injectable()
+export class AutofillService {
+  private readonly logger = new Logger(AutofillService.name);
+  private readonly env: Env;
+  private readonly client: Anthropic | null;
+  /** Tageszähler, wenn kein Redis da ist (eine API-Instanz) */
+  private readonly localCounts = new Map<string, number>();
+  private localDay = '';
+
+  constructor(
+    private readonly categories: CategoriesService,
+    @Optional() @Inject(RATE_LIMIT_STORAGE) private readonly storage: RedisThrottlerStorage | null = null,
+    @Optional() @Inject('ANTHROPIC_CLIENT') client: Anthropic | null = null,
+  ) {
+    this.env = loadEnv();
+    const enabled = this.env.AI_ENABLED && Boolean(this.env.ANTHROPIC_API_KEY);
+    this.client = !enabled
+      ? null
+      : (client ??
+        new Anthropic({
+          apiKey: this.env.ANTHROPIC_API_KEY,
+          baseURL: this.env.ANTHROPIC_BASE_URL,
+          timeout: 60_000,
+          maxRetries: 1,
+        }));
+  }
+
+  status(): AutofillStatus {
+    return { enabled: this.client !== null };
+  }
+
+  async suggest(user: AuthUser, body: unknown, contentType: string | undefined): Promise<AutofillSuggestion> {
+    if (!this.client) throw new AutofillDisabledError();
+    const image = await this.prepareImage(body, contentType);
+    await this.countUsage(user.id);
+
+    const tree = await this.categories.tree();
+    const output = await this.ask(this.client, image, systemPrompt(tree));
+    return this.toSuggestion(output);
+  }
+
+  /** Datei prüfen, drehen (EXIF), Metadaten entfernen und verkleinern – es geht nur ein frisches JPEG hinaus. */
+  private async prepareImage(body: unknown, contentType: string | undefined): Promise<Buffer> {
+    const type = contentType?.split(';')[0]?.trim().toLowerCase();
+    if (!type || !(AUTOFILL_IMAGE_TYPES as readonly string[]).includes(type) || !Buffer.isBuffer(body) || body.length === 0) {
+      throw new BadRequestException('Bitte schicke ein Foto als JPEG, PNG oder WebP.');
+    }
+    if (body.length > AUTOFILL_MAX_BYTES) throw new BadRequestException('Das Foto ist zu groß.');
+    try {
+      const input = sharp(body, { limitInputPixels: MAX_INPUT_PIXELS, failOn: 'error' });
+      const meta = await input.metadata();
+      if (!meta.width || !meta.height || Math.min(meta.width, meta.height) < MIN_EDGE) {
+        throw new BadRequestException('Das Foto ist zu klein. Bitte mach ein schärferes Foto aus der Nähe.');
+      }
+      return await input
+        .rotate()
+        .resize({ width: MODEL_EDGE, height: MODEL_EDGE, fit: 'inside', withoutEnlargement: true })
+        .jpeg({ quality: 85, mozjpeg: true })
+        .toBuffer();
+    } catch (error) {
+      if (error instanceof HttpException) throw error;
+      throw new BadRequestException('Das Foto konnte nicht gelesen werden. Bitte versuche ein anderes Foto.');
+    }
+  }
+
+  /** Kostenbremse: Auswertungen je Konto und insgesamt je Tag (UTC). Gezählt wird jeder Versuch. */
+  private async countUsage(userId: string) {
+    const day = new Date().toISOString().slice(0, 10);
+    const perUser = await this.increment(`autofill:${day}:user:${userId}`);
+    if (perUser > this.env.AI_AUTOFILL_USER_DAILY_LIMIT) {
+      throw new HttpException('Du hast den Foto-Assistenten heute schon oft verwendet. Morgen geht es wieder.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    const total = await this.increment(`autofill:${day}:total`);
+    if (total > this.env.AI_AUTOFILL_DAILY_LIMIT) {
+      if (total === this.env.AI_AUTOFILL_DAILY_LIMIT + 1) this.logger.warn('Tageslimit des Foto-Assistenten erreicht (AI_AUTOFILL_DAILY_LIMIT).');
+      throw new HttpException('Der Foto-Assistent ist für heute ausgelastet. Bitte fülle die Angaben selbst aus.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+  }
+
+  private async increment(key: string): Promise<number> {
+    if (this.storage) {
+      const record = await this.storage.increment(key, DAY_MS, Number.MAX_SAFE_INTEGER, 1, 'autofill');
+      // totalHits 0 = Redis nicht erreichbar: dann zählt der Prozessspeicher
+      if (record.totalHits > 0) return record.totalHits;
+    }
+    const day = key.split(':')[1]!;
+    if (day !== this.localDay) {
+      this.localCounts.clear();
+      this.localDay = day;
+    }
+    const next = (this.localCounts.get(key) ?? 0) + 1;
+    this.localCounts.set(key, next);
+    return next;
+  }
+
+  private async ask(client: Anthropic, image: Buffer, system: string): Promise<AutofillOutput> {
+    const model = this.env.AI_MODEL;
+    const fallback = FALLBACK_MODELS.test(model);
+    let response;
+    try {
+      response = await client.beta.messages.parse({
+        model,
+        max_tokens: 8000,
+        ...(fallback ? { betas: ['server-side-fallback-2026-07-01'], fallbacks: 'default' as const } : {}),
+        // Erkennen und Zuordnen braucht wenig Nachdenken – „low“ hält Antwortzeit und Kosten klein
+        output_config: { effort: 'low', format: betaZodOutputFormat(autofillOutputSchema) },
+        // Kategorieliste und Felder sind für alle Anfragen gleich und werden zwischengespeichert
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: image.toString('base64') } },
+              { type: 'text', text: 'Das ist mein Foto. Bitte schlag die Angaben für mein Inserat vor.' },
+            ],
+          },
+        ],
+      });
+    } catch (error) {
+      if (error instanceof Anthropic.RateLimitError) {
+        this.logger.warn('Claude-API: Rate-Limit erreicht');
+        throw new HttpException('Der Foto-Assistent ist gerade ausgelastet. Bitte versuche es gleich noch einmal.', HttpStatus.SERVICE_UNAVAILABLE);
+      }
+      if (error instanceof Anthropic.AuthenticationError || error instanceof Anthropic.PermissionDeniedError) {
+        this.logger.error('Claude-API: Schlüssel ungültig oder ohne Berechtigung (ANTHROPIC_API_KEY prüfen)');
+      } else if (error instanceof Anthropic.APIConnectionTimeoutError) {
+        this.logger.warn('Claude-API: Zeitüberschreitung');
+      } else if (error instanceof Anthropic.APIError) {
+        this.logger.warn(`Claude-API: Fehler ${error.status ?? 'ohne Status'}`);
+      } else {
+        this.logger.warn(`Claude-API: ${(error as Error).message}`);
+      }
+      throw new HttpException('Das Foto konnte gerade nicht ausgewertet werden. Bitte versuche es noch einmal.', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    const { usage } = response;
+    this.logger.log(
+      `Foto ausgewertet (${response.model}): ${usage.input_tokens} Eingabe-, ${usage.cache_read_input_tokens ?? 0} Cache-, ${usage.output_tokens} Ausgabe-Tokens`,
+    );
+    if (response.stop_reason === 'refusal') {
+      throw new UnprocessableEntityException('Dieses Foto können wir nicht auswerten. Bitte fülle die Angaben selbst aus.');
+    }
+    if (!response.parsed_output) {
+      this.logger.warn(`Claude-API: keine verwertbare Antwort (stop_reason ${response.stop_reason})`);
+      throw new HttpException('Das Foto konnte gerade nicht ausgewertet werden. Bitte versuche es noch einmal.', HttpStatus.SERVICE_UNAVAILABLE);
+    }
+    return response.parsed_output;
+  }
+
+  /** Antwort des Modells mit denselben Regeln wie beim Speichern prüfen; Ungültiges fällt weg. */
+  async toSuggestion(output: AutofillOutput): Promise<AutofillSuggestion> {
+    const empty: AutofillSuggestion = { recognized: false, categoryId: null, categoryPath: null, title: '', description: '', condition: null, attributes: {} };
+    if (!output.recognized) return empty;
+
+    const category = output.categoryPath ? await this.categories.findByPath(output.categoryPath.trim()) : undefined;
+    const leaf = category?.isActive && (await this.categories.isLeaf(category.id)) ? category : undefined;
+    const schema = categoryAttributeSchema(leaf?.path);
+    const title = output.title.replace(/\s+/g, ' ').trim().slice(0, 90);
+    return {
+      recognized: true,
+      categoryId: leaf?.id ?? null,
+      categoryPath: leaf?.path ?? null,
+      title: title.length >= 3 ? title : '',
+      description: output.description.trim().slice(0, 5000),
+      condition: leaf && schema.itemCondition && output.condition ? output.condition : null,
+      attributes: leaf ? coerceAttributeSuggestions(schema, output.attributes) : {},
+    };
+  }
+}

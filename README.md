@@ -81,7 +81,7 @@ Für spätere Phasen bzw. den Produktionsbetrieb fehlen noch (in `.env.example` 
 | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET`, `R2_JURISDICTION` | Bild-Uploads (Cloudflare R2), Einrichtung siehe [Bilder](docs/bilder.md); ohne Werte läuft alles außer dem Bild-Upload | Phase 2 |
 | `APP_SIGNING_SECRET` | signierte Bild-URLs; lokal ist ein Entwicklungswert gesetzt | Produktion |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Zahlungen, nur Testmodus (`sk_test_…`); ohne Werte läuft alles kostenlos weiter. `STRIPE_LIVE_ENABLED` bleibt `false`, bis der Live-Modus ausdrücklich freigegeben ist. Siehe [Monetarisierung](docs/monetarisierung.md) | erst für den kostenpflichtigen Betrieb |
-| `OPENAI_API_KEY` (+ `AI_ENABLED=true`) | optionale KI-Funktionen | Phase 6 |
+| `ANTHROPIC_API_KEY` (+ `AI_ENABLED=true`) | optionaler Foto-Assistent beim Inserieren (docs/foto-assistent.md) | jederzeit |
 | `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_JWT_SECRET` | echtes Supabase-Projekt (EU-Region) | Produktion |
 | `SMTP_*`, `MAIL_FROM` | E-Mail-Versand: in Supabase Auth (Kontomails) und in der API (Nachrichten, Suchaufträge); lokal Mailpit | Produktion |
 | `REDIS_URL` | Hintergrundaufträge (BullMQ) und Echtzeit über mehrere Instanzen; lokal gesetzt | Produktion |

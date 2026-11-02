@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useEffect, useMemo, useState, useTransition, type FormEvent } from 'react';
+import { useActionState, useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react';
 import { Eye, MapPin } from 'lucide-react';
 import { Alert, Button, Card, cn, Field, Input, Select, Textarea } from '@marktat/ui';
 import {
@@ -17,6 +17,7 @@ import {
   PRICE_TYPE_LABELS,
   PRICE_TYPES,
   VERTICAL_LABELS,
+  type AutofillSuggestion,
   type CategoryNode,
   type ListingDetail,
   type LocationSummary,
@@ -26,7 +27,9 @@ import {
 import { PriceTag } from '@/components/price-tag';
 import { ClientIdField } from '@/components/client-id-field';
 import { initialFormState, type FormState } from '@/lib/form-state';
+import { clearPendingPhoto, savePendingPhoto } from '@/lib/pending-photo';
 import { AttributeFields, attributesToInput, type AttributeInputValues } from './attribute-fields';
+import { PhotoAssistant } from './photo-assistant';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000';
 
@@ -36,6 +39,8 @@ interface ListingFormProps {
   listing?: ListingDetail;
   /** Laufzeit und ob das Veröffentlichen gerade kostenlos ist (aus den Preisen im Admin-Bereich) */
   terms?: { days: number; free: boolean };
+  /** Foto-Assistent anbieten (nur beim Anlegen und wenn er in der API eingeschaltet ist) */
+  photoAssistant?: boolean;
 }
 
 const DESCRIPTION_HINTS: Record<Vertical, string> = {
@@ -50,7 +55,7 @@ function centsToInput(cents: number | null | undefined) {
   return (cents / 100).toLocaleString('de-AT', { minimumFractionDigits: cents % 100 ? 2 : 0 });
 }
 
-export function ListingForm({ categories, action, listing, terms = { days: 60, free: true } }: ListingFormProps) {
+export function ListingForm({ categories, action, listing, terms = { days: 60, free: true }, photoAssistant = false }: ListingFormProps) {
   const [state, formAction, isPending] = useActionState(action, initialFormState);
   const [, startTransition] = useTransition();
   const [intent, setIntent] = useState<'draft' | 'publish'>('publish');
@@ -63,6 +68,8 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
     const formData = new FormData(event.currentTarget, submitter);
     setIntent(formData.get('intent') === 'draft' ? 'draft' : 'publish');
+    // Foto aus dem Assistenten für den Bilder-Schritt nach dem Anlegen merken (IndexedDB ist schneller als die Anfrage)
+    if (assistantPhoto.current) void savePendingPhoto(assistantPhoto.current);
     startTransition(() => formAction(formData));
   };
   const v = state.values;
@@ -108,6 +115,53 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
     status: 'idle',
   });
 
+  // Foto-Assistent: Vorschläge übernehmen, vorherigen Stand für „Rückgängig“ merken
+  const assistantPhoto = useRef<Blob | null>(null);
+  const beforeSuggestion = useRef<{ selection: string[]; title: string; description: string; condition: string; attributes: AttributeInputValues } | null>(null);
+  useEffect(() => {
+    // Ein altes, nicht verwendetes Foto eines früheren Versuchs soll nicht in diesem Inserat landen
+    if (photoAssistant) void clearPendingPhoto();
+  }, [photoAssistant]);
+  const applySuggestion = (suggestion: AutofillSuggestion): string[] => {
+    beforeSuggestion.current = { selection, title, description, condition, attributes: attributeValues };
+    const filled: string[] = [];
+    if (suggestion.categoryId && nodes.has(suggestion.categoryId)) {
+      const chain: string[] = [];
+      for (let id: string | null = suggestion.categoryId; id && nodes.has(id); id = nodes.get(id)!.parentId) chain.unshift(id);
+      setSelection(chain);
+      filled.push('Kategorie');
+    }
+    if (suggestion.title) {
+      setTitle(suggestion.title);
+      filled.push('Titel');
+    }
+    if (suggestion.description) {
+      setDescription(suggestion.description);
+      filled.push('Beschreibung');
+    }
+    if (suggestion.condition) {
+      setCondition(suggestion.condition);
+      filled.push('Zustand');
+    }
+    const keys = Object.keys(suggestion.attributes);
+    if (keys.length) {
+      setAttributeValues((current) => ({ ...current, ...attributesToInput(suggestion.attributes) }));
+      const fields = categoryAttributeSchema(suggestion.categoryPath).fields;
+      filled.push(...fields.filter((f) => keys.includes(f.key) && !(f.kind === 'select' && f.fixed)).map((f) => f.label));
+    }
+    return filled;
+  };
+  const undoSuggestion = () => {
+    const before = beforeSuggestion.current;
+    if (!before) return;
+    setSelection(before.selection);
+    setTitle(before.title);
+    setDescription(before.description);
+    setCondition(before.condition);
+    setAttributeValues(before.attributes);
+    beforeSuggestion.current = null;
+  };
+
   const deepestPath = deepest?.path;
   const schema = useMemo(() => categoryAttributeSchema(deepestPath), [deepestPath]);
   const typedAttributes = useMemo(
@@ -147,6 +201,10 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
       {listing ? <input type="hidden" name="id" value={listing.id} /> : <ClientIdField name="clientRequestId" />}
       <div className="space-y-6">
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
+
+        {photoAssistant && !listing ? (
+          <PhotoAssistant onSuggestion={applySuggestion} onUndo={undoSuggestion} onPhoto={(photo) => (assistantPhoto.current = photo)} />
+        ) : null}
 
         <Card className="space-y-5 p-5 sm:p-7">
           <h2 className="font-sans text-lg font-semibold tracking-normal">Was bietest du an?</h2>

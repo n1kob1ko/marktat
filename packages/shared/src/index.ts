@@ -1,5 +1,6 @@
 // Deutsche zod-Fehlermeldungen: siehe schemas/zod.ts
 export * from './austria.js';
+export * from './autofill/index.js';
 export * from './billing.js';
 export * from './deals/index.js';
 export * from './services/index.js';

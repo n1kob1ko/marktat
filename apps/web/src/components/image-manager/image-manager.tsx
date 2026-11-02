@@ -20,6 +20,7 @@ import {
   setMainImage,
   type ImageActionResult,
 } from './actions';
+import { takePendingPhoto } from '@/lib/pending-photo';
 
 interface UploadItem {
   key: string;
@@ -56,9 +57,12 @@ function checkFile(file: File): string | null {
 export function ImageManager({
   listingId,
   initialImages,
+  adoptPendingPhoto = false,
 }: {
   listingId: string;
   initialImages: ListingImage[];
+  /** Direkt nach dem Anlegen: das Foto aus dem Foto-Assistenten automatisch hochladen */
+  adoptPendingPhoto?: boolean;
 }) {
   const [images, setImages] = useState(initialImages);
   const [uploads, setUploads] = useState<UploadItem[]>([]);
@@ -156,6 +160,17 @@ export function ImageManager({
       void runQueue();
     }
   }
+
+  const adopted = useRef(false);
+  useEffect(() => {
+    if (!adoptPendingPhoto || adopted.current) return;
+    adopted.current = true;
+    void takePendingPhoto().then((photo) => {
+      if (photo) addFiles([photo]);
+    });
+    // addFiles nur einmal beim ersten Anzeigen – spätere Änderungen sind hier egal
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adoptPendingPhoto]);
 
   function apply(action: () => Promise<ImageActionResult<ListingImage[]>>, done: string) {
     startTransition(async () => {

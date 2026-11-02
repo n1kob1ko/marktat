@@ -35,6 +35,7 @@ import { ServicesModule } from './services/services.module.js';
 import { SeoModule } from './seo/seo.module.js';
 import { SecurityModule } from './security/security.module.js';
 import { MonitoringModule } from './monitoring/monitoring.module.js';
+import { AutofillModule } from './autofill/autofill.module.js';
 
 @Module({
   imports: [
@@ -74,6 +75,7 @@ import { MonitoringModule } from './monitoring/monitoring.module.js';
     SeoModule,
     SecurityModule,
     MonitoringModule,
+    AutofillModule,
   ],
   providers: [
     // Reihenfolge: zuerst Anmeldung (Token prüfen), dann Rate-Limit je Konto bzw. IP, dann Rollen, dann 2FA

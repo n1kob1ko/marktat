@@ -16,7 +16,7 @@ Browser ──► apps/web (Next.js 16, Server Components, Server Actions)
         + PostGIS       Registrierung, Login, …        Bilder; Browser lädt per     Volltext- und Umkreissuche,
                                                        signierter URL direkt hoch   Fallback: PostgreSQL
 
-geplant: Redis/BullMQ (Jobs), Stripe (Zahlungen), OpenAI (optional)
+geplant: Redis/BullMQ (Jobs), Stripe (Zahlungen), Claude-API von Anthropic (optionaler Foto-Assistent)
 ```
 
 Der Browser spricht für Auth direkt mit Supabase Auth (über die Server Actions der Web-App), für alle Fachdaten ausschließlich mit der API. Die API vertraut nur dem signierten JWT, nicht den Angaben des Clients.

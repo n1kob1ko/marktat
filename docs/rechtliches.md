@@ -57,7 +57,7 @@ rechtlichen Prüfung. Eine rechtliche Freigabe behauptet der Code nirgends.
 | Kennzeichnung gewerblicher Anbieter | DSA Art. 30 (Nachverfolgbarkeit), FAGG | Firmenname, Firmenbuchnummer, UID werden beim Händlerkonto erfasst; Prüfung der Angaben folgt |
 | Kommunikationsplattformen | KoPl-G (prüfen, ob anwendbar) | offen |
 | Cookies / Einwilligung | TKG 2021 § 165 | nur technisch notwendige Cookies (Sitzung); kein Tracking → derzeit kein Banner nötig, prüfen lassen |
-| Auftragsverarbeitung | DSGVO Art. 28 | AV-Verträge mit Supabase, Cloudflare, Stripe, Hoster, ggf. OpenAI abschließen |
+| Auftragsverarbeitung | DSGVO Art. 28 | AV-Verträge mit Supabase, Cloudflare, Stripe, Hoster, ggf. Anthropic (Foto-Assistent) abschließen |
 | Drittlandübermittlung | DSGVO Art. 44 ff. | EU-Regionen wählen; Data Privacy Framework der Anbieter prüfen |
 | Verzeichnis der Verarbeitungstätigkeiten | DSGVO Art. 30 | offen |
 | Löschfristen | DSGVO Art. 5, 17 | Phase 6: Kontolöschung, täglicher Aufbewahrungsjob mit vorgeschlagenen Fristen ([datenschutz.md](datenschutz.md)); Fristen rechtlich bestätigen, endgültige Löschung soft-gelöschter Inserate offen |
