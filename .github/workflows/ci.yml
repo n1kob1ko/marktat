@@ -127,6 +127,10 @@ jobs:
           AWIN_API_URL: http://127.0.0.1:4599
           AWIN_PRODUCTDATA_URL: http://127.0.0.1:4599
           OUTBOUND_ALLOW_PRIVATE: 'true'
+          # Foto-Assistent gegen den Claude-Testserver aus e2e/fake-claude.ts (startet photo-assistant.spec.ts)
+          AI_ENABLED: 'true'
+          ANTHROPIC_API_KEY: e2e-test-key-0123456789
+          ANTHROPIC_BASE_URL: http://127.0.0.1:4598
         run: |
           (cd apps/api && nohup pnpm start > ../../api.log 2>&1 &)
           (cd apps/web && nohup pnpm start > ../../web.log 2>&1 &)
@@ -142,6 +146,7 @@ jobs:
       - run: pnpm --filter @marktat/web test:e2e
         env:
           E2E_AWIN_FAKE_PORT: '4599'
+          E2E_CLAUDE_FAKE_PORT: '4598'
       - if: failure()
         run: cat api.log web.log
       - if: failure()

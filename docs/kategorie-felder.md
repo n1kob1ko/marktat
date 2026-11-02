@@ -39,6 +39,7 @@ Regeln verwenden und sie typgeprüft und getestet sind. Zugeordnet wird über `c
 | | Lehrstellen, Praktika, Geringfügig | Berufsbezeichnung, Arbeitsort, Gehalt + Zeitraum (Geringfügig: auch Arbeitszeit) | Lehrzeit bzw. Dauer, Arbeitszeit |
 | | Freelance | Berufsbezeichnung, Beschäftigungsart, Arbeitsort | Honorar + Zeitraum, Arbeitszeit, Berufserfahrung |
 | Marktplatz | Handys, Computer, Tablets, TV, Konsolen | – | Marke, Speicher, Arbeitsspeicher, Bildschirmdiagonale, Plattform |
+| | PC-Komponenten, Festplatten & Speicher | – | Grafikkarten: Chiphersteller, Grafikchip, Grafikspeicher, Marke; Prozessoren: Hersteller, Modell, Sockel; Mainboards: Marke, Sockel; Arbeitsspeicher: Kapazität, Speichertyp, Marke; Netzteile: Leistung, Marke; Speicher: Art, Kapazität, Marke |
 | | Möbel & Wohnen | – | Breite, Tiefe, Höhe |
 | | Damen-/Herrenmode, Schuhe, Kinderkleidung | – | Größe, Marke |
 | | Fahrräder | – | Art, Rahmengröße, Laufradgröße |

@@ -272,3 +272,23 @@ export const SERVICE_PRICE_UNITS = opts([
   ['day', 'pro Tag'],
   ['flat', 'Pauschal'],
 ]);
+
+// --- PC-Komponenten ------------------------------------------------------------------
+
+/** Hersteller des Grafikchips bzw. Prozessors (nicht des Kartenherstellers wie ASUS oder MSI) */
+export const CHIP_MAKERS = opts([['nvidia', 'NVIDIA'], ['amd', 'AMD'], ['intel', 'Intel'], ['apple', 'Apple'], OTHER]);
+
+export const VRAM_SIZES = opts([1, 2, 3, 4, 6, 8, 10, 11, 12, 16, 20, 24, 32, 48].map((gb) => [String(gb), `${gb} GB`] as const));
+
+export const MEMORY_TYPES = opts([['ddr5', 'DDR5'], ['ddr4', 'DDR4'], ['ddr3', 'DDR3'], ['ddr2', 'DDR2'], OTHER]);
+
+export const DRIVE_TYPES = opts([
+  ['ssd-nvme', 'SSD (M.2 NVMe)'],
+  ['ssd-sata', 'SSD (SATA)'],
+  ['hdd', 'Festplatte (HDD)'],
+  ['external', 'Externe Festplatte/SSD'],
+  ['usb-stick', 'USB-Stick'],
+  ['memory-card', 'Speicherkarte'],
+  ['nas', 'NAS'],
+  OTHER,
+]);

@@ -73,6 +73,13 @@ export const PROCESSORS: Processor[] = [
   { purpose: 'E-Mail-Versand', provider: 'Brevo SAS, Paris', region: 'Frankreich (EU)' },
 ];
 
+/** Nur aufgeführt, solange der Foto-Assistent eingeschaltet ist (AI_ENABLED und ANTHROPIC_API_KEY in der API) */
+export const AI_PROCESSOR: Processor = {
+  purpose: 'Foto-Assistent beim Inserieren (KI)',
+  provider: 'Anthropic, PBC, San Francisco',
+  region: 'USA (Standardvertragsklauseln)',
+};
+
 /** Pflichtangaben, die vor dem öffentlichen Start feststehen müssen (für Hinweise und Tests) */
 export const REQUIRED_OPERATOR_FIELDS = ['name', 'street', 'postalCode', 'city', 'email', 'dsaContactEmail'] as const;
 

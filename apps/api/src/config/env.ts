@@ -27,11 +27,24 @@ export const envSchema = z
      * 0 = keine (Standard). Nur setzen, wenn der Proxy X-Forwarded-For selbst überschreibt.
      */
     TRUST_PROXY: z.coerce.number().int().min(0).max(5).default(0),
-    /** Optionale KI-Funktionen; ohne Schlüssel bleiben sie abgeschaltet. */
+    /**
+     * Optionale KI-Funktionen (derzeit: Foto-Assistent beim Inserieren). Nur mit AI_ENABLED=true und
+     * ANTHROPIC_API_KEY aktiv; sonst bleibt die Plattform ohne KI vollständig nutzbar.
+     */
     AI_ENABLED: z
       .enum(['true', 'false'])
       .default('false')
       .transform((v) => v === 'true'),
+    /** GEHEIM – Schlüssel der Claude-API (console.anthropic.com). Nur in der .env des Servers. */
+    ANTHROPIC_API_KEY: optional,
+    /** Modell für den Foto-Assistenten (z. B. claude-haiku-5-5 für deutlich geringere Kosten) */
+    AI_MODEL: z.string().regex(/^[a-z0-9.-]+$/).default('claude-opus-5-5'),
+    /** Foto-Auswertungen je Konto und Tag */
+    AI_AUTOFILL_USER_DAILY_LIMIT: z.coerce.number().int().min(1).max(1000).default(20),
+    /** Foto-Auswertungen insgesamt je Tag (Kostenbremse; danach bis Mitternacht UTC abgeschaltet) */
+    AI_AUTOFILL_DAILY_LIMIT: z.coerce.number().int().min(1).max(100_000).default(300),
+    /** Nur für Tests: Basis-URL der Claude-API (Testserver) */
+    ANTHROPIC_BASE_URL: optional.pipe(z.url().optional()),
     /** Öffentliche URL der API (für Bild-URLs und den lokalen Speichertreiber) */
     API_URL: z.url().default('http://localhost:4000'),
     /** Geheimnis für signierte Bild-Vorschau-URLs und den lokalen Speichertreiber (min. 32 Zeichen) */

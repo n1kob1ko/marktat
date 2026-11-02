@@ -87,7 +87,7 @@ async function Content({
         </Alert>
       ) : null}
       <Card className="p-5 sm:p-7">
-        <ImageManager listingId={listing.id} initialImages={images} />
+        <ImageManager listingId={listing.id} initialImages={images} adoptPendingPhoto={Boolean(neu) && images.length === 0} />
       </Card>
     </div>
   );
