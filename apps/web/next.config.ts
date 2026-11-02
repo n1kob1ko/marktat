@@ -70,6 +70,11 @@ const nextConfig: NextConfig = {
   partialPrefetching: true,
   poweredByHeader: false,
   transpilePackages: ['@marktat/ui'],
+  images: {
+    // Kategoriefotos auf der Startseite (Unsplash, siehe src/content/category-photos.ts). Unser Server holt und
+    // verkleinert sie über /_next/image, Besucher laden sie also von uns und nicht von Unsplash.
+    remotePatterns: [{ protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' }],
+  },
   env: {
     NEXT_PUBLIC_API_URL: apiUrl,
     NEXT_PUBLIC_SUPABASE_URL: supabaseUrl,

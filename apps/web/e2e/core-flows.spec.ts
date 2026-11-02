@@ -13,6 +13,12 @@ test('Startseite zeigt Suche, Bereiche und Kategorien', async ({ page }) => {
   await expect(page.getByRole('searchbox', { name: 'Suchbegriff' })).toBeVisible();
   await expect(page.getByRole('link', { name: /Auto & Motor/ }).first()).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Kategorien im Marktplatz' })).toBeVisible();
+  // Kacheln mit Foto (über die Bildoptimierung des eigenen Servers, nicht direkt von Unsplash)
+  const tiles = page.getByRole('list', { name: 'Kategorien im Marktplatz' });
+  const sport = tiles.getByRole('link', { name: /Sport & Sportgeräte/ });
+  await expect(sport).toHaveAttribute('href', '/suche?kategorie=marktplatz/sport-sportgeraete');
+  await expect(sport.locator('img')).toHaveAttribute('src', /^\/_next\/image\?url=https%3A%2F%2Fimages\.unsplash\.com%2F/);
+  await expect(tiles.getByRole('link', { name: /Alle Anzeigen/ })).toBeVisible();
 });
 
 test('geschützte Seiten leiten zur Anmeldung weiter', async ({ page }) => {
