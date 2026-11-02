@@ -68,13 +68,12 @@ async function Chat({ params, searchParams }: Pick<PageProps<'/nachrichten/[id]'
   const hinweis = typeof query.hinweis === 'string' ? query.hinweis : undefined;
   const fehler = typeof query.fehler === 'string' ? query.fehler : undefined;
   return (
-    <>
-      {hinweis || fehler ? (
-        <div className="border-b border-line p-3">
-          <FlashMessage hinweis={hinweis} fehler={fehler} />
-        </div>
-      ) : null}
-      <ChatView key={conversation.id} conversation={conversation} initial={page} backHref={`/nachrichten${inbox.size ? `?${inbox}` : ''}`} />
-    </>
+    <ChatView
+      key={conversation.id}
+      conversation={conversation}
+      initial={page}
+      backHref={`/nachrichten${inbox.size ? `?${inbox}` : ''}`}
+      notice={hinweis || fehler ? <FlashMessage hinweis={hinweis} fehler={fehler} /> : undefined}
+    />
   );
 }

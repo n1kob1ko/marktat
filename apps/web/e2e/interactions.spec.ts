@@ -121,6 +121,14 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
     // Mobil: nur der Chat, mit Zurück-Pfeil zur Liste
     await expect(seller.page.getByRole('link', { name: 'Zurück zu allen Nachrichten' })).toBeVisible();
     await expect(seller.page.getByRole('region', { name: 'Unterhaltungen' })).toBeHidden();
+    // Vollbild über der Seite: Eingabefeld unten im Bild, die Seite dahinter (Fußzeile) scrollt nicht mit
+    const box = await seller.page.getByTestId('chat-view').boundingBox();
+    const size = seller.page.viewportSize()!;
+    expect(box).toMatchObject({ x: 0, y: 0, width: size.width, height: size.height });
+    await expect(seller.page.getByLabel('Nachricht schreiben')).toBeInViewport();
+    await expect(seller.page.locator('html')).toHaveCSS('overflow', 'hidden');
+    // 16 px im Eingabefeld: sonst zoomt iOS beim Antippen hinein
+    await expect(seller.page.getByLabel('Nachricht schreiben')).toHaveCSS('font-size', '16px');
   } else {
     await expect(seller.page.getByRole('region', { name: 'Unterhaltungen' })).toBeVisible();
   }

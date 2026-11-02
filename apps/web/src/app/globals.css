@@ -46,3 +46,15 @@
     }
   }
 }
+
+/*
+ * iOS zoomt beim Antippen in jedes Eingabefeld mit weniger als 16 px Schrift hinein (wirkt wie ein Springen der Seite).
+ * Absichtlich außerhalb von @layer, damit es die Tailwind-Schriftgrößen der Felder auf Touch-Geräten übersteuert.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox'], [type='radio'], [type='range']),
+  textarea,
+  select {
+    font-size: max(1rem, 16px);
+  }
+}
