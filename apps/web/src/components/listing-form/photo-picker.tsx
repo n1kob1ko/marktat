@@ -52,6 +52,8 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
   const [adding, setAdding] = useState(false);
   const [problems, setProblems] = useState<string[]>([]);
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+  /** „Mit KI Inserat aufgeben“ aufgeklappt: Kamera oder Galerie wählen */
+  const [aiMenu, setAiMenu] = useState(false);
   const current = useRef<PickedPhoto[]>([]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const galleryRef = useRef<HTMLInputElement>(null);
@@ -83,6 +85,7 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
     setProblems(found);
     update([...current.current, ...added]);
     setAdding(false);
+    if (added.length) setAiMenu(false);
   }
 
   const pick = (input: HTMLInputElement | null) => {
@@ -124,11 +127,7 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
       <h2 id="fotos" className="font-sans text-lg font-semibold tracking-normal text-ink-950">
         Fotos
       </h2>
-      <p className="mt-1.5 text-sm leading-relaxed text-ink-700">
-        {ai
-          ? 'Mach ein paar Fotos vom Artikel, gern auch von Verpackung oder Typenschild. Dann füllt „Mit KI ausfüllen“ Kategorie, Titel, Beschreibung und Details für dich aus.'
-          : `Bis zu ${MAX_IMAGES_PER_LISTING} Fotos. Das erste ist das Titelbild.`}
-      </p>
+      <p className="mt-1.5 text-sm leading-relaxed text-ink-700">Bis zu {MAX_IMAGES_PER_LISTING} Fotos. Das erste ist das Titelbild.</p>
 
       {photos.length ? (
         <ul className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5" aria-label="Deine Fotos">
@@ -165,7 +164,25 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
             {working ? 'KI liest deine Fotos …' : 'Mit KI ausfüllen'}
           </Button>
         ) : null}
+        {ai && !photos.length ? (
+          <Button variant="accent" onClick={() => setAiMenu((open) => !open)} aria-expanded={aiMenu} aria-controls="ki-fotos" disabled={adding}>
+            <Sparkles className="size-4" aria-hidden="true" /> Mit KI Inserat aufgeben
+          </Button>
+        ) : null}
       </div>
+      {ai && aiMenu && !photos.length ? (
+        <div id="ki-fotos" className="mt-3 rounded-xl border border-accent-500/40 bg-surface p-4">
+          <p className="text-sm font-semibold text-ink-900">Foto vom Artikel machen oder auswählen, dann „Mit KI ausfüllen“ tippen.</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Button variant="accent" size="sm" onClick={() => cameraRef.current?.click()}>
+              <Camera className="size-4" aria-hidden="true" /> Mit Kamera fotografieren
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => galleryRef.current?.click()}>
+              <ImageUp className="size-4" aria-hidden="true" /> Foto aus Galerie
+            </Button>
+          </div>
+        </div>
+      ) : null}
       {/* Zwei Felder: „capture“ öffnet am Handy direkt die Kamera, das zweite die Galerie (mehrere auf einmal) */}
       <input
         ref={cameraRef}
@@ -235,14 +252,12 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
         {phase.kind === 'error' ? <Alert tone="danger">{phase.message}</Alert> : null}
       </div>
 
-      {ai ? (
+      {ai && (aiMenu || photos.length) ? (
         <p className="mt-4 text-xs leading-relaxed text-ink-500">
-          Bei „Mit KI ausfüllen“ gehen die Fotos zur Auswertung an unseren KI-Dienstleister Anthropic und werden dort nicht zum Training verwendet. Mehr dazu in
-          der{' '}
+          Die KI-Auswertung macht Anthropic, ohne Training mit deinen Fotos.{' '}
           <Link href="/datenschutz#foto-assistent" className="underline underline-offset-2 hover:text-ink-700">
-            Datenschutzerklärung
+            Datenschutz
           </Link>
-          .
         </p>
       ) : null}
     </section>
