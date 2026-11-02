@@ -15,6 +15,7 @@ import {
   Laptop,
   Package,
   School,
+  ShoppingBag,
   Shirt,
   Smartphone,
   Sofa,
@@ -54,6 +55,8 @@ const ICONS: Record<string, LucideIcon> = {
   school: School,
   hourglass: Hourglass,
   laptop: Laptop,
+  // Bereiche in der Kategorienavigation
+  'shopping-bag': ShoppingBag,
 };
 
 export function CategoryIcon({ name, className }: { name: string | null; className?: string }) {

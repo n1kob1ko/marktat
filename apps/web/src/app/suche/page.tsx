@@ -6,9 +6,6 @@ import { ChevronRight, SearchX, X } from 'lucide-react';
 import { Container, Skeleton, buttonClasses } from '@marktat/ui';
 import {
   SEARCH_RADII,
-  VERTICALS,
-  VERTICAL_LABELS,
-  VERTICAL_SLUGS,
   hasActiveFilters,
   isCategoryPath,
   parseSearchParams,
@@ -22,7 +19,8 @@ import {
 } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { findCategory, getCategories } from '@/lib/data';
-import { activeFilters, findCategoryByPath, resetHref, scopeLabel, searchHref } from '@/lib/search';
+import { activeFilters, browseTrail, currentScope, findCategoryByPath, resetHref, scopeHref, scopeLabel, searchHref } from '@/lib/search';
+import { CategoryBrowser } from '@/components/search/category-browser';
 import { ListingCard } from '@/components/listing-card';
 import { SearchFilters } from '@/components/search/search-filters';
 import { SortSelect } from '@/components/search/sort-select';
@@ -136,7 +134,7 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
       </aside>
 
       <section aria-labelledby="results-heading" className="min-w-0">
-        {category ? <Breadcrumb categories={categories} path={category.path} query={query} /> : null}
+        <Breadcrumb categories={categories} query={query} />
         <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
           <div className="min-w-0">
             <h1 id="results-heading" className="text-2xl font-bold text-balance text-ink-950 sm:text-3xl">
@@ -156,6 +154,8 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
             {result && result.total > 1 ? <SortSelect value={query.sort} options={sorts} hrefFor={sortHrefs} /> : null}
           </div>
         </div>
+
+        {result ? <CategoryBrowser query={query} categories={categories} counts={result.categoryCounts} label={label} /> : null}
 
         {chips.length ? (
           <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Aktive Filter">
@@ -227,27 +227,27 @@ function TopAds({ items }: { items: SearchResult['topAds'] }) {
   );
 }
 
-function Breadcrumb({ categories, path, query }: { categories: CategoryNode[]; path: string; query: SearchQuery }) {
-  const segments = path.split('/');
-  const trail = segments
-    .slice(1)
-    .map((_, i) => findCategoryByPath(categories, segments.slice(0, i + 2).join('/')))
-    .filter((c): c is CategoryNode => Boolean(c));
-  const base: Record<string, string> = query.q ? { q: query.q } : {};
-  const vertical = VERTICALS.find((v) => VERTICAL_SLUGS[v] === segments[0]);
+/** Weg von „Alle Kategorien“ bis zur aktuellen Kategorie; Suchbegriff und passende Filter bleiben erhalten */
+function Breadcrumb({ categories, query }: { categories: CategoryNode[]; query: SearchQuery }) {
+  const trail = browseTrail(categories, currentScope(query));
+  if (!trail.length) return null;
   return (
-    <nav aria-label="Kategorien" className="mb-2 flex flex-wrap items-center gap-1 text-sm text-ink-500">
-      <Link href={`/suche?${new URLSearchParams({ ...base, bereich: segments[0]! })}`} className="hover:text-brand-700 hover:underline">
-        {vertical ? VERTICAL_LABELS[vertical] : segments[0]}
-      </Link>
-      {trail.slice(0, -1).map((c) => (
-        <span key={c.id} className="flex items-center gap-1">
-          <ChevronRight className="size-3.5" aria-hidden="true" />
-          <Link href={`/suche?${new URLSearchParams({ ...base, kategorie: c.path })}`} className="hover:text-brand-700 hover:underline">
-            {c.name}
-          </Link>
-        </span>
-      ))}
+    <nav aria-label="Kategoriepfad" className="mb-2">
+      <ol className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm text-ink-500">
+        <li>
+          <Link href={scopeHref(query, null)} className="hover:text-brand-700 hover:underline">Alle Kategorien</Link>
+        </li>
+        {trail.map((entry, i) => (
+          <li key={entry.key} className="flex items-center gap-1">
+            <ChevronRight className="size-3.5" aria-hidden="true" />
+            {i === trail.length - 1 ? (
+              <span aria-current="page" className="font-semibold text-brand-800">{entry.label}</span>
+            ) : (
+              <Link href={scopeHref(query, entry.scope)} className="hover:text-brand-700 hover:underline">{entry.label}</Link>
+            )}
+          </li>
+        ))}
+      </ol>
     </nav>
   );
 }

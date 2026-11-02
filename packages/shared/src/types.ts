@@ -40,6 +40,11 @@ export interface SearchResult extends Paginated<ListingSummary> {
   engine: 'meilisearch' | 'postgres';
   /** Top-Anzeigen mit denselben Filtern (nur Seite 1, abwechselnd ausgewählt) */
   topAds: ListingSummary[];
+  /**
+   * Treffer je Kategoriepfad mit denselben Filtern, inklusive Unterkategorien und Bereich
+   * (z. B. „marktplatz“: 120, „marktplatz/elektronik“: 40). Fehlt bei internen Suchen.
+   */
+  categoryCounts?: Record<string, number>;
 }
 
 export interface ApiError {

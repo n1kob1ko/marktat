@@ -23,6 +23,20 @@ export async function getCategories(): Promise<CategoryNode[]> {
   }
 }
 
+/** Aktive Anzeigen je Bereich und Kategoriepfad (inklusive Unterkategorien) – für die Kategorienavigation */
+export async function getCategoryCounts(): Promise<Record<string, number>> {
+  'use cache';
+  cacheTag('listings');
+  try {
+    const counts = await api<Record<string, number>>('/listings/category-counts');
+    cacheLife('minutes');
+    return counts;
+  } catch {
+    cacheLife('seconds');
+    return {};
+  }
+}
+
 export async function getLatestListings(pageSize = 12): Promise<ListingSummary[]> {
   'use cache';
   cacheTag('listings');

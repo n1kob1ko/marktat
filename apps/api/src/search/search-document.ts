@@ -130,6 +130,8 @@ export function indexSettings() {
     typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },
     localizedAttributes: null,
     pagination: { maxTotalHits: MAX_TOTAL_HITS },
+    // Trefferzahlen je Kategorie (categoryPaths) für die Kategorienavigation – mehr als alle Kategorien zusammen
+    faceting: { maxValuesPerFacet: MAX_FACET_VALUES },
     synonyms: {
       fahrrad: ['rad', 'bike'],
       rad: ['fahrrad'],
@@ -150,3 +152,5 @@ export function indexSettings() {
 
 /** Mehr Treffer zählt Meilisearch nicht genau – die Seitenanzahl wird entsprechend begrenzt. */
 export const MAX_TOTAL_HITS = 10_000;
+/** Obergrenze der gezählten Kategorien je Suche (alle Kategorien inklusive Bereiche passen hinein) */
+export const MAX_FACET_VALUES = 2_000;

@@ -40,6 +40,13 @@ export class ListingsController {
     return this.search.searchParams(query);
   }
 
+  @Public()
+  @Get('category-counts')
+  @ApiOperation({ summary: 'Aktive Inserate je Bereich und Kategoriepfad (inklusive Unterkategorien), ohne Filter' })
+  categoryCounts() {
+    return this.search.categoryCounts();
+  }
+
   @Get('mine')
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Eigene Inserate inkl. Entwürfe' })

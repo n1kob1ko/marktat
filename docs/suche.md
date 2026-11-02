@@ -107,6 +107,17 @@ direkt in PostgreSQL (Textsuche mit `ILIKE`, Umkreis mit PostGIS `ST_DWithin`). 
   Leerzustand mit Vorschlag „Umkreis erweitern“, Entfernung auf den Karten.
 - Die Ortssuche (`LocationInput`) ist eine barrierefreie Combobox über `GET /v1/geo/locations`.
 
+### Kategorienavigation
+
+- `GET /v1/listings` liefert zusätzlich `categoryCounts`: Treffer je Bereich (`marktplatz`) und Kategoriepfad
+  (inklusive Unterkategorien) mit denselben Filtern. Meilisearch zählt über die Facetten `categoryPaths` und
+  `vertical` (`faceting.maxValuesPerFacet` = 2000), der Ausweichbetrieb über `GROUP BY` in PostgreSQL.
+- `GET /v1/listings/category-counts`: dieselben Zahlen ohne Filter (Startseite), 60 s im Speicher.
+- Die Suchseite zeigt über den Ergebnissen die nächste Ebene (Alle Bereiche → Bereich → Kategorie →
+  Unterkategorie) mit Anzahl; mit Suchbegriff oder Filtern nur Einträge mit Treffern. Die Filterleiste zeigt
+  den Weg zurück. Beim Wechsel bleiben Suchbegriff, Ort, Preis usw. erhalten, unpassende Filter fallen weg
+  (`scopeHref` in `apps/web/src/lib/search.ts`). Kategoriepfade stehen lesbar in der URL (`/` statt `%2F`).
+
 ## Tests
 
 | Ebene | Datei |
