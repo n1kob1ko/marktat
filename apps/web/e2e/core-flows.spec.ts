@@ -53,6 +53,9 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   await page.getByLabel('Bereich & Kategorie').selectOption({ label: 'Sport & Sportgeräte' });
   await page.getByLabel('Unterkategorie').selectOption({ label: 'Fahrräder' });
   await page.getByLabel('Titel').fill(title);
+  // Ein Foto gleich im Formular – wird nach dem Veröffentlichen automatisch hochgeladen
+  await page.getByLabel('Aus Galerie wählen').setInputFiles(fixture('testbild-mit-gps.jpg'));
+  await expect(page.getByRole('list', { name: 'Deine Fotos' }).getByRole('img')).toHaveCount(1);
   await page.getByLabel('Beschreibung').fill('Gepflegtes Trekkingrad, 28 Zoll, frisch serviciert. Abholung in Graz.');
   // Zustand per Knopf
   await page.getByRole('radiogroup', { name: 'Zustand' }).getByText('Gut', { exact: true }).click();
@@ -67,10 +70,11 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   // 3b. Bilder: nach dem Veröffentlichen direkt zur Bildverwaltung
   await expect(page).toHaveURL(/\/anzeige\/\w+\/bilder\?neu=veroeffentlicht/);
   await expect(page.getByText('Deine Anzeige ist online. Füge jetzt Bilder hinzu')).toBeVisible();
+  const gallery = page.getByRole('list', { name: 'Bilder der Anzeige' });
+  await expect(gallery.getByRole('img')).toHaveCount(1, { timeout: 20_000 });
   await page.locator('#bilder-auswahl').setInputFiles(fixture('kein-erlaubtes-format.gif'));
   await expect(page.getByText('Erlaubt sind nur JPEG, PNG oder WebP.')).toBeVisible();
-  await page.locator('#bilder-auswahl').setInputFiles([fixture('testbild-mit-gps.jpg'), fixture('testbild-mit-gps.jpg')]);
-  const gallery = page.getByRole('list', { name: 'Bilder der Anzeige' });
+  await page.locator('#bilder-auswahl').setInputFiles(fixture('testbild-mit-gps.jpg'));
   await expect(gallery.getByRole('img')).toHaveCount(2, { timeout: 20_000 });
   await expect(page.getByText('2 von 10 Bildern')).toBeVisible();
   await expect(gallery.getByText('Hauptbild')).toHaveCount(1);

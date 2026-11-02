@@ -3,7 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import express from 'express';
 import helmet from 'helmet';
-import { AUTOFILL_IMAGE_TYPES, AUTOFILL_MAX_BYTES, DEAL_IMPORT_MAX_BYTES, MAX_IMAGE_BYTES } from '@marktat/shared';
+import { AUTOFILL_MAX_BYTES, AUTOFILL_MAX_PHOTOS, DEAL_IMPORT_MAX_BYTES, MAX_IMAGE_BYTES } from '@marktat/shared';
 import { loadEnv } from './config/env.js';
 import { HttpExceptionFilter } from './common/http-exception.filter.js';
 import { requestContext } from './common/request-context.js';
@@ -43,8 +43,8 @@ export function setupApp(app: NestExpressApplication): INestApplication {
   app.use(`/${API_PREFIX}/${MEDIA_UPLOAD_PREFIX}`, express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: MAX_MEDIA_BYTES }));
   // CSV-Import der Händler (Phase 10): Datei als Rohdaten, Zeichensatz und Prüfung in der API
   app.use(`/${API_PREFIX}/me/deal-imports`, express.raw({ type: ['text/csv', 'text/plain', 'application/csv', 'application/vnd.ms-excel', 'application/octet-stream'], limit: DEAL_IMPORT_MAX_BYTES }));
-  // Foto-Assistent: Foto als Rohdaten (wird verkleinert an die Claude-API geschickt, nicht gespeichert)
-  app.use(`/${API_PREFIX}/${AUTOFILL_UPLOAD_PATH}`, express.raw({ type: [...AUTOFILL_IMAGE_TYPES], limit: AUTOFILL_MAX_BYTES }));
+  // Foto-Assistent: bis zu vier Fotos als Base64 im JSON (werden verkleinert an die Claude-API geschickt, nicht gespeichert)
+  app.use(`/${API_PREFIX}/${AUTOFILL_UPLOAD_PATH}`, express.json({ limit: Math.ceil((AUTOFILL_MAX_BYTES * AUTOFILL_MAX_PHOTOS * 4) / 3) + 64 * 1024 }));
   app.useBodyParser('json', { limit: '100kb' });
   app.useGlobalFilters(new HttpExceptionFilter(app.get(ErrorReporter)));
   app.enableShutdownHooks();

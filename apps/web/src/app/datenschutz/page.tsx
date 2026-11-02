@@ -107,13 +107,13 @@ function PhotoAssistantText({ enabled }: { enabled: boolean }) {
   if (!enabled) return <p>Der Foto-Assistent ist derzeit nicht aktiv; es werden keine Fotos an KI-Dienste übermittelt.</p>;
   return (
     <p>
-      Wenn du beim Inserieren den Foto-Assistenten nutzt („Foto aufnehmen“ oder „Bild auswählen“), schicken wir dieses Foto
-      verkleinert und ohne Standort- und andere Metadaten an {AI_PROCESSOR.provider} ({AI_PROCESSOR.region}). Dessen KI-Modell
-      Claude erstellt daraus Vorschläge für Kategorie, Titel, Beschreibung und Details, die du vor dem Veröffentlichen prüfst
-      und änderst. Zweck ist, dir das Inserieren zu erleichtern; Rechtsgrundlage ist deine Anfrage (Art. 6 Abs. 1 lit. b
-      DSGVO). Wir speichern das Foto für die Auswertung nicht – Teil deiner Anzeige wird es nur, wenn du es dort als Bild
-      verwendest. Anthropic verarbeitet das Foto als Auftragsverarbeiter, verwendet es nicht zum Training seiner Modelle und
-      speichert es nur für eine begrenzte Zeit. Die Übermittlung in die USA erfolgt auf Grundlage von Standardvertragsklauseln
+      Wenn du beim Inserieren „Mit KI ausfüllen“ drückst, schicken wir bis zu vier deiner Fotos verkleinert und ohne Standort-
+      und andere Metadaten an {AI_PROCESSOR.provider} ({AI_PROCESSOR.region}). Dessen KI-Modell Claude erstellt daraus
+      Vorschläge für Kategorie, Titel, Beschreibung und Details, die du vor dem Veröffentlichen prüfst und änderst. Zweck ist,
+      dir das Inserieren zu erleichtern; Rechtsgrundlage ist deine Anfrage (Art. 6 Abs. 1 lit. b DSGVO). Für die Auswertung
+      speichern wir die Fotos nicht – Teil deiner Anzeige werden sie, weil du sie dort als Bilder hinzugefügt hast, und du
+      kannst sie jederzeit entfernen. Anthropic verarbeitet die Fotos als Auftragsverarbeiter, verwendet sie nicht zum
+      Training seiner Modelle und speichert sie nur für eine begrenzte Zeit. Die Übermittlung in die USA erfolgt auf Grundlage von Standardvertragsklauseln
       (Art. 46 DSGVO). Der Assistent ist freiwillig; du kannst alle Angaben auch selbst eintragen.
     </p>
   );
