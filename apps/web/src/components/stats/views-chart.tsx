@@ -28,7 +28,7 @@ export function ViewsChart({ days }: { days: { day: string; views: number }[] })
                 className="w-full rounded-t-[4px] bg-brand-500 transition-colors group-hover:bg-brand-700"
                 style={{ height: d.views ? `${Math.max(2, (d.views / top) * 100)}%` : 0 }}
               />
-              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-md bg-ink-950 px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block">
+              <div className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-1 hidden -translate-x-1/2 rounded-md bg-tooltip px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block">
                 {label(d.day)}: {d.views.toLocaleString('de-AT')} {d.views === 1 ? 'Aufruf' : 'Aufrufe'}
               </div>
             </div>

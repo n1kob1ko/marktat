@@ -249,7 +249,7 @@ export function FilterBar({ action, children }: { action: string; children: Reac
   return (
     <form action={action} method="get" className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 sm:flex-row sm:flex-wrap sm:items-end">
       {children}
-      <button type="submit" className="h-11 rounded-xl bg-brand-700 px-5 text-sm font-semibold text-white hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">
+      <button type="submit" className="h-11 rounded-xl bg-primary px-5 text-sm font-semibold text-white hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">
         Filtern
       </button>
     </form>

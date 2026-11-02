@@ -10,12 +10,12 @@ const base =
   'disabled:cursor-not-allowed disabled:opacity-60 select-none whitespace-nowrap';
 
 const variants: Record<ButtonVariant, string> = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 active:bg-brand-900',
-  accent: 'bg-accent-500 text-ink-950 hover:bg-accent-600 hover:text-white active:bg-accent-700',
+  primary: 'bg-primary text-white hover:bg-primary-hover active:bg-primary-active',
+  accent: 'bg-accent-500 text-on-accent hover:bg-accent-600 hover:text-white active:bg-accent-600',
   secondary: 'bg-brand-50 text-brand-800 hover:bg-brand-100',
   outline: 'border border-line-strong bg-surface text-ink-900 hover:border-ink-400 hover:bg-canvas',
   ghost: 'text-ink-700 hover:bg-ink-900/5 hover:text-ink-900',
-  danger: 'bg-danger-600 text-white hover:bg-danger-700',
+  danger: 'bg-danger-fill text-white hover:bg-danger-fill-hover',
 };
 
 const sizes: Record<ButtonSize, string> = {

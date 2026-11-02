@@ -35,7 +35,7 @@ export function DealPrice({
 export function DiscountBadge({ percent, className }: { percent: number | null; className?: string }) {
   if (percent === null) return null;
   return (
-    <span className={cn('inline-flex items-center rounded-lg bg-accent-500 px-2 py-0.5 text-sm font-bold text-ink-950 tabular-nums shadow-sm', className)}>
+    <span className={cn('inline-flex items-center rounded-lg bg-accent-500 px-2 py-0.5 text-sm font-bold text-on-accent tabular-nums shadow-sm', className)}>
       −{percent} %
     </span>
   );

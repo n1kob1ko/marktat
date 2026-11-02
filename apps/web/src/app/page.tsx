@@ -17,17 +17,17 @@ import { IntroBanner } from '@/components/billing/intro-banner';
 const VERTICAL_TILES = [
   { slug: VERTICAL_SLUGS.MARKETPLACE, href: `/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`, title: 'Marktplatz', hint: 'Möbel, Mode & mehr', icon: ShoppingBag, tone: 'bg-brand-50 text-brand-700' },
   { slug: VERTICAL_SLUGS.VEHICLES, href: `/suche?bereich=${VERTICAL_SLUGS.VEHICLES}`, title: 'Auto & Motor', hint: 'Autos & Motorräder', icon: Car, tone: 'bg-accent-50 text-accent-700' },
-  { slug: VERTICAL_SLUGS.REAL_ESTATE, href: `/suche?bereich=${VERTICAL_SLUGS.REAL_ESTATE}`, title: 'Immobilien', hint: 'Mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a]' },
-  { slug: VERTICAL_SLUGS.JOBS, href: `/suche?bereich=${VERTICAL_SLUGS.JOBS}`, title: 'Jobs', hint: 'Voll- & Teilzeit', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a]' },
-  { slug: 'deals', href: '/deals', title: 'Deals', hint: 'Angebote von Händlern', icon: Percent, tone: 'bg-[#fdf0ec] text-[#9a3b1c]' },
-  { slug: 'dienstleistungen', href: '/dienstleistungen', title: 'Dienstleistungen', hint: 'Handwerk, Nachhilfe', icon: Wrench, tone: 'bg-[#ecf6f4] text-[#1f6656]' },
+  { slug: VERTICAL_SLUGS.REAL_ESTATE, href: `/suche?bereich=${VERTICAL_SLUGS.REAL_ESTATE}`, title: 'Immobilien', hint: 'Mieten & kaufen', icon: House, tone: 'bg-[#eef2fb] text-[#2f4a8a] dark:bg-[#1a2238] dark:text-[#a9bdf0]' },
+  { slug: VERTICAL_SLUGS.JOBS, href: `/suche?bereich=${VERTICAL_SLUGS.JOBS}`, title: 'Jobs', hint: 'Voll- & Teilzeit', icon: Briefcase, tone: 'bg-[#f6eefb] text-[#6b3a8a] dark:bg-[#26182f] dark:text-[#d3b0ea]' },
+  { slug: 'deals', href: '/deals', title: 'Deals', hint: 'Angebote von Händlern', icon: Percent, tone: 'bg-[#fdf0ec] text-[#9a3b1c] dark:bg-[#2e1a13] dark:text-[#f2ad92]' },
+  { slug: 'dienstleistungen', href: '/dienstleistungen', title: 'Dienstleistungen', hint: 'Handwerk, Nachhilfe', icon: Wrench, tone: 'bg-[#ecf6f4] text-[#1f6656] dark:bg-[#11261f] dark:text-[#93d5c4]' },
 ];
 
 
 export default function HomePage() {
   return (
     <>
-      <section className="relative isolate overflow-hidden bg-brand-800 text-white">
+      <section className="relative isolate overflow-hidden bg-hero text-white">
         <TopoPattern className="absolute inset-0 -z-10 size-full text-white/[0.07]" />
         <div aria-hidden="true" className="absolute -top-40 -right-40 -z-10 size-[32rem] rounded-full bg-accent-500/15 blur-3xl" />
         {/* Kompakter Kopf: Suche im Mittelpunkt, damit Bereiche und erste Anzeigen schon im ersten Bildschirm stehen */}
@@ -36,7 +36,7 @@ export default function HomePage() {
             <h1 className="text-3xl leading-[1.05] font-bold sm:text-4xl lg:text-[2.75rem]">
               Gutes findet man <span className="text-accent-300">um die Ecke.</span>
             </h1>
-            <p className="hidden max-w-md text-[0.9375rem] leading-relaxed text-brand-100 sm:block lg:text-right">
+            <p className="hidden max-w-md text-[0.9375rem] leading-relaxed text-hero-muted sm:block lg:text-right">
               Kostenlos inserieren, in der Nähe finden, fair handeln. Kleinanzeigen aus allen neun Bundesländern.
             </p>
           </div>
@@ -104,7 +104,7 @@ export default function HomePage() {
                 { icon: MessageCircle, title: 'Verkaufen', text: 'Anfragen beantworten, Treffpunkt ausmachen, fertig.' },
               ].map((step, i) => (
                 <li key={step.title}>
-                  <span className="flex size-10 items-center justify-center rounded-full bg-brand-700 font-display text-lg font-bold text-white">
+                  <span className="flex size-10 items-center justify-center rounded-full bg-primary font-display text-lg font-bold text-white">
                     {i + 1}
                   </span>
                   <h3 className="mt-4 flex items-center gap-2 font-sans text-base font-semibold tracking-normal text-ink-900">
@@ -134,10 +134,10 @@ export default function HomePage() {
                 <li>Verdächtige Anzeigen über „Melden“ an unser Team schicken.</li>
               </ul>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-brand-900 p-6 text-white sm:p-8">
+            <div className="rounded-[var(--radius-card)] bg-hero-deep p-6 text-white sm:p-8">
               <Store className="size-7 text-accent-300" aria-hidden="true" />
               <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
-              <p className="mt-2 text-sm leading-relaxed text-brand-100">
+              <p className="mt-2 text-sm leading-relaxed text-hero-muted">
                 Gewerbliches Konto mit Firmenprofil, gekennzeichneten Angeboten und bald auch Anzeigenpaketen.
               </p>
               <Link href="/registrieren" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent-300 hover:underline">
@@ -272,7 +272,7 @@ async function MarketplaceCategories() {
 function CategoryRow({ href, icon, name, count, hint }: { href: string; icon: React.ReactNode; name: string; count?: number; hint?: string }) {
   return (
     <Link href={href} className="group flex items-center gap-3 rounded-xl px-2.5 py-2.5 transition-colors hover:bg-brand-50 sm:px-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700 transition-colors group-hover:bg-primary group-hover:text-white">
         {icon}
       </span>
       <span className="min-w-0 flex-1">

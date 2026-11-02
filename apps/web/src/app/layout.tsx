@@ -7,6 +7,7 @@ import './globals.css';
 import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { AreaNav, AreaNavList } from '@/components/area-nav';
+import { THEME_INIT_SCRIPT } from '@/components/theme-toggle';
 
 export const metadata: Metadata = {
   metadataBase: new URL(serverEnv.webUrl),
@@ -23,14 +24,21 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#0f4c3a',
+  themeColor: [
+    { media: '(prefers-color-scheme: light)', color: '#0f4c3a' },
+    { media: '(prefers-color-scheme: dark)', color: '#0b2a20' },
+  ],
   width: 'device-width',
   initialScale: 1,
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
   return (
-    <html lang="de-AT" className="h-full antialiased">
+    // data-theme setzt das Skript im <head> vor dem Rendern; React soll den Unterschied nicht bemängeln
+    <html lang="de-AT" className="h-full antialiased" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="flex min-h-full flex-col">
         <a
           href="#inhalt"

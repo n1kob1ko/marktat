@@ -111,7 +111,7 @@ function ConversationItem({ item, active, href }: { item: ConversationSummary; a
         <span className="mt-1 flex items-center justify-between gap-2">
           <span className={cn('truncate text-sm', unread ? 'font-semibold text-ink-900' : 'text-ink-600')}>{preview}</span>
           {unread ? (
-            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-ink-950">
+            <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-on-accent">
               <span className="sr-only">Ungelesen: </span>
               {item.unreadCount}
             </span>

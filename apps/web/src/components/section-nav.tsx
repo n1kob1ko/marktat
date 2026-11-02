@@ -105,7 +105,7 @@ function NavGroup({ group, activeHref }: { group: SectionNavGroup; activeHref: s
 
 function CountBubble({ count }: { count: number }) {
   return (
-    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-ink-950">
+    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-on-accent">
       {count > 99 ? '99+' : count}
     </span>
   );

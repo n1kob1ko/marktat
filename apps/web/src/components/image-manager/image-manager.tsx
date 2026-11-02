@@ -265,7 +265,7 @@ export function ImageManager({
                   className="size-full object-cover"
                 />
                 {index === 0 ? (
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-brand-700 px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">
                     <Star className="size-3" aria-hidden="true" /> Hauptbild
                   </span>
                 ) : null}

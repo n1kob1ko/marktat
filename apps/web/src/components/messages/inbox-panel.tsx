@@ -79,7 +79,7 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
                 aria-current={current ? 'page' : undefined}
                 className={cn(
                   'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors',
-                  current ? 'bg-brand-700 text-white' : 'text-ink-600 hover:bg-ink-900/5 hover:text-ink-900',
+                  current ? 'bg-primary text-white' : 'text-ink-600 hover:bg-ink-900/5 hover:text-ink-900',
                 )}
               >
                 {f.label}

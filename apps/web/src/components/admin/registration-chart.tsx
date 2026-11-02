@@ -21,7 +21,7 @@ export function RegistrationChart({ data }: { data: { date: string; count: numbe
               className="w-full max-w-7 rounded-t-[4px] bg-brand-600 transition-colors group-hover:bg-brand-800"
               style={{ height: d.count ? `${Math.max(3, (d.count / max) * 100)}%` : '0' }}
             />
-            <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-lg bg-ink-950 px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block">
+            <span className="pointer-events-none absolute bottom-full z-10 mb-1 hidden rounded-lg bg-tooltip px-2 py-1 text-xs whitespace-nowrap text-white group-hover:block">
               {formatDate(d.date)}: {d.count}
             </span>
           </div>

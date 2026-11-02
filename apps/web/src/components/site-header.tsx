@@ -4,6 +4,7 @@ import { Plus, Search } from 'lucide-react';
 import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { Logo } from './logo';
 import { UserMenu } from './user-menu';
+import { ThemeToggle } from './theme-toggle';
 
 export function SiteHeader() {
   return (
@@ -31,6 +32,7 @@ export function SiteHeader() {
         </form>
 
         <nav aria-label="Konto" className="ml-auto flex items-center gap-1 sm:gap-2">
+          <ThemeToggle />
           <Suspense fallback={<Skeleton className="h-9 w-24" />}>
             <UserMenu />
           </Suspense>

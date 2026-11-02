@@ -20,7 +20,7 @@ export function Pagination({ page, totalPages, hrefFor }: { page: number; totalP
         <span key={p} className="flex items-center gap-1.5">
           {i > 0 && p - sorted[i - 1]! > 1 ? <span className="px-1 text-ink-400" aria-hidden="true">…</span> : null}
           {p === page ? (
-            <span aria-current="page" className={cn(item, 'bg-brand-700 text-white')}>
+            <span aria-current="page" className={cn(item, 'bg-primary text-white')}>
               {p}
             </span>
           ) : (
