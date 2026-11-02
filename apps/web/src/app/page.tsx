@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
@@ -9,7 +8,8 @@ import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
 import { CategoryIcon } from '@/components/category-icon';
-import { CATEGORY_PHOTOS, categoryPhotoUrl, type CategoryPhoto } from '@/content/category-photos';
+import { CATEGORY_PHOTOS } from '@/content/category-photos';
+import { CategoryPhotoTile } from '@/components/category-photo-tile';
 import { getCategories, getCategoryCounts, getCategoryListings, getLatestDeals, getLatestListings } from '@/lib/data';
 import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
@@ -86,7 +86,7 @@ export default function HomePage() {
             </Link>
           }
         />
-        <Suspense fallback={<GridSkeleton count={8} className="aspect-[4/3]" />}>
+        <Suspense fallback={<GridSkeleton count={10} className={TILE_CLASS} grid={TILE_GRID} />}>
           <MarketplaceCategories />
         </Suspense>
       </Container>
@@ -228,15 +228,20 @@ function SectionHeading({ title, action }: { title: string; action?: React.React
   );
 }
 
-function GridSkeleton({ count, className }: { count: number; className: string }) {
+function GridSkeleton({ count, className, grid = 'grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4' }: { count: number; className: string; grid?: string }) {
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+    <div className={`grid ${grid}`}>
       {Array.from({ length: count }, (_, i) => (
         <Skeleton key={i} className={className} />
       ))}
     </div>
   );
 }
+
+/** Kleine Kacheln, damit die Startseite nicht von Fotos erschlagen wird: 3 pro Zeile am Handy, 5 am Desktop */
+const TILE_GRID = 'grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5';
+const TILE_CLASS = 'aspect-square sm:aspect-[3/2]';
+const TILE_SIZES = '(min-width: 1024px) 15rem, (min-width: 640px) 25vw, 33vw';
 
 /**
  * Alle Kategorien des Marktplatzes als Liste mit Icon, Anzahl der Anzeigen und den ersten Unterkategorien.
@@ -250,10 +255,12 @@ async function MarketplaceCategories() {
   }
   const total = counts[VERTICAL_SLUGS.MARKETPLACE] ?? 0;
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4" aria-label="Kategorien im Marktplatz">
+    <ul className={`grid ${TILE_GRID}`} aria-label="Kategorien im Marktplatz">
       {categories.map((category) => (
         <li key={category.id}>
-          <CategoryTile
+          <CategoryPhotoTile
+            sizes={TILE_SIZES}
+            className={TILE_CLASS}
             href={`/suche?kategorie=${category.path}`}
             name={category.name}
             count={counts[category.path]}
@@ -262,67 +269,22 @@ async function MarketplaceCategories() {
               .map((c) => c.name)
               .join(', ')}
             photo={CATEGORY_PHOTOS[category.path]}
-            icon={<CategoryIcon name={category.icon} className="size-7" />}
+            icon={<CategoryIcon name={category.icon} className="size-6" />}
           />
         </li>
       ))}
       <li>
-        <CategoryTile
+        <CategoryPhotoTile
+          sizes={TILE_SIZES}
+          className={TILE_CLASS}
           href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}
           name="Alle Anzeigen"
           count={total}
           hint="Alles aus dem Marktplatz, neueste zuerst"
-          icon={<LayoutGrid className="size-7" aria-hidden="true" />}
+          icon={<LayoutGrid className="size-6" aria-hidden="true" />}
         />
       </li>
     </ul>
-  );
-}
-
-/** Kachel mit Foto (oder Symbol, wenn es für die Kategorie keins gibt); Name und Anzahl stehen unten auf dem Bild */
-function CategoryTile({
-  href,
-  name,
-  count,
-  hint,
-  photo,
-  icon,
-}: {
-  href: string;
-  name: string;
-  count?: number;
-  hint?: string;
-  photo?: CategoryPhoto;
-  icon: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      title={hint}
-      className="group relative flex aspect-[4/3] overflow-hidden rounded-[var(--radius-card)] bg-primary focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-      style={photo ? { backgroundColor: photo.color } : undefined}
-    >
-      {photo ? (
-        <Image
-          src={categoryPhotoUrl(photo)}
-          alt=""
-          fill
-          sizes="(min-width: 1024px) 18rem, (min-width: 640px) 33vw, 50vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
-        />
-      ) : (
-        <span className="absolute inset-0 grid place-items-center pb-8 text-white/90">{icon}</span>
-      )}
-      <span className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" aria-hidden="true" />
-      <span className="relative mt-auto block w-full p-3 sm:p-4">
-        <span className="block text-sm leading-snug font-semibold text-white sm:text-base">{name}</span>
-        {count ? (
-          <span className="mt-0.5 block text-xs text-white/80 tabular-nums">
-            {count.toLocaleString('de-AT')} {count === 1 ? 'Anzeige' : 'Anzeigen'}
-          </span>
-        ) : null}
-      </span>
-    </Link>
   );
 }
 
