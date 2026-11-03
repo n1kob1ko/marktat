@@ -61,7 +61,9 @@ async function Decision({ params, searchParams }: Pick<PageProps<'/konto/entsche
               ? `Angebot „${decision.deal.title}“`
               : decision.serviceProfile
                 ? `Anbieterprofil „${decision.serviceProfile.title}“`
-                : MODERATION_ACTION_LABELS[decision.action]}
+                : decision.rating
+                  ? decision.rating.title
+                  : MODERATION_ACTION_LABELS[decision.action]}
         </h2>
         <dl className="grid gap-x-4 gap-y-2 text-sm sm:grid-cols-[11rem_1fr]">
           <dt className="text-ink-500">Entschieden am</dt>

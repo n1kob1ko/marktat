@@ -98,6 +98,17 @@ export class ReportsService {
     return { id: report.id };
   }
 
+  /** Meldung einer Bewertung (z. B. Beleidigung, falsche Tatsachen, Erpressung mit einer schlechten Bewertung) */
+  async reportRating(user: AuthUser, ratingId: string, input: ReportListingInput, ip?: string): Promise<{ id: string }> {
+    if (!ENTITY_ID.test(ratingId)) throw new NotFoundException('Diese Bewertung gibt es nicht.');
+    const rating = await this.prisma.rating.findFirst({ where: { id: ratingId, hiddenAt: null }, select: { id: true, raterId: true } });
+    if (!rating) throw new NotFoundException('Diese Bewertung gibt es nicht (mehr).');
+    if (rating.raterId === user.id) throw new ForbiddenException('Deine eigene Bewertung kannst du ändern oder löschen, aber nicht melden.');
+    const report = await this.create(user, { targetType: 'RATING', ratingId: rating.id, reportedId: rating.raterId, reason: input.reason, details: input.details });
+    this.audit.log({ action: 'rating.reported', actorId: user.id, entityType: 'rating', entityId: rating.id, ip, metadata: { reportId: report.id, reason: input.reason } });
+    return { id: report.id };
+  }
+
   async reportConversation(user: AuthUser, conversation: { id: string; reportedId: string }, input: ReportUserInput, ip?: string) {
     const report = await this.create(user, {
       targetType: 'CONVERSATION',
@@ -117,8 +128,9 @@ export class ReportsService {
   private async create(
     user: AuthUser,
     data: {
-      targetType: 'LISTING' | 'CONVERSATION' | 'DEAL' | 'SERVICE_PROFILE' | 'PROJECT';
+      targetType: 'LISTING' | 'CONVERSATION' | 'DEAL' | 'SERVICE_PROFILE' | 'PROJECT' | 'RATING';
       listingId?: string;
+      ratingId?: string;
       projectId?: string;
       dealId?: string;
       serviceProfileId?: string;
@@ -153,7 +165,9 @@ export class ReportsService {
                 ? { serviceProfileId: data.serviceProfileId }
                 : data.projectId
                   ? { projectId: data.projectId }
-                  : { conversationId: data.conversationId }),
+                  : data.ratingId
+                    ? { ratingId: data.ratingId }
+                    : { conversationId: data.conversationId }),
         },
         select: { id: true },
       });
@@ -167,7 +181,9 @@ export class ReportsService {
                 ? 'Du hast dieses Anbieterprofil bereits gemeldet. Wir sehen es uns an.'
                 : data.projectId
                   ? 'Du hast diesen Projektauftrag bereits gemeldet. Wir sehen ihn uns an.'
-                  : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
+                  : data.ratingId
+                    ? 'Du hast diese Bewertung bereits gemeldet. Wir sehen sie uns an.'
+                    : 'Du hast diese Unterhaltung bereits gemeldet. Wir sehen sie uns an.',
         );
       }
       const report = await tx.report.create({
@@ -210,7 +226,8 @@ export class ReportsService {
     const dealIds = [...new Set(rows.flatMap((r) => (r.dealId ? [r.dealId] : [])))];
     const profileIds = [...new Set(rows.flatMap((r) => (r.serviceProfileId ? [r.serviceProfileId] : [])))];
     const projectIds = [...new Set(rows.flatMap((r) => (r.projectId ? [r.projectId] : [])))];
-    const [byListing, byConversation, byDeal, byProfile, byProject] = await Promise.all([
+    const ratingIds = [...new Set(rows.flatMap((r) => (r.ratingId ? [r.ratingId] : [])))];
+    const [byListing, byConversation, byDeal, byProfile, byProject, byRating] = await Promise.all([
       listingIds.length
         ? this.prisma.report.groupBy({ by: ['listingId'], where: { listingId: { in: listingIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
@@ -224,12 +241,14 @@ export class ReportsService {
       projectIds.length
         ? this.prisma.report.groupBy({ by: ['projectId'], where: { projectId: { in: projectIds }, status: { in: OPEN_STATUSES } }, _count: true })
         : [],
+      ratingIds.length ? this.prisma.report.groupBy({ by: ['ratingId'], where: { ratingId: { in: ratingIds }, status: { in: OPEN_STATUSES } }, _count: true }) : [],
     ]);
     const listingCounts = new Map(byListing.map((g) => [g.listingId, g._count]));
     const conversationCounts = new Map(byConversation.map((g) => [g.conversationId, g._count]));
     const dealCounts = new Map(byDeal.map((g) => [g.dealId, g._count]));
     const profileCounts = new Map(byProfile.map((g) => [g.serviceProfileId, g._count]));
     const projectCounts = new Map(byProject.map((g) => [g.projectId, g._count]));
+    const ratingCounts = new Map(byRating.map((g) => [g.ratingId, g._count]));
     return rows.map((row) => {
       const open = row.listingId
         ? (listingCounts.get(row.listingId) ?? 0)
@@ -239,6 +258,8 @@ export class ReportsService {
             ? (profileCounts.get(row.serviceProfileId) ?? 0)
             : row.projectId
             ? (projectCounts.get(row.projectId) ?? 0)
+            : row.ratingId
+            ? (ratingCounts.get(row.ratingId) ?? 0)
             : row.conversationId
             ? (conversationCounts.get(row.conversationId) ?? 0)
             : 0;
@@ -257,6 +278,8 @@ export class ReportsService {
         ? { serviceProfileId: report.serviceProfileId }
         : report.projectId
         ? { projectId: report.projectId }
+        : report.ratingId
+        ? { ratingId: report.ratingId }
         : report.conversationId
         ? { conversationId: report.conversationId }
         : null;
@@ -402,7 +425,7 @@ export class ReportsService {
     actorId: string,
     status: 'RESOLVED' | 'DISMISSED' | 'IN_REVIEW',
   ) {
-    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, serviceProfileId: true, projectId: true, conversationId: true, reason: true } });
+    const open = await tx.report.findMany({ where: { ...where, status: { in: OPEN_STATUSES } }, select: { id: true, status: true, reporterId: true, listingId: true, dealId: true, serviceProfileId: true, projectId: true, ratingId: true, conversationId: true, reason: true } });
     if (!open.length) return [];
     const final = status !== 'IN_REVIEW';
     await tx.report.updateMany({
@@ -417,7 +440,7 @@ export class ReportsService {
 
   /** Meldende Personen erfahren das Ergebnis (Art. 16 Abs. 5 DSA) – ohne Details zur betroffenen Person. */
   async notifyReporters(
-    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; serviceProfileId?: string | null; projectId?: string | null; conversationId: string | null; reason: ReportReason }[],
+    reports: { reporterId: string | null; listingId: string | null; dealId?: string | null; serviceProfileId?: string | null; projectId?: string | null; ratingId?: string | null; conversationId: string | null; reason: ReportReason }[],
     outcome: 'RESOLVED' | 'DISMISSED',
   ) {
     const titles = new Map<string, string>();
@@ -440,7 +463,7 @@ export class ReportsService {
     const seen = new Set<string>();
     for (const report of reports) {
       if (!report.reporterId) continue;
-      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.serviceProfileId ?? report.projectId ?? report.conversationId}`;
+      const key = `${report.reporterId}:${report.listingId ?? report.dealId ?? report.serviceProfileId ?? report.projectId ?? report.ratingId ?? report.conversationId}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const subject = report.listingId
@@ -451,7 +474,9 @@ export class ReportsService {
             ? `das Anbieterprofil „${titles.get(report.serviceProfileId) ?? 'Anbieterprofil'}“`
             : report.projectId
               ? `den Projektauftrag „${titles.get(report.projectId) ?? 'Projektauftrag'}“`
-              : 'eine Unterhaltung';
+              : report.ratingId
+                ? 'eine Bewertung'
+                : 'eine Unterhaltung';
       const result =
         outcome === 'RESOLVED'
           ? 'Wir haben einen Verstoß festgestellt und Maßnahmen ergriffen.'

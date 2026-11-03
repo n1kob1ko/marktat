@@ -27,6 +27,10 @@ export default function PrivacyPage() {
         <li>Konto: E-Mail-Adresse, Passwort (nur als Hash), Anzeigename, Kontoart, optional Telefon und Firmenangaben.</li>
         <li>Inserate: Inhalte, Bilder (ohne Standortdaten aus der Kamera), Preis, PLZ und Ort (keine genaue Adresse).</li>
         <li>Nachrichten zwischen Nutzer:innen, Merkliste, gespeicherte Suchen und Benachrichtigungen.</li>
+        <li>
+          Bewertungen nach einem Kontakt zu einer Anzeige: Sterne, optionaler Text und Antwort. Öffentlich sichtbar mit Anzeigename, Datum und Titel der Anzeige (Art. 6 Abs. 1 lit. f
+          DSGVO, Vertrauen beim Handeln). Sie werden gelöscht, wenn die bewertende Person sie löscht oder eines der beiden Konten gelöscht wird.
+        </li>
         <li>Sicherheitsprotokoll: Ereignistyp, Zeitpunkt, gekürzte IP-Adresse (IPv4 /24, IPv6 /48).</li>
         <li>Server-Protokolle des Reverse-Proxys (Zeitpunkt, aufgerufene Adresse, IP-Adresse), Zweck: Betrieb und Abwehr von Angriffen.</li>
         <li>Technisch notwendige Cookies für die Anmeldung (Sitzungs-Cookies).</li>

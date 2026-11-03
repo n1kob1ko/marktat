@@ -312,6 +312,8 @@ export interface ConversationDetail extends ConversationSummary {
   blockedByMe: boolean;
   /** null = Senden möglich, sonst der Grund (für die Anzeige) */
   sendBlockedReason: string | null;
+  /** Bewertung der anderen Person: möglich, sobald beide geschrieben haben; eigene Sterne, falls schon bewertet */
+  rating: { canRate: boolean; myStars: number | null };
 }
 
 export interface MessagePage {
@@ -358,6 +360,8 @@ export interface ModerationDecisionView {
   /** Phase 10: Entscheidung zu einem Anbieterprofil (bzw. einem seiner Portfolio-Einträge) */
   serviceProfile: { id: string; title: string } | null;
   project: { id: string; title: string } | null;
+  /** Entscheidung zu einer Bewertung (Titel z. B. „Bewertung für Anna“) */
+  rating: { id: string; title: string } | null;
   appeal: AppealView | null;
   /** Einspruch ist noch möglich (einschränkende Maßnahme, Frist offen, noch kein Einspruch) */
   canAppeal: boolean;
@@ -410,6 +414,7 @@ export interface AdminReportSummary {
   deal: { id: string; title: string; status: string } | null;
   serviceProfile: { id: string; title: string; status: string } | null;
   project: { id: string; title: string; status: string } | null;
+  rating: { id: string; stars: number; comment: string | null; reply: string | null; hidden: boolean; rater: PersonRef; ratee: PersonRef } | null;
   conversationId: string | null;
   reported: (PersonRef & { status: UserStatus }) | null;
   reporter: PersonRef | null;

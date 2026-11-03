@@ -49,7 +49,7 @@ Ungültige Parameter liefern 400 mit Liste der Fehler. Die Web-Seite zeigt sie a
 - Qualifikationen sind zunächst **„Angabe der Anbieter:in, nicht geprüft“**. Die Nummer (z. B. GISA-Zahl) ist erst nach der Prüfung öffentlich.
 - **„Von Markterl geprüft“** setzt nur das Team unter `/admin/dienstleistungen/:id`, nach Abgleich mit einer verlässlichen Quelle (GISA, Kammer, Berufsregister). Die Prüfung wird protokolliert (`admin.qualification_verified/rejected`), die Anbieter:in bekommt eine Mitteilung (`QUALIFICATION_REVIEWED`). Eigene Qualifikationen kann niemand selbst prüfen.
 - Profile mit regulierten Kategorien zeigen einen Hinweis mit Link zur GISA-Abfrage. Markterl prüft Gewerbeberechtigungen **nicht** automatisch, und es gibt keine Schnittstelle zum GISA.
-- Bewertungen, Sterne, Abzeichen und „Top-Anbieter“ gibt es bewusst nicht.
+- Bewertungen, Sterne, Abzeichen und „Top-Anbieter“ gibt es für Dienstleistungen bewusst nicht (Bewertungen nur nach Kontakt zu Anzeigen, siehe `bewertungen.md`).
 
 ## Bilder
 

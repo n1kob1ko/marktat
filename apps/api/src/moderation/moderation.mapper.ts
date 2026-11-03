@@ -64,11 +64,19 @@ export function toDecisionView(decision: DecisionWithRelations, now = new Date()
     deal: decision.deal,
     serviceProfile: decision.serviceProfile ? { id: decision.serviceProfile.id, title: decision.serviceProfile.headline } : null,
     project: decision.project ? { id: decision.project.id, title: decision.project.title } : null,
+    rating: decisionRating(decision),
     appeal: decision.appeal ? toAppealView(decision.appeal) : null,
     canAppeal: canAppeal(decision, now),
     appealDeadline: restrictive ? appealDeadline(decision).toISOString() : null,
     reversed: decision.reversedBy.length > 0,
   };
+}
+
+/** Bewertungen haben keinen eigenen Verweis in der Entscheidung, sondern stehen im Schnappschuss */
+function decisionRating(decision: Pick<ModerationDecision, 'action' | 'snapshot'>) {
+  if (decision.action !== 'RATING_HIDDEN' && decision.action !== 'RATING_RESTORED') return null;
+  const snapshot = decision.snapshot as { ratingId?: string; title?: string } | null;
+  return snapshot?.ratingId ? { id: snapshot.ratingId, title: snapshot.title ?? 'Bewertung' } : null;
 }
 
 export function toAdminDecision(decision: DecisionWithRelations, now = new Date()): AdminDecision {
@@ -86,6 +94,7 @@ export const reportSummaryInclude = {
   deal: { select: { id: true, title: true, status: true, startsAt: true, endsAt: true, lastVerifiedAt: true, availability: true } },
   serviceProfile: { select: { id: true, headline: true, status: true } },
   project: { select: { id: true, title: true, status: true } },
+  rating: { select: { id: true, stars: true, comment: true, reply: true, hiddenAt: true, rater: { select: personSelect }, ratee: { select: personSelect } } },
   reported: { select: personSelect },
   reporter: { select: personSelect },
   assignee: { select: personSelect },
@@ -106,6 +115,17 @@ export function toReportSummary(report: ReportWithRelations, relatedOpen: number
     deal: report.deal ? { id: report.deal.id, title: report.deal.title, status: dealDisplayStatus(report.deal) } : null,
     serviceProfile: report.serviceProfile ? { id: report.serviceProfile.id, title: report.serviceProfile.headline, status: report.serviceProfile.status } : null,
     project: report.project ? { id: report.project.id, title: report.project.title, status: report.project.status } : null,
+    rating: report.rating
+      ? {
+          id: report.rating.id,
+          stars: report.rating.stars,
+          comment: report.rating.comment,
+          reply: report.rating.reply,
+          hidden: report.rating.hiddenAt !== null,
+          rater: toPerson(report.rating.rater)!,
+          ratee: toPerson(report.rating.ratee)!,
+        }
+      : null,
     conversationId: report.conversationId,
     reported: report.reported ? { ...toPerson(report.reported)!, status: report.reported.status } : null,
     reporter: toPerson(report.reporter),

@@ -11,6 +11,8 @@ import { Pagination } from '@/components/pagination';
 import { JsonLd } from '@/components/json-ld';
 import { serverEnv } from '@/lib/env';
 import { dealerJsonLd, metaDescription } from '@/lib/seo';
+import { loadRatingSummary } from '@/lib/ratings';
+import { RatingSummaryLink } from '@/components/ratings/rating-stars';
 
 const ID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -56,7 +58,7 @@ export default function DealerPage({ params, searchParams }: PageProps<'/haendle
 async function Dealer({ params, searchParams }: PageProps<'/haendler/[id]'>) {
   const [{ id }, query] = await Promise.all([params, searchParams]);
   const page = Math.max(1, Number.parseInt(typeof query.seite === 'string' ? query.seite : '1', 10) || 1);
-  const dealer = await loadDealer(id, page);
+  const [dealer, ratings] = await Promise.all([loadDealer(id, page), ID_PATTERN.test(id) ? loadRatingSummary(id) : null]);
   if (!dealer) notFound();
   const totalPages = Math.ceil(dealer.listings.total / dealer.listings.pageSize);
   const website = dealer.website ? new URL(dealer.website) : null;
@@ -79,6 +81,7 @@ async function Dealer({ params, searchParams }: PageProps<'/haendler/[id]'>) {
             <BadgeCheck className="size-4" aria-hidden="true" /> Gewerblicher Anbieter
           </p>
           <p className="mt-1 text-sm text-ink-500">Auf Markterl seit {formatDate(dealer.memberSince)}</p>
+          {ratings ? <RatingSummaryLink summary={ratings} href={`/bewertungen/${dealer.id}`} className="mt-2" /> : null}
           {dealer.description ? <p className="mt-4 text-sm leading-relaxed whitespace-pre-line text-ink-700">{dealer.description}</p> : null}
           <ul className="mt-4 space-y-2 text-sm text-ink-700">
             {dealer.address ? (

@@ -139,6 +139,8 @@ model User {
   serviceProfile         ServiceProfile?
   reviewedQualifications ServiceQualification[] @relation("QualificationReviewer")
   serviceProjects        ServiceProject[]
+  ratingsGiven           Rating[]               @relation("RatingBy")
+  ratingsReceived        Rating[]               @relation("RatingOf")
 
   @@index([status])
   @@index([accountType, status])
@@ -419,6 +421,7 @@ model Conversation {
   seller           User            @relation("ConversationSeller", fields: [sellerId], references: [id], onDelete: Cascade)
   messages         Message[]
   reports          Report[]
+  ratings          Rating[]
 
   /// Je Inserat (bzw. Profil) und Interessent genau eine Unterhaltung
   @@unique([listingId, buyerId])
@@ -467,6 +470,34 @@ model UserBlock {
   @@map("user_blocks")
 }
 
+/// Bewertung nach einem Kontakt zu einer Anzeige: Wer in der Unterhaltung mit der anderen Person geschrieben hat (beide
+/// Seiten haben geantwortet), kann sie einmal mit 1–5 Sternen bewerten. Dienstleistungen bewusst ohne Bewertungen. Die bewertete Person kann einmal öffentlich antworten.
+/// Wird mit der Unterhaltung gelöscht (z. B. beim Löschen eines der beiden Konten).
+model Rating {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id")
+  raterId        String       @map("rater_id") @db.Uuid
+  rateeId        String       @map("ratee_id") @db.Uuid
+  stars          Int          @db.SmallInt
+  comment        String?      @db.VarChar(500)
+  /// Öffentliche Antwort der bewerteten Person
+  reply          String?      @db.VarChar(500)
+  repliedAt      DateTime?    @map("replied_at")
+  /// Von der Moderation ausgeblendet (Entscheidung mit snapshot.ratingId)
+  hiddenAt       DateTime?    @map("hidden_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  rater          User         @relation("RatingBy", fields: [raterId], references: [id], onDelete: Cascade)
+  ratee          User         @relation("RatingOf", fields: [rateeId], references: [id], onDelete: Cascade)
+  reports        Report[]
+
+  @@unique([conversationId, raterId])
+  @@index([rateeId, createdAt(sort: Desc)])
+  @@index([raterId, createdAt(sort: Desc)])
+  @@map("ratings")
+}
+
 enum ReportReason {
   SPAM
   FRAUD
@@ -496,6 +527,8 @@ enum ReportTarget {
   SERVICE_PROFILE
   /// Projektauftrag (Phase 10)
   PROJECT
+  /// Bewertung nach einem Kontakt
+  RATING
 }
 
 enum ReportPriority {
@@ -523,6 +556,7 @@ model Report {
   dealId           String?             @map("deal_id")
   serviceProfileId String?             @map("service_profile_id")
   projectId        String?             @map("project_id")
+  ratingId         String?             @map("rating_id")
   reason           ReportReason
   details          String?             @db.VarChar(1000)
   status           ReportStatus        @default(OPEN)
@@ -547,6 +581,7 @@ model Report {
   deal             Deal?               @relation(fields: [dealId], references: [id], onDelete: SetNull)
   serviceProfile   ServiceProfile?     @relation(fields: [serviceProfileId], references: [id], onDelete: SetNull)
   project          ServiceProject?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  rating           Rating?             @relation(fields: [ratingId], references: [id], onDelete: SetNull)
   decision         ModerationDecision? @relation(fields: [decisionId], references: [id], onDelete: SetNull)
   events           ReportEvent[]
 
@@ -559,6 +594,7 @@ model Report {
   @@index([dealId, status])
   @@index([serviceProfileId, status])
   @@index([projectId, status])
+  @@index([ratingId, status])
   @@map("reports")
 }
 
@@ -620,6 +656,9 @@ enum ModerationAction {
   /// Projektauftrag bis zur Prüfung ausgeblendet (Status PENDING_REVIEW)
   PROJECT_HIDDEN
   PROJECT_RESTORED
+  /// Bewertung ausgeblendet (Bewertung in snapshot.ratingId); betroffen ist die Person, die sie geschrieben hat
+  RATING_HIDDEN
+  RATING_RESTORED
 }
 
 /// Rechtsgrundlage einer Maßnahme (Art. 17 Abs. 3 lit. d/e DSA)
@@ -724,6 +763,9 @@ enum NotificationType {
   PROJECT_REJECTED
   PROJECT_HIDDEN
   PROJECT_RESTORED
+  RATING_RECEIVED
+  RATING_HIDDEN
+  RATING_RESTORED
 }
 
 /// Mitteilung im Konto (zusätzlich per E-Mail). Für Entscheidungen der Moderation, Einsprüche und Meldungen.

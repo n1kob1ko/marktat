@@ -11,6 +11,7 @@ import {
   type ListingModerationInfo,
   type ModerationDecisionView,
   type PortfolioItemDecisionInput,
+  type RatingDecisionInput,
   type UserDecisionInput,
 } from '@marktat/shared';
 import type { Prisma } from '../generated/prisma/client.js';
@@ -101,6 +102,8 @@ const AUDIT_ACTIONS: Record<ModerationAction, AuditAction> = {
   PROJECT_REJECTED: 'moderation.project_rejected',
   PROJECT_HIDDEN: 'moderation.project_hidden',
   PROJECT_RESTORED: 'moderation.project_restored',
+  RATING_HIDDEN: 'moderation.rating_hidden',
+  RATING_RESTORED: 'moderation.rating_restored',
 };
 
 function dealBaseStatus(deal: { status: DealStatus; endsAt: Date }, now = new Date()): DealStatus {
@@ -407,6 +410,44 @@ export class ModerationService {
       return { decision, closedReports, profileId: item.profile.id };
     });
     this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'service_profile', entityId: profileId, ip, metadata: { decisionId: decision.id, portfolioItemId: itemId } });
+    await this.notifyDecision(decision.id);
+    if (closedReports.length) await this.reports.notifyReporters(closedReports, 'RESOLVED');
+    return this.adminDecision(decision.id);
+  }
+
+  /**
+   * Bewertung ausblenden (z. B. Beleidigung, falsche Tatsachenbehauptung) oder wieder zeigen. Betroffen ist die Person,
+   * die sie geschrieben hat; sie kann Einspruch erheben. Ausblenden erledigt offene Meldungen zur Bewertung.
+   */
+  async decideRating(moderator: AuthUser, ratingId: string, input: RatingDecisionInput, ip?: string) {
+    if (!ENTITY_ID.test(ratingId)) throw new NotFoundException('Diese Bewertung gibt es nicht.');
+    const action: ModerationAction = input.decision === 'HIDE' ? 'RATING_HIDDEN' : 'RATING_RESTORED';
+    const { decision, closedReports } = await this.prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM ratings WHERE id = ${ratingId} FOR UPDATE`;
+      const rating = await tx.rating.findUnique({ where: { id: ratingId }, include: { ratee: { select: { displayName: true } } } });
+      if (!rating) throw new NotFoundException('Diese Bewertung gibt es nicht.');
+      if (rating.raterId === moderator.id || rating.rateeId === moderator.id) throw new ForbiddenException('Bewertungen, an denen du beteiligt bist, kannst du nicht moderieren.');
+      if (input.decision === 'HIDE' && rating.hiddenAt) throw new ConflictException('Diese Bewertung ist bereits ausgeblendet.');
+      if (input.decision === 'RESTORE' && !rating.hiddenAt) throw new ConflictException('Diese Bewertung ist nicht ausgeblendet.');
+      const previous = input.decision === 'RESTORE' ? await this.latestRatingHide(tx, rating.raterId, ratingId) : null;
+      await tx.rating.update({ where: { id: ratingId }, data: { hiddenAt: input.decision === 'HIDE' ? new Date() : null } });
+      const decision = await tx.moderationDecision.create({
+        data: {
+          action,
+          userId: rating.raterId,
+          moderatorId: moderator.id,
+          reason: input.decision === 'RESTORE' ? null : input.reason,
+          ground: input.decision === 'RESTORE' ? null : input.ground,
+          statement: input.statement,
+          internalNote: input.internalNote,
+          reversesId: previous?.id,
+          snapshot: { ratingId, title: `Bewertung für ${rating.ratee.displayName}`, stars: rating.stars, comment: rating.comment, reply: rating.reply },
+        },
+      });
+      const closedReports = input.decision === 'HIDE' ? await this.reports.closeWithDecision(tx, { ratingId }, decision.id, moderator.id, 'RESOLVED') : [];
+      return { decision, closedReports };
+    });
+    this.audit.log({ action: AUDIT_ACTIONS[action], actorId: moderator.id, entityType: 'rating', entityId: ratingId, ip, metadata: { decisionId: decision.id } });
     await this.notifyDecision(decision.id);
     if (closedReports.length) await this.reports.notifyReporters(closedReports, 'RESOLVED');
     return this.adminDecision(decision.id);
@@ -794,6 +835,17 @@ export class ModerationService {
         },
       });
     }
+    if (original.action === 'RATING_HIDDEN') {
+      const ratingId = (original.snapshot as { ratingId?: string } | null)?.ratingId;
+      const rating = ratingId ? await tx.rating.findUnique({ where: { id: ratingId } }) : null;
+      const latest = ratingId ? await this.latestRatingHide(tx, original.userId, ratingId) : null;
+      if (!rating?.hiddenAt || latest?.id !== original.id) return null;
+      await tx.rating.update({ where: { id: rating.id }, data: { hiddenAt: null } });
+      const snapshot = original.snapshot as { ratingId: string; title?: string };
+      return tx.moderationDecision.create({
+        data: { action: 'RATING_RESTORED', userId: original.userId, moderatorId: reviewer.id, statement, reversesId: original.id, snapshot: { ratingId: rating.id, title: snapshot.title ?? 'Bewertung' } },
+      });
+    }
     if (original.projectId && (original.action === 'PROJECT_REJECTED' || original.action === 'PROJECT_HIDDEN')) {
       await tx.$queryRaw`SELECT id FROM service_projects WHERE id = ${original.projectId} FOR UPDATE`;
       const project = await tx.serviceProject.findUnique({ where: { id: original.projectId } });
@@ -863,6 +915,15 @@ export class ModerationService {
   private latestPortfolioHide(tx: Tx, serviceProfileId: string, itemId: string) {
     return tx.moderationDecision.findFirst({
       where: { serviceProfileId, action: 'PORTFOLIO_ITEM_HIDDEN', snapshot: { path: ['portfolioItemId'], equals: itemId }, reversedBy: { none: {} } },
+      orderBy: { createdAt: 'desc' },
+      select: { id: true },
+    });
+  }
+
+  /** Letzte noch nicht aufgehobene Ausblendung einer Bewertung */
+  private latestRatingHide(tx: Tx, userId: string, ratingId: string) {
+    return tx.moderationDecision.findFirst({
+      where: { userId, action: 'RATING_HIDDEN', snapshot: { path: ['ratingId'], equals: ratingId }, reversedBy: { none: {} } },
       orderBy: { createdAt: 'desc' },
       select: { id: true },
     });
@@ -952,6 +1013,12 @@ export class ModerationService {
         intro: `Dein Projektauftrag „${title}“ ist bis zum Abschluss einer Prüfung vorübergehend nicht öffentlich sichtbar.`,
       },
       PROJECT_RESTORED: { type: 'PROJECT_RESTORED', title: 'Dein Projektauftrag ist freigegeben', intro: `Wir haben deinen Projektauftrag „${title}“ geprüft und freigegeben.` },
+      RATING_HIDDEN: {
+        type: 'RATING_HIDDEN',
+        title: 'Deine Bewertung wurde ausgeblendet',
+        intro: `Wir haben deine ${itemTitle} wegen eines Verstoßes ausgeblendet. Sie ist nicht mehr öffentlich sichtbar.`,
+      },
+      RATING_RESTORED: { type: 'RATING_RESTORED', title: 'Deine Bewertung ist wieder sichtbar', intro: `Deine ${itemTitle} ist wieder öffentlich sichtbar.` },
     };
     const text = texts[decision.action];
     const restrictive = RESTRICTIVE_ACTIONS.includes(decision.action);

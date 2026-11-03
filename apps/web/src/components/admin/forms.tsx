@@ -11,6 +11,7 @@ import {
   decideDealAction,
   decideListingAction,
   decidePortfolioItemAction,
+  decideRatingAction,
   decideServiceProfileAction,
   decideProjectAction,
   decideUserAction,
@@ -51,6 +52,7 @@ const DECISION_ACTIONS = {
   serviceProfile: decideServiceProfileAction,
   project: decideProjectAction,
   portfolioItem: decidePortfolioItemAction,
+  rating: decideRatingAction,
   dealsBlock: dealsBlockAction,
 } satisfies Record<string, Action>;
 

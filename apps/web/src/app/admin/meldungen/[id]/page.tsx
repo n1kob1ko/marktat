@@ -21,10 +21,19 @@ import { FlashMessage } from '@/components/flash-message';
 import { ENTITY_ID, param } from '@/lib/admin';
 import { SubmitButton } from '@/components/submit-button';
 import { DecisionList, PersonLink, PriorityBadge, ReportStatusBadge, Section, UserStatusBadge } from '@/components/admin/admin-ui';
-import { ActionForm, DismissReportForm } from '@/components/admin/forms';
+import { ActionForm, DecisionForm, DismissReportForm, type DecisionOption } from '@/components/admin/forms';
+import { Stars } from '@/components/ratings/rating-stars';
 import { updateReportAction } from '../../actions';
 
 export const metadata: Metadata = { title: 'Meldung' };
+
+const RATING_HIDE: DecisionOption = {
+  value: 'HIDE',
+  label: 'Bewertung ausblenden',
+  description: 'Die Bewertung verschwindet aus dem Profil. Die Person, die sie geschrieben hat, erhält die Begründung und kann Einspruch erheben.',
+  restrictive: true,
+};
+const RATING_RESTORE: DecisionOption = { value: 'RESTORE', label: 'Wieder zeigen', description: 'Die Bewertung ist wieder öffentlich sichtbar.', restrictive: false };
 
 export default function ReportDetailPage({ params, searchParams }: PageProps<'/admin/meldungen/[id]'>) {
   return (
@@ -103,6 +112,22 @@ async function ReportDetail({ params, searchParams }: Pick<PageProps<'/admin/mel
                   <dt className="text-ink-500">Projektauftrag</dt>
                   <dd>
                     <Link href={`/admin/dienstleistungen/projekte/${report.project.id}`} className="font-medium text-brand-700 hover:underline">{report.project.title}</Link>
+                  </dd>
+                </>
+              ) : null}
+              {report.rating ? (
+                <>
+                  <dt className="text-ink-500">Bewertung</dt>
+                  <dd className="space-y-1">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Stars value={report.rating.stars} />
+                      {report.rating.hidden ? <Badge tone="warning">Ausgeblendet</Badge> : null}
+                    </span>
+                    <span className="block text-ink-600">
+                      Von <PersonLink person={report.rating.rater} /> über <PersonLink person={report.rating.ratee} />
+                    </span>
+                    {report.rating.comment ? <span className="block whitespace-pre-line text-ink-800">„{report.rating.comment}“</span> : <span className="block text-ink-500">Ohne Text.</span>}
+                    {report.rating.reply ? <span className="block whitespace-pre-line text-ink-600">Antwort: „{report.rating.reply}“</span> : null}
                   </dd>
                 </>
               ) : null}
@@ -224,6 +249,9 @@ async function ReportDetail({ params, searchParams }: Pick<PageProps<'/admin/mel
                     <Link href={`/admin/dienstleistungen/projekte/${report.project.id}`} className={buttonClasses({ size: 'sm', className: 'w-full' })}>
                       Projektauftrag prüfen und entscheiden
                     </Link>
+                  ) : null}
+                  {report.rating ? (
+                    <DecisionForm target="rating" id={report.rating.id} reportId={report.id} defaultReason={report.reason} options={[report.rating.hidden ? RATING_RESTORE : RATING_HIDE]} />
                   ) : null}
                   {report.reported && report.reported.status === 'ACTIVE' ? (
                     <Link href={`/admin/nutzer/${report.reported.id}?meldung=${report.id}`} className={buttonClasses({ variant: 'outline', size: 'sm', className: 'w-full' })}>

@@ -284,7 +284,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
 
           <p className="flex gap-2 px-1 text-xs text-ink-500">
             <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-            Mitglied seit {formatDate(profile.provider.memberSince)}. Markterl zeigt keine Bewertungen.
+            Mitglied seit {formatDate(profile.provider.memberSince)}. Für Dienstleistungen zeigt Markterl keine Bewertungen.
           </p>
           {profile.isOwner ? null : (
             <Link href={`/melden?anbieter=${profile.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">

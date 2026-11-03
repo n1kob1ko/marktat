@@ -12,6 +12,7 @@ import {
   changeRoleSchema,
   dismissReportSchema,
   listingDecisionSchema,
+  ratingDecisionSchema,
   reportingRestrictionSchema,
   updateReportSchema,
   userDecisionSchema,
@@ -24,6 +25,7 @@ import {
   type ChangeRoleInput,
   type DismissReportInput,
   type ListingDecisionInput,
+  type RatingDecisionInput,
   type ReportingRestrictionInput,
   type UpdateReportInput,
   type UserDecisionInput,
@@ -148,6 +150,19 @@ export class AdminController {
   @ApiOperation({ summary: 'Konto im Überblick (E-Mail nur für Administratoren)' })
   user(@CurrentUser() user: AuthUser, @Param('id') id: string) {
     return this.admin.user(user, id);
+  }
+
+  @Post('ratings/:id/decisions')
+  @Throttle(DECIDE_LIMIT)
+  @ApiOperation({ summary: 'Bewertung ausblenden oder wieder zeigen (mit Begründung an die Person, die sie geschrieben hat)' })
+  @ApiBody({ schema: openApiSchema(ratingDecisionSchema) })
+  decideRating(
+    @CurrentUser() user: AuthUser,
+    @Param('id') id: string,
+    @Body(new ZodValidationPipe(ratingDecisionSchema)) body: RatingDecisionInput,
+    @Req() req: Request,
+  ) {
+    return this.moderation.decideRating(user, id, body, req.ip);
   }
 
   @Post('users/:id/decisions')
