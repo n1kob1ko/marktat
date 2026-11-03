@@ -14,7 +14,7 @@ export const REPORT_STATUS_LABELS: Record<ReportStatus, string> = {
   DISMISSED: 'Erledigt – kein Verstoß',
 };
 
-export const REPORT_TARGETS = ['LISTING', 'CONVERSATION', 'DEAL', 'SERVICE_PROFILE', 'PROJECT'] as const;
+export const REPORT_TARGETS = ['LISTING', 'CONVERSATION', 'DEAL', 'SERVICE_PROFILE', 'PROJECT', 'RATING'] as const;
 export type ReportTarget = (typeof REPORT_TARGETS)[number];
 export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
   LISTING: 'Inserat',
@@ -22,6 +22,7 @@ export const REPORT_TARGET_LABELS: Record<ReportTarget, string> = {
   DEAL: 'Deal / Angebot',
   SERVICE_PROFILE: 'Anbieterprofil',
   PROJECT: 'Projektauftrag',
+  RATING: 'Bewertung',
 };
 
 export const REPORT_PRIORITIES = ['LOW', 'NORMAL', 'HIGH', 'URGENT'] as const;
@@ -55,6 +56,8 @@ export const MODERATION_ACTIONS = [
   'PROJECT_REJECTED',
   'PROJECT_HIDDEN',
   'PROJECT_RESTORED',
+  'RATING_HIDDEN',
+  'RATING_RESTORED',
 ] as const;
 export type ModerationAction = (typeof MODERATION_ACTIONS)[number];
 export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
@@ -76,9 +79,11 @@ export const MODERATION_ACTION_LABELS: Record<ModerationAction, string> = {
   PROJECT_REJECTED: 'Projektauftrag deaktiviert',
   PROJECT_HIDDEN: 'Projektauftrag bis zur Prüfung ausgeblendet',
   PROJECT_RESTORED: 'Projektauftrag freigegeben',
+  RATING_HIDDEN: 'Bewertung ausgeblendet',
+  RATING_RESTORED: 'Bewertung wieder sichtbar',
 };
 /** Einschränkende Maßnahmen: brauchen Grund, Rechtsgrundlage und Begründung (Art. 17 DSA) und erlauben Einspruch. */
-export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'DEALS_BLOCKED', 'SERVICE_PROFILE_REJECTED', 'SERVICE_PROFILE_HIDDEN', 'PORTFOLIO_ITEM_HIDDEN', 'PROJECT_REJECTED', 'PROJECT_HIDDEN'];
+export const RESTRICTIVE_ACTIONS: readonly ModerationAction[] = ['LISTING_REJECTED', 'LISTING_HIDDEN', 'ACCOUNT_SUSPENDED', 'DEAL_REJECTED', 'DEAL_HIDDEN', 'DEALS_BLOCKED', 'SERVICE_PROFILE_REJECTED', 'SERVICE_PROFILE_HIDDEN', 'PORTFOLIO_ITEM_HIDDEN', 'PROJECT_REJECTED', 'PROJECT_HIDDEN', 'RATING_HIDDEN'];
 
 export const DECISION_GROUNDS = ['TERMS', 'ILLEGAL'] as const;
 export type DecisionGround = (typeof DECISION_GROUNDS)[number];
@@ -119,6 +124,9 @@ export const NOTIFICATION_TYPES = [
   'PROJECT_REJECTED',
   'PROJECT_HIDDEN',
   'PROJECT_RESTORED',
+  'RATING_RECEIVED',
+  'RATING_HIDDEN',
+  'RATING_RESTORED',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 

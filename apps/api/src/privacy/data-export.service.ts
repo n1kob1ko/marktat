@@ -59,6 +59,11 @@ export class DataExportService {
       }),
     ]);
     // Händlerbereich und Dienstleistungen (Phase 10): Deals, Filialen, Produktfeeds, Anbieterprofil, Projektaufträge
+    // Bewertungen: abgegebene vollständig, erhaltene mit Namen der bewertenden Person (öffentlich sichtbar gewesen)
+    const [ratingsGiven, ratingsReceived] = await Promise.all([
+      this.prisma.rating.findMany({ where: { raterId: id }, include: { ratee: { select: { displayName: true, status: true } } }, orderBy: { createdAt: 'asc' } }),
+      this.prisma.rating.findMany({ where: { rateeId: id }, include: { rater: { select: { displayName: true, status: true } } }, orderBy: { createdAt: 'asc' } }),
+    ]);
     const [deals, stores, feeds, serviceProfile, projects, dealFavorites, serviceFavorites] = await Promise.all([
       this.prisma.deal.findMany({
         where: { merchantId: id, status: { not: 'DELETED' } },
@@ -149,6 +154,8 @@ export class DataExportService {
         myMessages: c.messages.map((m) => ({ sentAt: m.createdAt, body: m.body, readByPartnerAt: m.readAt })),
         receivedMessages: c._count.messages,
       })),
+      ratingsGiven: ratingsGiven.map((r) => ({ about: name(r.ratee), stars: r.stars, comment: r.comment, reply: r.reply, hiddenByModeration: r.hiddenAt !== null, createdAt: r.createdAt, updatedAt: r.updatedAt })),
+      ratingsReceived: ratingsReceived.map((r) => ({ from: name(r.rater), stars: r.stars, comment: r.comment, myReply: r.reply, hiddenByModeration: r.hiddenAt !== null, createdAt: r.createdAt })),
       blockedPersons: blocks.map((b) => ({ displayName: name(b.blocked), blockedAt: b.createdAt })),
       reportsMade: reports.map((r) => ({
         target:
@@ -160,7 +167,9 @@ export class DataExportService {
                 ? `Anbieterprofil „${r.serviceProfile?.headline ?? 'gelöscht'}“`
                 : r.targetType === 'PROJECT'
                   ? `Projektauftrag „${r.project?.title ?? 'gelöscht'}“`
-                  : 'Unterhaltung',
+                  : r.targetType === 'RATING'
+                    ? 'Bewertung'
+                    : 'Unterhaltung',
         reason: REPORT_REASON_LABELS[r.reason],
         details: r.details,
         status: r.status,

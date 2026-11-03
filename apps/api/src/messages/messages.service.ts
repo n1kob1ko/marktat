@@ -29,6 +29,7 @@ import { JobsService } from '../jobs/jobs.service.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
 import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { RatingsService } from '../ratings/ratings.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
@@ -116,6 +117,7 @@ export class MessagesService implements OnModuleInit {
     private readonly mail: MailService,
     private readonly audit: AuditService,
     private readonly reports: ReportsService,
+    private readonly ratings: RatingsService,
   ) {}
 
   onModuleInit() {
@@ -269,11 +271,12 @@ export class MessagesService implements OnModuleInit {
     const row = await this.requireParticipant(user.id, conversationId);
     const unread = await this.unreadByConversation(user.id, [row.id]);
     const partner = row.buyerId === user.id ? row.seller : row.buyer;
-    const [blockedByMe, blockedMe] = await this.blockState(user.id, partner.id);
+    const [[blockedByMe, blockedMe], rating] = await Promise.all([this.blockState(user.id, partner.id), this.ratings.quickState(user.id, row, isInactive(partner))]);
     return {
       ...this.toSummary(row, user.id, unread.get(row.id) ?? 0),
       blockedByMe,
       sendBlockedReason: sendBlockedReason(partner, blockedByMe, blockedMe),
+      rating,
     };
   }
 

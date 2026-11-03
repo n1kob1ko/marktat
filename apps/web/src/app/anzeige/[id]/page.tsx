@@ -22,6 +22,8 @@ import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ShareButton } from '@/components/share-button';
+import { RatingSummaryLink } from '@/components/ratings/rating-stars';
+import { loadRatingSummary } from '@/lib/ratings';
 import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
 import { JsonLd } from '@/components/json-ld';
@@ -75,7 +77,7 @@ async function ListingContent({
     throw error;
   }
   const { seller } = listing;
-  const staff = token ? isStaff(await getCurrentUser()) : false;
+  const [staff, ratings] = await Promise.all([token ? getCurrentUser().then(isStaff) : false, loadRatingSummary(seller.id)]);
   const hinweis = typeof query.hinweis === 'string' ? query.hinweis : undefined;
   const fehler = typeof query.fehler === 'string' ? query.fehler : undefined;
 
@@ -171,6 +173,7 @@ async function ListingContent({
                 <p className="text-sm text-ink-500">Mitglied seit {formatDate(seller.memberSince)}</p>
               </div>
             </div>
+            {ratings ? <RatingSummaryLink summary={ratings} href={`/bewertungen/${seller.id}`} className="mt-3" /> : null}
             {seller.accountType === 'BUSINESS' ? (
               <p className="mt-3 flex items-center gap-1.5 text-sm text-brand-800">
                 <BadgeCheck className="size-4" aria-hidden="true" /> Gewerblicher Anbieter – es gelten Verbraucherrechte.

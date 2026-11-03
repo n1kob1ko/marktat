@@ -12,6 +12,7 @@ import {
   MessageCircle,
   ShieldCheck,
   Sparkles,
+  Star,
   Tag,
   UserRound,
   Wrench,
@@ -45,6 +46,7 @@ function buildGroups({ unreadMessages, showSecurity, showDeals }: { unreadMessag
       label: 'Kontakt & Merken',
       items: [
         { href: '/nachrichten', label: 'Nachrichten', icon: MessageCircle, count: unreadMessages, countLabel: 'ungelesen' },
+        { href: '/konto/bewertungen', label: 'Bewertungen', icon: Star },
         { href: '/konto/merkliste', label: 'Merkliste', icon: Heart },
         { href: '/konto/suchen', label: 'Gespeicherte Suchen', icon: Bookmark },
       ],

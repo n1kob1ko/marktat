@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { ArrowDown, ArrowLeft, Check, CheckCheck, ImageIcon, Info, RotateCw, SendHorizontal, ShieldAlert } from 'lucide-react';
+import { ArrowDown, ArrowLeft, Check, CheckCheck, ImageIcon, Info, RotateCw, SendHorizontal, ShieldAlert, Star } from 'lucide-react';
 import { MESSAGE_MAX_LENGTH, formatPriceCents, type ChatMessage, type ConversationDetail, type MessagePage, type RealtimeEvent } from '@marktat/shared';
 import { Button, Spinner, cn } from '@marktat/ui';
 import { dayKey, formatDayLabel, formatMessageTime } from '@/lib/chat-format';
@@ -237,6 +237,16 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
             </span>
           </span>
         </Link>
+        {conversation.rating.canRate || conversation.rating.myStars ? (
+          <Link
+            href={`/bewerten/${conversation.id}`}
+            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-ink-700 hover:bg-ink-900/5"
+            aria-label={conversation.rating.myStars ? `Deine Bewertung: ${conversation.rating.myStars} von 5 Sternen – ändern` : `${partner.displayName} bewerten`}
+          >
+            <Star className={cn('size-5', conversation.rating.myStars ? 'fill-accent-500 text-accent-500' : 'text-ink-500')} aria-hidden="true" />
+            <span className="hidden sm:inline">{conversation.rating.myStars ? 'Bewertet' : 'Bewerten'}</span>
+          </Link>
+        ) : null}
         <ChatMenu conversation={conversation} />
       </header>
 

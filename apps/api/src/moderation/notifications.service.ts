@@ -38,8 +38,10 @@ export class NotificationsService implements OnModuleInit {
     this.jobs.register(NOTIFICATION_EMAIL_JOB, (data) => this.sendEmail(String(data.notificationId)));
   }
 
-  async notify(input: NewNotification): Promise<void> {
+  /** `email: false` = nur im Konto (z. B. neue Bewertung, wenn die Person keine E-Mails zu Nachrichten möchte) */
+  async notify(input: NewNotification, options: { email?: boolean } = {}): Promise<void> {
     const notification = await this.prisma.notification.create({ data: input });
+    if (options.email === false) return;
     await this.jobs.add(NOTIFICATION_EMAIL_JOB, { notificationId: notification.id }, { jobId: `notification-${notification.id}` });
   }
 

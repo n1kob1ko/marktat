@@ -15,6 +15,7 @@ import {
   listingDecisionSchema,
   portfolioItemDecisionSchema,
   qualificationReviewSchema,
+  ratingDecisionSchema,
   reportingRestrictionSchema,
   updateReportSchema,
   userDecisionSchema,
@@ -231,6 +232,34 @@ export async function decidePortfolioItemAction(_prev: FormState, formData: Form
     return failure(error, kept);
   }
   redirect(`/admin/dienstleistungen/${profileId}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-portfolio-freigegeben' : 'mod-portfolio-ausgeblendet'}`);
+}
+
+/** Bewertung ausblenden bzw. wieder zeigen; zurück geht es zur Meldung (verstecktes Feld reportId) */
+export async function decideRatingAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const id = String(formData.get('id') ?? '');
+  const reportId = String(formData.get('reportId') ?? '');
+  if (!ENTITY_ID.test(id) || !ENTITY_ID.test(reportId)) return invalid;
+  const kept = values(formData, DECISION_FIELDS);
+  const parsed = ratingDecisionSchema.safeParse({
+    decision: text(formData, 'decision'),
+    reason: text(formData, 'reason'),
+    ground: text(formData, 'ground'),
+    statement: String(formData.get('statement') ?? ''),
+    internalNote: text(formData, 'internalNote'),
+  });
+  if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
+  if (parsed.data.decision === 'RESTORE') {
+    delete parsed.data.reason;
+    delete parsed.data.ground;
+  }
+  const { token } = await requireStaff(`/admin/meldungen/${reportId}`);
+  try {
+    await api(`/admin/ratings/${id}/decisions`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    return failure(error, kept);
+  }
+  revalidatePath('/bewertungen/[id]', 'page');
+  redirect(`/admin/meldungen/${reportId}?hinweis=${parsed.data.decision === 'RESTORE' ? 'mod-bewertung-freigegeben' : 'mod-bewertung-ausgeblendet'}`);
 }
 
 /** Qualifikation prüfen: bestätigen („Von Markterl geprüft“) oder nicht bestätigen */

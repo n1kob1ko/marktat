@@ -151,7 +151,7 @@ async function ProjectContent({ params, searchParams }: Pick<PageProps<'/dienstl
 
           <p className="flex gap-2 px-1 text-xs text-ink-500">
             <BadgeInfo className="size-4 shrink-0" aria-hidden="true" />
-            Ein Projektauftrag ist kein Stellenangebot und keine Ausschreibung. Mitglied seit {formatDate(project.client.memberSince)}. Markterl zeigt keine Bewertungen.
+            Ein Projektauftrag ist kein Stellenangebot und keine Ausschreibung. Mitglied seit {formatDate(project.client.memberSince)}. Für Projektaufträge zeigt Markterl keine Bewertungen.
           </p>
           {project.isOwner ? null : (
             <Link href={`/melden?projekt=${project.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">

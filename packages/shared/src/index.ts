@@ -17,5 +17,6 @@ export * from './schemas/interactions.js';
 export * from './schemas/listing.js';
 export * from './schemas/moderation.js';
 export * from './schemas/profile.js';
+export * from './schemas/ratings.js';
 export * from './schemas/url.js';
 export * from './search/index.js';

@@ -3,12 +3,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { Alert, Card, Container, Skeleton } from '@marktat/ui';
-import type { DealDetail, ListingDetail, ServiceProfileDetail, ServiceProjectDetail } from '@marktat/shared';
+import type { DealDetail, ListingDetail, RatingItem, ServiceProfileDetail, ServiceProjectDetail } from '@marktat/shared';
 import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { ENTITY_ID } from '@/lib/admin';
 import { LegalPage } from '@/components/legal-page';
 import { ReportListingForm } from './report-form';
+import { RatingEntry } from '@/components/ratings/rating-list';
 
 export const metadata: Metadata = { title: 'Inhalte melden', robots: { index: false } };
 
@@ -28,6 +29,8 @@ async function ReportContent({ searchParams }: Pick<PageProps<'/melden'>, 'searc
   if (profileId) return <ReportServiceProfile profileId={profileId} />;
   const projectId = typeof params.projekt === 'string' ? params.projekt : undefined;
   if (projectId) return <ReportProject projectId={projectId} />;
+  const ratingId = typeof params.bewertung === 'string' ? params.bewertung : undefined;
+  if (ratingId) return <ReportRating ratingId={ratingId} />;
   const listingId = typeof params.anzeige === 'string' ? params.anzeige : undefined;
   if (!listingId) return <ReportInfo />;
   if (!ENTITY_ID.test(listingId)) notFound();
@@ -138,6 +141,34 @@ async function ReportProject({ projectId }: { projectId: string }) {
       <p className="mt-2 text-sm text-ink-500">Zum Beispiel: eine versteckte Stellenanzeige, unbezahlte „Probearbeit“, Betrugsversuche oder rechtswidrige Tätigkeiten.</p>
       <Card className="mt-6 p-5 sm:p-7">
         {project.isOwner ? <Alert tone="info">Das ist dein eigener Auftrag. Du kannst ihn bearbeiten, beenden oder löschen, aber nicht melden.</Alert> : <ReportListingForm projectId={project.id} />}
+      </Card>
+    </Container>
+  );
+}
+
+async function ReportRating({ ratingId }: { ratingId: string }) {
+  if (!ENTITY_ID.test(ratingId)) notFound();
+  const { user, token } = await requireUser(`/melden?bewertung=${ratingId}`);
+  let rating: RatingItem;
+  try {
+    rating = await api<RatingItem>(`/ratings/${ratingId}`, { token, cache: 'no-store' });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) notFound();
+    throw error;
+  }
+  return (
+    <Container className="max-w-3xl py-10 sm:py-14">
+      <h1 className="text-3xl font-bold text-ink-950 sm:text-4xl">Bewertung melden</h1>
+      <p className="mt-3 text-ink-600">Zum Beispiel: Beleidigungen, falsche Tatsachenbehauptungen, persönliche Daten, Drohungen oder eine Bewertung ohne echten Kontakt.</p>
+      <Card className="mt-6 p-5 sm:p-6">
+        <RatingEntry item={rating} />
+      </Card>
+      <Card className="mt-4 p-5 sm:p-7">
+        {rating.rater.id === user.id ? (
+          <Alert tone="info">Das ist deine eigene Bewertung. Du kannst sie in der Unterhaltung ändern oder löschen, aber nicht melden.</Alert>
+        ) : (
+          <ReportListingForm rating={{ id: rating.id, rateeId: rating.ratee.id }} />
+        )}
       </Card>
     </Container>
   );

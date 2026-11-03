@@ -94,3 +94,26 @@ export async function reportProjectAction(_prev: FormState, formData: FormData):
   }
   redirect(`/dienstleistungen/projekte/${projectId}?hinweis=gemeldet`);
 }
+
+export async function reportRatingAction(_prev: FormState, formData: FormData): Promise<FormState> {
+  const ratingId = String(formData.get('ratingId') ?? '');
+  const ownerId = String(formData.get('ownerId') ?? '');
+  if (!ENTITY_ID.test(ratingId)) return { status: 'error', message: 'Diese Bewertung gibt es nicht.' };
+  const values = { reason: String(formData.get('reason') ?? ''), details: String(formData.get('details') ?? '') };
+  const { token } = await requireUser(`/melden?bewertung=${ratingId}`);
+  const parsed = reportListingSchema.safeParse({
+    reason: values.reason || undefined,
+    details: values.details,
+    goodFaith: formData.get('goodFaith') === 'on' ? true : undefined,
+  });
+  if (!parsed.success) {
+    return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values };
+  }
+  try {
+    await api(`/ratings/${ratingId}/report`, { method: 'POST', token, body: parsed.data });
+  } catch (error) {
+    if (error instanceof ApiError) return { status: 'error', message: error.message, fieldErrors: error.fieldErrors(), values };
+    throw error;
+  }
+  redirect(/^[0-9a-f-]{36}$/i.test(ownerId) ? `/bewertungen/${ownerId}?hinweis=bewertung-gemeldet` : '/konto/bewertungen?hinweis=bewertung-gemeldet');
+}

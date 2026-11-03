@@ -69,6 +69,8 @@ const ACTION_TONES: Record<ModerationAction, BadgeTone> = {
   PROJECT_REJECTED: 'danger',
   PROJECT_HIDDEN: 'warning',
   PROJECT_RESTORED: 'success',
+  RATING_HIDDEN: 'warning',
+  RATING_RESTORED: 'success',
 };
 export function ActionBadge({ action }: { action: ModerationAction }) {
   return <Badge tone={ACTION_TONES[action]}>{MODERATION_ACTION_LABELS[action]}</Badge>;
@@ -184,6 +186,12 @@ export function DecisionList({ decisions, showUser = false }: { decisions: Admin
                 <dd>
                   <Link href={`/admin/deals/${d.deal.id}`} className="text-brand-700 hover:underline">{d.deal.title}</Link>
                 </dd>
+              </>
+            ) : null}
+            {d.rating ? (
+              <>
+                <dt className="text-ink-500">Bewertung</dt>
+                <dd>{d.rating.title}</dd>
               </>
             ) : null}
             {d.serviceProfile ? (

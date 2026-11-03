@@ -24,6 +24,7 @@ import { RealtimeModule } from './realtime/realtime.module.js';
 import { FavoritesModule } from './favorites/favorites.module.js';
 import { SavedSearchesModule } from './saved-searches/saved-searches.module.js';
 import { MessagesModule } from './messages/messages.module.js';
+import { RatingsModule } from './ratings/ratings.module.js';
 import { ModerationModule } from './moderation/moderation.module.js';
 import { PrivacyModule } from './privacy/privacy.module.js';
 import { BillingModule } from './billing/billing.module.js';
@@ -64,6 +65,7 @@ import { AutofillModule } from './autofill/autofill.module.js';
     FavoritesModule,
     SavedSearchesModule,
     MessagesModule,
+    RatingsModule,
     ModerationModule,
     PrivacyModule,
     BillingModule,

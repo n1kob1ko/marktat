@@ -5,15 +5,28 @@ import { Alert, Checkbox, Field, Textarea } from '@marktat/ui';
 import { REPORT_REASON_HINTS, REPORT_REASON_LABELS, REPORT_REASONS } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
-import { reportDealAction, reportListingAction, reportProjectAction, reportServiceProfileAction } from './actions';
+import { reportDealAction, reportListingAction, reportProjectAction, reportRatingAction, reportServiceProfileAction } from './actions';
 
 /** Meldeformular nach Art. 16 DSA: Grund, Begründung, Erklärung nach Treu und Glauben. Für Inserate, Deals, Anbieterprofile und Projektaufträge. */
-export function ReportListingForm({ listingId, dealId, serviceProfileId, projectId }: { listingId?: string; dealId?: string; serviceProfileId?: string; projectId?: string }) {
+export function ReportListingForm({
+  listingId,
+  dealId,
+  serviceProfileId,
+  projectId,
+  rating,
+}: {
+  listingId?: string;
+  dealId?: string;
+  serviceProfileId?: string;
+  projectId?: string;
+  /** Bewertung und die bewertete Person (für die Rückkehr zur Profilseite) */
+  rating?: { id: string; rateeId: string };
+}) {
   const [state, action] = useActionState(
-    projectId ? reportProjectAction : serviceProfileId ? reportServiceProfileAction : dealId ? reportDealAction : reportListingAction,
+    rating ? reportRatingAction : projectId ? reportProjectAction : serviceProfileId ? reportServiceProfileAction : dealId ? reportDealAction : reportListingAction,
     initialFormState,
   );
-  const what = projectId ? 'der Projektauftrag' : serviceProfileId ? 'das Anbieterprofil' : dealId ? 'das Angebot' : 'die Anzeige';
+  const what = rating ? 'die Bewertung' : projectId ? 'der Projektauftrag' : serviceProfileId ? 'das Anbieterprofil' : dealId ? 'das Angebot' : 'die Anzeige';
   const errors = state.fieldErrors ?? {};
   return (
     <form action={action} className="space-y-5">
@@ -22,6 +35,12 @@ export function ReportListingForm({ listingId, dealId, serviceProfileId, project
       {dealId ? <input type="hidden" name="dealId" value={dealId} /> : null}
       {serviceProfileId ? <input type="hidden" name="serviceProfileId" value={serviceProfileId} /> : null}
       {projectId ? <input type="hidden" name="projectId" value={projectId} /> : null}
+      {rating ? (
+        <>
+          <input type="hidden" name="ratingId" value={rating.id} />
+          <input type="hidden" name="ownerId" value={rating.rateeId} />
+        </>
+      ) : null}
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">
           Was stimmt nicht?<span className="ml-0.5 text-danger-600" aria-hidden="true">*</span>
@@ -55,7 +74,7 @@ export function ReportListingForm({ listingId, dealId, serviceProfileId, project
         {errors.goodFaith ? <p className="mt-1 text-sm font-medium text-danger-600">{errors.goodFaith[0]}</p> : null}
       </div>
       <p className="text-xs leading-relaxed text-ink-500">
-        Ein Mensch aus unserem Team prüft jede Meldung. {dealId ? 'Der Händler' : projectId ? 'Die Auftraggeberin bzw. der Auftraggeber' : 'Die Anbieterin bzw. der Anbieter'} erfährt nicht, wer gemeldet hat. Über das Ergebnis informieren wir dich in deinem Konto unter
+        Ein Mensch aus unserem Team prüft jede Meldung. {rating ? 'Die Person, die die Bewertung geschrieben hat,' : dealId ? 'Der Händler' : projectId ? 'Die Auftraggeberin bzw. der Auftraggeber' : 'Die Anbieterin bzw. der Anbieter'} erfährt nicht, wer gemeldet hat. Über das Ergebnis informieren wir dich in deinem Konto unter
         „Mitteilungen“. Bei akuter Gefahr wende dich bitte direkt an die Polizei (133).
       </p>
       <SubmitButton variant="danger">Meldung senden</SubmitButton>
