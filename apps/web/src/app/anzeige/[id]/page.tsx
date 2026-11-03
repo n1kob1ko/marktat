@@ -21,11 +21,12 @@ import { FlashMessage } from '@/components/flash-message';
 import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
+import { ShareButton } from '@/components/share-button';
 import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
 import { JsonLd } from '@/components/json-ld';
 import { serverEnv } from '@/lib/env';
-import { listingJsonLd, metaDescription } from '@/lib/seo';
+import { DEFAULT_SHARE_IMAGE, listingJsonLd, metaDescription } from '@/lib/seo';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
   const [{ id }, token] = await Promise.all([params, getAccessToken()]);
@@ -45,8 +46,9 @@ export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): 
       title: listing.title,
       description,
       url: `/anzeige/${listing.id}`,
-      ...(image ? { images: [{ url: image.url, width: image.width, height: image.height, alt: listing.title }] } : {}),
+      images: image ? [{ url: image.url, width: image.width, height: image.height, alt: listing.title }] : [DEFAULT_SHARE_IMAGE],
     },
+    twitter: { card: 'summary_large_image', title: listing.title, description, images: image ? [image.url] : [DEFAULT_SHARE_IMAGE.url] },
   };
 }
 
@@ -108,11 +110,12 @@ async function ListingContent({
                 {listing.sponsored ? <Badge title="Bezahlte Platzierung">Gesponsert</Badge> : null}
                 {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
               </div>
-              {listing.isOwner ? null : (
-                <div className="shrink-0">
+              <div className="flex shrink-0 gap-2">
+                {listing.status === 'ACTIVE' ? <ShareButton url={`${serverEnv.webUrl}/anzeige/${listing.id}`} title={listing.title} /> : null}
+                {listing.isOwner ? null : (
                   <FavoriteButton listingId={listing.id} title={listing.title} initial={token ? listing.isFavorite : false} variant="detail" returnTo={`/anzeige/${listing.id}`} />
-                </div>
-              )}
+                )}
+              </div>
             </div>
             <h1 className="mt-3 text-2xl leading-tight font-bold text-ink-950 sm:text-3xl">{listing.title}</h1>
             <PriceTag

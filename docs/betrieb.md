@@ -99,7 +99,12 @@ Administrationsrechte nur über die Kommandozeile: `pnpm --filter @marktat/api a
 
 Bis zum offiziellen Start ist Indexierung gesperrt: `robots.txt` sperrt alles, jede Antwort trägt
 `X-Robots-Tag: noindex, nofollow`, Seiten haben `<meta name="robots" content="noindex, nofollow">`.
-Freischalten: `ALLOW_INDEXING=true` **beim Build** der Web-App setzen (der Wert wird beim Build festgelegt).
+Freischalten: in `/opt/marktat/.env` `ALLOW_INDEXING=true` setzen und neu deployen (der Wert wird beim Build
+der Web-App festgelegt; das Deployment liest ihn aus der Server-.env).
+
+Google Search Console: Eigentum per „HTML-Tag“ bestätigen, den Wert aus `content="…"` als
+`GOOGLE_SITE_VERIFICATION` in `/opt/marktat/.env` eintragen, neu deployen, dann in der Search Console auf
+„Bestätigen“ klicken und `https://<domain>/sitemap.xml` einreichen.
 Konto, Admin, Nachrichten, Inserieren, Anmeldung usw. bleiben auch danach `noindex`. Die Sitemap
 (`/sitemap.xml`) enthält dann öffentliche Inserate, Händlerprofile mit aktiven Inseraten und Kategorien.
 

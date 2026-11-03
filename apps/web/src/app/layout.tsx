@@ -19,6 +19,9 @@ export const metadata: Metadata = {
     'Kostenlos inserieren und finden: Marktplatz, Auto & Motor, Immobilien, Jobs, Deals und Dienstleistungen in ganz Österreich.',
   applicationName: 'Markterl',
   openGraph: { type: 'website', locale: 'de_AT', siteName: 'Markterl' },
+  twitter: { card: 'summary_large_image' },
+  // Bestätigung für die Google Search Console (GOOGLE_SITE_VERIFICATION in der Server-.env, siehe docs/betrieb.md)
+  ...(serverEnv.googleSiteVerification ? { verification: { google: serverEnv.googleSiteVerification } } : {}),
   // Vor dem offiziellen Start nicht indexieren (ALLOW_INDEXING, siehe next.config.ts)
   ...(serverEnv.allowIndexing ? {} : { robots: { index: false, follow: false } }),
 };

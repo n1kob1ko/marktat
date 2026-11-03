@@ -29,10 +29,12 @@ ARG R2_JURISDICTION=default
 ARG R2_ENDPOINT=
 # Suchmaschinen erst nach dem offiziellen Start (siehe docs/betrieb.md)
 ARG ALLOW_INDEXING=false
+# Bestätigungscode der Google Search Console (öffentlich, steht als Meta-Tag in jeder Seite)
+ARG GOOGLE_SITE_VERIFICATION=
 ENV NODE_ENV=production NEXT_OUTPUT=standalone NEXT_TELEMETRY_DISABLED=1 \
   WEB_URL=$WEB_URL API_URL=$API_URL SUPABASE_URL=$SUPABASE_URL SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY \
   STORAGE_DRIVER=$STORAGE_DRIVER R2_ACCOUNT_ID=$R2_ACCOUNT_ID R2_JURISDICTION=$R2_JURISDICTION R2_ENDPOINT=$R2_ENDPOINT \
-  ALLOW_INDEXING=$ALLOW_INDEXING
+  ALLOW_INDEXING=$ALLOW_INDEXING GOOGLE_SITE_VERIFICATION=$GOOGLE_SITE_VERIFICATION
 RUN test -n "$WEB_URL" && test -n "$API_URL" && test -n "$SUPABASE_URL" && test -n "$SUPABASE_ANON_KEY" \
   || (echo "WEB_URL, API_URL, SUPABASE_URL und SUPABASE_ANON_KEY als --build-arg angeben" && exit 1)
 RUN pnpm --filter @marktat/shared build && pnpm --filter @marktat/web build

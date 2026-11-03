@@ -13,4 +13,6 @@ export const serverEnv = {
   webUrl: process.env.NEXT_PUBLIC_WEB_URL || process.env.WEB_URL || 'http://localhost:3000',
   /** Suchmaschinen zulassen (erst nach dem Start; wird beim Build festgelegt, siehe next.config.ts) */
   allowIndexing: process.env.ALLOW_INDEXING === 'true',
+  /** Code aus der Google Search Console (Bestätigung per Meta-Tag); wird beim Build festgelegt */
+  googleSiteVerification: process.env.GOOGLE_SITE_VERIFICATION || '',
 };

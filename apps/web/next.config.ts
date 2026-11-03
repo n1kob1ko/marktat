@@ -81,6 +81,7 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ?? '',
     NEXT_PUBLIC_WEB_URL: process.env.WEB_URL ?? 'http://localhost:3000',
     ALLOW_INDEXING: String(allowIndexing),
+    GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION ?? '',
   },
   turbopack: {
     root: repoRoot,
