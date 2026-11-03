@@ -102,6 +102,17 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   await expect.poll(() => mainImage.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth)).toBe(1200);
   const listingUrl = page.url().split('?')[0]!;
 
+  // Teilen: ohne Teilen-Menü des Geräts erscheint die eigene Auswahl; Vorschaubild für WhatsApp & Co.
+  await page.evaluate(() => Object.defineProperty(navigator, 'share', { value: undefined, configurable: true }));
+  await page.getByRole('button', { name: 'Teilen' }).click();
+  const shareMenu = page.getByRole('group', { name: 'Teilen über' });
+  await expect(shareMenu.getByRole('link', { name: 'WhatsApp' })).toHaveAttribute('href', new RegExp(`^https://wa\\.me/\\?text=.*${encodeURIComponent(listingUrl.replace(/^https?:\/\/[^/]+/, ''))}`));
+  await page.keyboard.press('Escape');
+  await expect(shareMenu).toBeHidden();
+  await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute('content', /\S/);
+  const ogImage = await page.request.get('/opengraph-image');
+  expect(ogImage.headers()['content-type']).toContain('image/png');
+
   // 4. Über die Suche auffindbar
   await page.goto(`/suche?q=${encodeURIComponent(title)}`);
   await expect(page.getByRole('link', { name: title })).toBeVisible();

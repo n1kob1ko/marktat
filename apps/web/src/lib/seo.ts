@@ -1,5 +1,8 @@
 import type { DealerProfile, ItemCondition, ListingDetail } from '@marktat/shared';
 
+/** Vorschaubild für geteilte Links ohne eigenes Foto (app/opengraph-image.tsx) */
+export const DEFAULT_SHARE_IMAGE = { url: '/opengraph-image', width: 1200, height: 630, alt: 'Markterl – Kleinanzeigen für Österreich' };
+
 /** Kurzbeschreibung für Suchergebnisse und Vorschauen: eine Zeile, höchstens 155 Zeichen */
 export function metaDescription(text: string, fallback: string): string {
   const line = text.replace(/\s+/g, ' ').trim();
