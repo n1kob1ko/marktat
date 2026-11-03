@@ -26,7 +26,8 @@ interface ChatViewProps {
 
 /** Chatfenster: senden (optimistisch), live empfangen, ältere nachladen, Lesestatus. */
 export function ChatView({ conversation, initial, backHref, notice }: ChatViewProps) {
-  const fullscreen = useMobileFullscreen();
+  const root = useRef<HTMLDivElement>(null);
+  useMobileFullscreen(root);
   const [messages, setMessages] = useState<LocalMessage[]>(initial.items);
   const [hasMore, setHasMore] = useState(initial.hasMore);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -200,8 +201,13 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
     // Am Handy eine eigene Vollbild-Ansicht über Kopf und Fußzeile der Seite (eigener Zurück-Pfeil), die genau über
     // der Tastatur endet; am Desktop Teil des zweispaltigen Postfachs
     <div
-      className="flex min-h-0 flex-1 flex-col bg-canvas max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-50 max-lg:h-dvh lg:bg-canvas/40"
-      style={fullscreen}
+      ref={root}
+      className={cn(
+        'flex min-h-0 flex-1 flex-col bg-canvas lg:bg-canvas/40',
+        'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-50 max-lg:h-dvh max-lg:overscroll-none',
+        // Falls der sichtbare Bereich kurz hinterherhinkt: darunter Fläche statt durchscheinender Seite
+        'max-lg:after:absolute max-lg:after:inset-x-0 max-lg:after:top-full max-lg:after:h-screen max-lg:after:bg-surface',
+      )}
       data-testid="chat-view"
     >
       {/* Kopf: Person und Anzeige */}
@@ -248,6 +254,7 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
         <div
           ref={scroller}
           onScroll={onScroll}
+          data-touch-scroll=""
           className="h-full overflow-y-auto overscroll-contain px-3 py-4 sm:px-6"
           role="log"
           aria-live="polite"
@@ -399,6 +406,7 @@ function Composer({ onSend }: { onSend: (body: string) => void }) {
         <textarea
           id="chat-input"
           ref={textarea}
+          data-touch-scroll=""
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={onKeyDown}

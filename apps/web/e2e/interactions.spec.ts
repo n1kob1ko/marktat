@@ -127,6 +127,7 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
     expect(box).toMatchObject({ x: 0, y: 0, width: size.width, height: size.height });
     await expect(seller.page.getByLabel('Nachricht schreiben')).toBeInViewport();
     await expect(seller.page.locator('html')).toHaveCSS('overflow', 'hidden');
+    await expect(seller.page.locator('body')).toHaveCSS('position', 'fixed');
     // 16 px im Eingabefeld: sonst zoomt iOS beim Antippen hinein
     await expect(seller.page.getByLabel('Nachricht schreiben')).toHaveCSS('font-size', '16px');
   } else {
