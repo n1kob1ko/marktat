@@ -43,7 +43,7 @@ test('Dunkelmodus: Umschalter im Kopf, Wahl bleibt erhalten, Seiten ohne WCAG-Ve
   await page.reload();
   await expect(html).toHaveAttribute('data-theme', 'dark');
 
-  for (const path of ['/', '/suche?q=rad', '/deals', '/dienstleistungen', '/anmelden', '/registrieren']) {
+  for (const path of ['/', '/suche?q=rad', '/suche?bereich=marktplatz', '/suche?kategorie=marktplatz/sport-sportgeraete', '/deals', '/dienstleistungen', '/anmelden', '/registrieren']) {
     await page.goto(path);
     await expectNoViolations(page, `dunkel ${path}`);
   }
@@ -61,7 +61,7 @@ test('Dunkelmodus: Umschalter im Kopf, Wahl bleibt erhalten, Seiten ohne WCAG-Ve
 
 test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im Bild', async ({ page }) => {
   await page.setViewportSize({ width: 320, height: 640 });
-  for (const path of ['/', '/suche?q=rad', '/deals', '/deals/werbung', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
+  for (const path of ['/', '/suche?q=rad', '/suche?bereich=marktplatz', '/suche?kategorie=marktplatz/sport-sportgeraete', '/deals', '/deals/werbung', '/dienstleistungen', '/dienstleistungen/projekte', '/anmelden', '/registrieren', '/agb', '/datenschutz', '/impressum', '/gibt-es-nicht']) {
     await page.goto(path);
     await page.waitForLoadState('networkidle').catch(() => undefined);
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
