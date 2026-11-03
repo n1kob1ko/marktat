@@ -104,6 +104,7 @@ docs             Architektur, Datenmodell, Suche, Geodaten, Moderation, Monetari
 - [Datenmodell](docs/datenmodell.md)
 - [Kategorie-Felder (Auto, Immobilien, Jobs, Marktplatz)](docs/kategorie-felder.md)
 - [Suche und Filter](docs/suche.md)
+- [Anzeigenseite: Karte, mehr vom Anbieter, ähnliche Anzeigen](docs/anzeigenseite.md)
 - [Merkliste, gespeicherte Suchen, Nachrichten](docs/nachrichten.md)
 - [Moderation, Rollen, Meldungen, Einsprüche](docs/moderation.md)
 - [Monetarisierung: Preise, Einführungsaktion, Zusatzleistungen, Stripe](docs/monetarisierung.md)
