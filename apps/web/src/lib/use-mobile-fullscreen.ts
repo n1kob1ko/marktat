@@ -34,13 +34,20 @@ export function useMobileFullscreen(ref: RefObject<HTMLElement | null>) {
       locked = true;
       savedScroll = window.scrollY;
       root.style.overflow = 'hidden';
-      Object.assign(body.style, { position: 'fixed', top: `-${savedScroll}px`, left: '0', right: '0', overflow: 'hidden' });
+      Object.assign(body.style, {
+        position: 'fixed',
+        top: `-${savedScroll}px`,
+        left: '0',
+        right: '0',
+        overflow: 'hidden',
+      });
     };
     const unlock = () => {
       if (!locked) return;
       locked = false;
       root.style.removeProperty('overflow');
-      for (const prop of ['position', 'top', 'left', 'right', 'overflow']) body.style.removeProperty(prop);
+      for (const prop of ['position', 'top', 'left', 'right', 'overflow'])
+        body.style.removeProperty(prop);
       window.scrollTo(0, savedScroll);
     };
 
