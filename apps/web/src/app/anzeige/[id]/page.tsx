@@ -26,6 +26,8 @@ import { RatingSummaryLink } from '@/components/ratings/rating-stars';
 import { loadRatingSummary } from '@/lib/ratings';
 import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
+import { AustriaMap } from '@/components/listing/austria-map';
+import { RelatedListings, RelatedListingsSkeleton } from '@/components/listing/related-listings';
 import { JsonLd } from '@/components/json-ld';
 import { serverEnv } from '@/lib/env';
 import { DEFAULT_SHARE_IMAGE, listingJsonLd, metaDescription } from '@/lib/seo';
@@ -188,6 +190,7 @@ async function ListingContent({
             )}
             <ContactArea listing={listing} signedIn={Boolean(token)} />
           </Card>
+          {listing.mapPoint && listing.location ? <AustriaMap point={listing.mapPoint} location={listing.location} /> : null}
           {listing.isOwner ? null : (
             <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
               <Flag className="size-4" aria-hidden="true" /> Anzeige melden
@@ -195,6 +198,11 @@ async function ListingContent({
           )}
         </aside>
       </div>
+      {listing.status === 'ACTIVE' ? (
+        <Suspense fallback={<RelatedListingsSkeleton />}>
+          <RelatedListings listing={listing} />
+        </Suspense>
+      ) : null}
     </div>
   );
 }

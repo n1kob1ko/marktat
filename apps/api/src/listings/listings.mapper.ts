@@ -118,5 +118,6 @@ export function toListingDetail(
     isFavorite: viewer.isFavorite,
     conversationId: viewer.conversationId,
     moderation: viewer.moderation ?? null,
+    mapPoint: listing.location ? { latitude: listing.location.latitude, longitude: listing.location.longitude } : null,
   };
 }

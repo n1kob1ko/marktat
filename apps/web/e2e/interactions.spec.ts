@@ -40,7 +40,7 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
   // --- Ohne Anmeldung: Herz und „Nachricht schreiben“ führen zur Anmeldung und wieder zurück ---
   const buyer = await newPage(browser, testInfo);
   await buyer.page.goto(listingUrl);
-  await buyer.page.getByRole('button', { name: 'Merken' }).click();
+  await buyer.page.getByRole('button', { name: 'Merken', exact: true }).click();
   await expect(buyer.page).toHaveURL(new RegExp(`/anmelden\\?weiter=${encodeURIComponent(listingPath)}&hinweis=merken`));
   await expect(buyer.page.getByText('Melde dich an, um Anzeigen auf deiner Merkliste zu speichern.')).toBeVisible();
   await buyer.page.goto(listingUrl);
@@ -54,12 +54,12 @@ test('Merken, anschreiben, antworten – in Echtzeit zwischen zwei Konten', asyn
   await expect(buyer.page).toHaveURL(listingUrl);
 
   // --- Merken: Status bleibt nach Neuladen und über eine neue Sitzung erhalten ---
-  await buyer.page.getByRole('button', { name: 'Merken' }).click();
-  await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).toHaveAttribute('aria-pressed', 'true');
+  await buyer.page.getByRole('button', { name: 'Merken', exact: true }).click();
+  await expect(buyer.page.getByRole('button', { name: 'Gemerkt', exact: true })).toHaveAttribute('aria-pressed', 'true');
   // Optimistische Anzeige: erst neu laden, wenn der Server gespeichert hat
-  await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).not.toHaveAttribute('aria-busy', 'true');
+  await expect(buyer.page.getByRole('button', { name: 'Gemerkt', exact: true })).not.toHaveAttribute('aria-busy', 'true');
   await buyer.page.reload();
-  await expect(buyer.page.getByRole('button', { name: 'Gemerkt' })).toBeVisible();
+  await expect(buyer.page.getByRole('button', { name: 'Gemerkt', exact: true })).toBeVisible();
   const second = await newPage(browser, testInfo);
   await second.page.goto('/anmelden?weiter=%2Fkonto%2Fmerkliste');
   await signInHere(second.page, buyerEmail);

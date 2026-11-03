@@ -71,6 +71,16 @@ export class ListingsController {
   }
 
   @Public()
+  @Get(':id/related')
+  @ApiOperation({
+    summary: 'Ähnliche Inserate in der Nähe und weitere vom selben Anbieter',
+    description: 'Nur zu öffentlich sichtbaren Inseraten, sonst leere Listen. Ähnliche: gleiche Kategorie, andere Anbieter, nächstgelegene zuerst.',
+  })
+  related(@Param('id') id: string) {
+    return this.listings.related(id);
+  }
+
+  @Public()
   @Get(':id')
   @ApiOperation({ summary: 'Inserat-Details (Entwürfe nur für Eigentümer)' })
   findOne(@Param('id') id: string, @CurrentUser() viewer?: AuthUser) {

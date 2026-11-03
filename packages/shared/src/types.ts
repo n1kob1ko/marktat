@@ -211,6 +211,18 @@ export interface ListingDetail extends ListingSummary {
   conversationId: string | null;
   /** Nur für Eigentümer und Moderation: letzte Moderationsentscheidung (bei REJECTED/PENDING_REVIEW) */
   moderation: ListingModerationInfo | null;
+  /** Mittelpunkt des Orts (PLZ + Ort) für die Karte – nie die genaue Adresse; null ohne Ort */
+  mapPoint: { latitude: number; longitude: number } | null;
+}
+
+/** Weitere Inserate zur Detailseite: ähnliche in der Nähe und weitere vom selben Anbieter */
+export interface RelatedListings {
+  /** Gleiche Kategorie (bei zu wenigen die übergeordnete), andere Anbieter, nächstgelegene zuerst */
+  similar: ListingSummary[];
+  /** Weitere öffentliche Inserate desselben Anbieters, neueste zuerst */
+  fromSeller: ListingSummary[];
+  /** Anzahl aller weiteren öffentlichen Inserate des Anbieters */
+  sellerTotal: number;
 }
 
 export interface ListingModerationInfo {

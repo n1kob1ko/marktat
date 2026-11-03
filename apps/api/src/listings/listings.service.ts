@@ -24,6 +24,7 @@ import {
   type PriceType,
   type ListingSummary,
   type PriceHint,
+  type RelatedListings,
   PRICE_HINT_MIN_LISTINGS,
   PRICE_HINT_RADIUS_KM,
   type UpdateListingInput,
@@ -36,6 +37,7 @@ import { ImageUrls } from '../images/image-urls.js';
 import { SearchIndexService } from '../search/search-index.service.js';
 import { ModerationService } from '../moderation/moderation.service.js';
 import { BookingsService } from '../billing/bookings.service.js';
+import { publiclyVisibleWhere } from './visibility.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
@@ -45,6 +47,11 @@ import {
 } from './listings.mapper.js';
 
 const DAY_MS = 86_400_000;
+
+/** Ähnliche bzw. weitere Inserate auf der Detailseite; unter RELATED_MIN wird die übergeordnete Kategorie dazugenommen */
+const RELATED_LIMIT = 8;
+const RELATED_MIN = 4;
+const SELLER_LIMIT = 4;
 
 /** Ablaufdatum aus der Laufzeit des Produkts „listing“ (Admin-Bereich, Standard 60 Tage) */
 function expiryFrom(date: Date, durationDays: number) {
@@ -367,6 +374,77 @@ export class ListingsService implements OnModuleInit {
     const state = await this.viewerState(listing.id, viewer);
     const moderation = isOwner || isStaff ? await this.moderation.listingModerationInfo(listing) : null;
     return toListingDetail(listing, this.urls, viewer?.id, state && { ...state, moderation });
+  }
+
+  /**
+   * Ähnliche Inserate (gleiche Kategorie, andere Anbieter, nächstgelegene zuerst; bei zu wenigen auch aus der
+   * übergeordneten Kategorie) und weitere Inserate desselben Anbieters. Nur zu öffentlich sichtbaren Inseraten.
+   */
+  async related(id: string): Promise<RelatedListings> {
+    const empty: RelatedListings = { similar: [], fromSeller: [], sellerTotal: 0 };
+    const listing = await this.prisma.listing.findFirst({
+      where: { id, ...publiclyVisibleWhere() },
+      select: { id: true, sellerId: true, category: { select: { id: true, path: true } }, location: { select: { latitude: true, longitude: true } } },
+    });
+    if (!listing) return empty;
+
+    const sellerWhere = { ...publiclyVisibleWhere(), sellerId: listing.sellerId, id: { not: listing.id } };
+    const [sellerRows, sellerTotal] = await Promise.all([
+      this.prisma.listing.findMany({
+        where: sellerWhere,
+        include: listingInclude,
+        orderBy: [{ publishedAt: 'desc' }, { id: 'asc' }],
+        take: SELLER_LIMIT,
+      }),
+      this.prisma.listing.count({ where: sellerWhere }),
+    ]);
+
+    const similar: { id: string; distance: number | null }[] = [];
+    if (listing.category) {
+      const point = listing.location
+        ? Prisma.sql`ST_SetSRID(ST_MakePoint(${listing.location.longitude}, ${listing.location.latitude}), 4326)::geography`
+        : null;
+      const nearest = async (categories: Prisma.Sql, limit: number) => {
+        const exclude = [listing.id, ...similar.map((row) => row.id)];
+        return this.prisma.$queryRaw<{ id: string; distance: number | null }[]>`
+          SELECT l.id, ${point ? Prisma.sql`ST_Distance(loc.geom, ${point})` : Prisma.sql`NULL::float8`} AS distance
+          FROM listings l
+          JOIN users u ON u.id = l.seller_id
+          LEFT JOIN locations loc ON loc.id = l.location_id
+          WHERE l.category_id IN (${categories})
+            AND l.status = 'ACTIVE' AND l.deleted_at IS NULL AND l.expires_at > now()
+            AND u.status = 'ACTIVE' AND u.deleted_at IS NULL
+            AND l.seller_id <> ${listing.sellerId}::uuid
+            AND l.id NOT IN (${Prisma.join(exclude)})
+          ORDER BY ${point ? Prisma.sql`distance ASC NULLS LAST,` : Prisma.empty} l.published_at DESC, l.id
+          LIMIT ${limit}`;
+      };
+      similar.push(...(await nearest(Prisma.sql`SELECT ${listing.category.id}`, RELATED_LIMIT)));
+      // Zu wenige? Dann aus der übergeordneten Kategorie (nicht aus dem ganzen Bereich wie „Marktplatz“)
+      const parentPath = listing.category.path.split('/').slice(0, -1).join('/');
+      if (similar.length < RELATED_MIN && parentPath.includes('/')) {
+        similar.push(
+          ...(await nearest(
+            Prisma.sql`SELECT id FROM categories WHERE path = ${parentPath} OR path LIKE ${`${parentPath}/%`}`,
+            RELATED_LIMIT - similar.length,
+          )),
+        );
+      }
+    }
+    const rows = similar.length
+      ? await this.prisma.listing.findMany({ where: { id: { in: similar.map((row) => row.id) } }, include: listingInclude })
+      : [];
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return {
+      similar: similar.flatMap(({ id: rowId, distance }) => {
+        const row = byId.get(rowId);
+        if (!row) return [];
+        const summary = toListingSummary(row, this.urls);
+        return [{ ...summary, distanceKm: distance === null ? null : Math.round(distance / 100) / 10 }];
+      }),
+      fromSeller: sellerRows.map((row) => toListingSummary(row, this.urls)),
+      sellerTotal,
+    };
   }
 
   // --- Hilfsfunktionen -------------------------------------------------------
