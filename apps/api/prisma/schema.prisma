@@ -1102,6 +1102,8 @@ model Deal {
   brand                     String?             @db.VarChar(60)
   /// GTIN/EAN (vorbereitet für einen späteren Preisvergleich)
   gtin                      String?             @db.VarChar(14)
+  /// Nur Affiliate-Deals: Kategorie laut Feed (für die Kontrolle der Zuordnung in der Verwaltung)
+  sourceCategory            String?             @map("source_category") @db.VarChar(200)
   /// Stabile Angebots-/Artikelnummer des Händlers: Importe aktualisieren darüber statt Doppelte anzulegen
   externalId                String?             @map("external_id") @db.VarChar(100)
   channel                   DealChannel

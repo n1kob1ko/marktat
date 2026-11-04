@@ -178,6 +178,15 @@ export interface AffiliateProgramView {
   /** Öffentlich sichtbare Produkte */
   activeDeals: number;
   feeds: AffiliateFeedView[];
+  /** Häufigste Kategorien laut Feed mit der Zuordnung auf Markterl (nur in der Übersicht) */
+  sourceCategories?: AffiliateSourceCategory[];
+}
+
+export interface AffiliateSourceCategory {
+  /** Kategorie laut Feed; null = Feed ohne Kategorie */
+  text: string | null;
+  categorySlug: string;
+  count: number;
 }
 
 export interface AffiliateFeedView {
