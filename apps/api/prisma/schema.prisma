@@ -377,11 +377,16 @@ enum SavedSearchKind {
 
 /// Gemerkte Deals (Phase 10); getrennt von der Merkliste für Inserate
 model DealFavorite {
-  userId    String   @map("user_id") @db.Uuid
-  dealId    String   @map("deal_id")
-  createdAt DateTime @default(now()) @map("created_at")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  deal      Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId          String    @map("user_id") @db.Uuid
+  dealId          String    @map("deal_id")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  /// Preisalarm: E-Mail, sobald der Preis unter `alertPriceCents` fällt
+  priceAlert      Boolean   @default(false) @map("price_alert")
+  /// Preis beim Einschalten bzw. bei der letzten Benachrichtigung
+  alertPriceCents Int?      @map("alert_price_cents")
+  alertNotifiedAt DateTime? @map("alert_notified_at")
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deal            Deal      @relation(fields: [dealId], references: [id], onDelete: Cascade)
 
   @@id([userId, dealId])
   @@index([userId, createdAt(sort: Desc)])

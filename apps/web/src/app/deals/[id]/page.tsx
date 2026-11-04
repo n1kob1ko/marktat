@@ -22,6 +22,8 @@ import { FlashMessage } from '@/components/flash-message';
 import { ItemFavoriteButton } from '@/components/favorites/item-favorite-button';
 import { AdLabel } from '@/components/deals/ad-label';
 import { DealPrice, DiscountBadge } from '@/components/deals/deal-price';
+import { PriceAlertButton } from '@/components/deals/price-alert-button';
+import { PriceHistoryChart } from '@/components/deals/price-history-chart';
 
 async function loadDeal(id: string, token: string | null) {
   try {
@@ -202,26 +204,30 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
 
           {deal.priceHistory.length > 1 ? (
             <Card className="p-5 sm:p-7">
-              <h2 className="font-sans text-lg font-semibold tracking-normal">Erfasste Preise</h2>
+              <h2 className="font-sans text-lg font-semibold tracking-normal">Preisverlauf</h2>
               <p className="mt-1 text-sm text-ink-600">
                 {deal.affiliate ? 'Preise laut Produktfeed, wie Markterl sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
               </p>
-              <table className="mt-4 w-full text-left text-sm">
-                <thead className="text-xs text-ink-500">
-                  <tr>
-                    <th scope="col" className="py-1.5 font-medium">Seit</th>
-                    <th scope="col" className="py-1.5 text-right font-medium">Preis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deal.priceHistory.map((point) => (
-                    <tr key={point.recordedAt} className="border-t border-line">
-                      <td className="py-2">{formatDate(point.recordedAt)}</td>
-                      <td className="py-2 text-right tabular-nums">{formatPriceCents(point.priceCents)}</td>
+              <PriceHistoryChart points={deal.priceHistory} />
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer font-semibold text-brand-700">Alle erfassten Preise</summary>
+                <table className="mt-2 w-full text-left text-sm">
+                  <thead className="text-xs text-ink-500">
+                    <tr>
+                      <th scope="col" className="py-1.5 font-medium">Seit</th>
+                      <th scope="col" className="py-1.5 text-right font-medium">Preis</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {deal.priceHistory.map((point) => (
+                      <tr key={point.recordedAt} className="border-t border-line">
+                        <td className="py-2">{formatDate(point.recordedAt)}</td>
+                        <td className="py-2 text-right tabular-nums">{formatPriceCents(point.priceCents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
             </Card>
           ) : null}
         </div>
@@ -259,7 +265,8 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 </p>
               </>
             ) : null}
-            {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
+            {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton key={`merken-${deal.isFavorite}`} kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
+            {!deal.isOwner && publicView ? <PriceAlertButton key={`preisalarm-${deal.priceAlert}`} id={deal.id} initial={deal.priceAlert} className="mt-3" /> : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
               Kauf und Bezahlung erfolgen direkt beim Händler. Markterl ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
               bzw. im Online-Shop.

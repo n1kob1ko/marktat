@@ -30,9 +30,9 @@ export function NotificationSettingsForm({ messages, searches, email }: { messag
         defaultChecked={searches}
         label={
           <>
-            <span className="font-semibold text-ink-900">Neue Treffer für gespeicherte Suchen</span>
+            <span className="font-semibold text-ink-900">Neue Treffer für gespeicherte Suchen und Preisalarme</span>
             <br />
-            Gilt für alle Suchen, bei denen die Glocke eingeschaltet ist. Wir fassen neue Anzeigen in einer E-Mail zusammen.
+            Gilt für alle Suchen, bei denen die Glocke eingeschaltet ist, und für Deals mit Preisalarm. Wir fassen Neues in einer E-Mail zusammen.
           </>
         }
       />

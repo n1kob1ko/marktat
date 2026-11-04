@@ -100,6 +100,8 @@ export interface DealDetail extends DealSummary {
   status: DealDisplayStatus;
   isOwner: boolean;
   isFavorite: boolean;
+  /** Preisalarm der angemeldeten Person für diesen Deal */
+  priceAlert: boolean;
   linkStatus: DealLinkStatus;
   relatedCategoryPath: string | null;
   /** Händlerseite bei Markterl; null bei Affiliate-Deals */
@@ -114,6 +116,7 @@ export interface DealFavoriteItem {
   /** false = abgelaufen, beendet, gelöscht oder Händler gesperrt */
   available: boolean;
   savedAt: string;
+  priceAlert: boolean;
 }
 
 /** Ein Filterwert mit Anzahl passender Angebote */

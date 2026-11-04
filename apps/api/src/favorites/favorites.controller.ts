@@ -48,6 +48,22 @@ export class FavoritesController {
     await this.favorites.removeDeal(user, dealId);
   }
 
+  @Put('deals/:dealId/price-alert')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  @ApiOperation({ summary: 'Preisalarm für einen Deal einschalten (merkt ihn auch; E-Mail, sobald er günstiger wird)' })
+  async addPriceAlert(@CurrentUser() user: AuthUser, @Param('dealId') dealId: string) {
+    await this.favorites.setDealPriceAlert(user, dealId, true);
+  }
+
+  @Delete('deals/:dealId/price-alert')
+  @HttpCode(204)
+  @Throttle(WRITE_LIMIT)
+  @ApiOperation({ summary: 'Preisalarm ausschalten (der Deal bleibt gemerkt)' })
+  async removePriceAlert(@CurrentUser() user: AuthUser, @Param('dealId') dealId: string) {
+    await this.favorites.setDealPriceAlert(user, dealId, false);
+  }
+
   @Get('services')
   @ApiOperation({ summary: 'Gemerkte Anbieterprofile (24 je Seite, neueste zuerst)' })
   @ApiQuery({ name: 'seite', required: false })
