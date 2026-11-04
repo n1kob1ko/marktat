@@ -1666,10 +1666,10 @@ model AffiliateProgram {
   approvalNote         String?                @map("approval_note") @db.VarChar(1000)
   reviewedById         String?                @map("reviewed_by_id") @db.Uuid
   approvedAt           DateTime?              @map("approved_at")
-  /// Produktbilder des Händlers dürfen gezeigt werden (laut Programmbedingungen)
-  allowImages          Boolean                @default(false) @map("allow_images")
-  /// UVP aus dem Feed darf als Vergleichspreis gezeigt werden (Quelle wird angegeben)
-  allowReferencePrices Boolean                @default(false) @map("allow_reference_prices")
+  /// Produktbilder des Händlers werden gezeigt (Standard: ja, Entscheidung des Betreibers vom 04.11.2026)
+  allowImages          Boolean                @default(true) @map("allow_images")
+  /// UVP aus dem Feed wird als Vergleichspreis gezeigt, Quelle wird angegeben (Standard: ja, wie oben)
+  allowReferencePrices Boolean                @default(true) @map("allow_reference_prices")
   /// Gutscheincodes dürfen veröffentlicht werden
   allowVouchers        Boolean                @default(false) @map("allow_vouchers")
   defaultCategoryId    String?                @map("default_category_id")

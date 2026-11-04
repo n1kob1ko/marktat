@@ -12,7 +12,6 @@ import {
 } from '@marktat/shared';
 import { CurrentUser, Public, Roles } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
-import { StepUp } from '../auth/mfa.guard.js';
 import { openApiSchema } from '../common/openapi.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { AffiliateAdminService } from './affiliate-admin.service.js';
@@ -65,7 +64,6 @@ export class AdminAffiliateController {
 
   @Post('programs/:id/review')
   @Roles('ADMIN')
-  @StepUp()
   @HttpCode(200)
   @Throttle(ADMIN_LIMIT)
   @ApiOperation({ summary: 'Programm freigeben (mit Dokumentation), anhalten oder ablehnen – nur Administration' })

@@ -5,7 +5,6 @@ import { Alert, Checkbox, Field, Select, Textarea } from '@marktat/ui';
 import type { AffiliateProgramView, DealCategoryView } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
-import { StepUpField } from '@/components/security/step-up-field';
 import { reviewAffiliateProgramAction } from '@/app/admin/actions';
 
 /**
@@ -15,11 +14,9 @@ import { reviewAffiliateProgramAction } from '@/app/admin/actions';
 export function AffiliateProgramForm({
   program,
   categories,
-  stepUp,
 }: {
   program: AffiliateProgramView;
   categories: DealCategoryView[];
-  stepUp: { enabled: boolean; maxAgeMinutes: number };
 }) {
   const [state, formAction] = useActionState(reviewAffiliateProgramAction, initialFormState);
   const errors = state.fieldErrors ?? {};
@@ -36,7 +33,7 @@ export function AffiliateProgramForm({
         <Textarea name="note" rows={3} maxLength={1000} className="min-h-24" defaultValue={kept?.note ?? program.approvalNote ?? ''} />
       </Field>
       <fieldset className="space-y-2">
-        <legend className="mb-1 text-sm font-medium text-ink-800">Laut Programmbedingungen erlaubt</legend>
+        <legend className="mb-1 text-sm font-medium text-ink-800">Anzeigen (Standard: Bilder und Vergleichspreise an)</legend>
         <Checkbox name="allowImages" defaultChecked={checked('allowImages')} label="Produktbilder des Händlers anzeigen (unverändert)" />
         <Checkbox name="allowReferencePrices" defaultChecked={checked('allowReferencePrices')} label="Vergleichspreis (UVP/RRP aus dem Feed) als Rabatt zeigen" />
         <Checkbox name="allowVouchers" defaultChecked={checked('allowVouchers')} label="Gutscheincodes veröffentlichen" />
@@ -51,7 +48,6 @@ export function AffiliateProgramForm({
           ))}
         </Select>
       </Field>
-      <StepUpField {...stepUp} error={errors.mfaCode} />
       <div className="flex flex-wrap gap-2">
         {program.membership === 'JOINED' ? (
           <SubmitButton size="sm" name="decision" value="APPROVE">

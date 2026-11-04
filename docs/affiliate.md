@@ -1,8 +1,9 @@
 # Partnerangebote über Affiliate-Netzwerke (Awin)
 
-> Stand 28.10.2026: Technisch fertig und mit einem lokalen Awin-Testserver getestet. **Der Liveimport ist aus**
-> (`AWIN_ENABLED=false`). Es gibt noch kein Awin-Publisher-Konto, keine Partnerschaften und keine Schlüssel; es wurde
-> nichts Echtes importiert. Einschalten erst, wenn Niko Konto, Partnerschaften und Schlüssel hat.
+> Stand 04.11.2026: **Live.** Publisher-Konto „Wang Ji e.U.“ (ID 3141938, Region AT). Freigegeben sind babymarkt AT
+> und baby-walz AT (je der Hauptfeed, nicht die „Preissuchmaschinen“-Feeds). Weitere Bewerbungen laufen bei Awin.
+> Produktbilder und Vergleichspreise sind seit 04.11.2026 standardmäßig erlaubt (Entscheidung des Betreibers), die
+> Freigabe braucht keinen zusätzlichen 2FA-Code mehr.
 
 Markterl nimmt bei Awin als **Publisher** teil (Werbepartner, kostenlos; Awin verlangt bei der Anmeldung 1 € Kaution, die
 mit der ersten Provision zurückkommt). Der kostenpflichtige Advertiser-Tarif (für Shops, die selbst Werbepartner suchen)
@@ -25,7 +26,7 @@ kein fremdes Angebot einem Markterl-Konto zugeschrieben, das den Händler nicht 
 ```
 Awin ──(stündlich, mit Zufallsverzögerung)── Feedliste ─► Programme + Feeds anlegen/aktualisieren (Status „wartet“)
                                                         │
-Admin: Programm freigeben (Doku Pflicht, 2FA) ─► Feed aktivieren
+Admin: Programm freigeben (Doku Pflicht) ─► Feed aktivieren
                                                         │
 Feed hat laut „Last Imported“ einen neuen Stand? ─ja─► Download (gzip/CSV, gestreamt) ─► Deals anlegen/aktualisieren
                                                    └nein─► nichts laden
@@ -50,10 +51,10 @@ Awin ──(alle 4 Stunden)── Promotions-API ─► Aktionen & Gutscheine fr
 ## Datenregeln
 
 - **Rabatt nur belegt**: nur aus dem Vergleichspreis des Feeds (`rrp_price`, „UVP“) und nur, wenn das Programm das laut
-  Bedingungen erlaubt (Häkchen bei der Freigabe). `savings_percent` und `product_price_old` werden nie übernommen.
+  nicht ausgenommen ist (Häkchen bei der Freigabe, standardmäßig an). `savings_percent` und `product_price_old` werden nie übernommen.
   Rabatte ab 70 % gehen in die Prüfung, bevor sie sichtbar werden.
 - **Preise**: ohne gültigen Preis in Euro wird ein Produkt übersprungen (Zähler „Ungültige Preise“).
-- **Bilder** nur mit Häkchen „Produktbilder erlaubt“ und **unverändert** (Awin-Bedingungen, Punkt 10.1): Die API reicht
+- **Bilder** mit Häkchen „Produktbilder“ (standardmäßig an) und immer **unverändert** (Awin-Bedingungen, Punkt 10.1): Die API reicht
   das Originalbild durch (`/v1/deals/<id>/partner-image/large`, Zwischenspeicher 6 h) und verändert, skaliert oder
   speichert es nicht dauerhaft. Besucher:innen laden so nichts direkt vom Händler. Ohne Erlaubnis kein Bild.
 - **Links**: nur der https-Tracking-Link von Awin (`aw_deep_link`), höchstens 1000 Zeichen, über
@@ -72,7 +73,7 @@ Awin ──(alle 4 Stunden)── Promotions-API ─► Aktionen & Gutscheine fr
 | `AWIN_ENABLED` | `false` bis alles da ist, dann `true` |
 | `AWIN_PUBLISHER_ID` | Publisher-ID (Zahl, im Awin-Konto oben links neben dem Kontonamen) |
 | `AWIN_API_TOKEN` | Benutzermenü → **API Credentials** → Passwort → **Show my API token** |
-| `AWIN_FEED_API_KEY` | **Toolbox → Create-a-Feed**: in der angezeigten Download-Adresse der Teil nach `apikey/` (anderer Schlüssel als das API-Token) |
+| `AWIN_FEED_API_KEY` | **Toolbox → Create-a-Feed**: oben im Kasten „Feed List Download“ steht `…/publisher/<ID>/<SCHLÜSSEL>/1/feedList`; der Schlüssel sind genau die 32 Zeichen dazwischen (anderer Schlüssel als das API-Token). Awin antwortet mit 401 bei falschem und mit 400 bei verstümmeltem Schlüssel (z. B. mit `/`). |
 | `AWIN_REGION` | `AT` |
 | `AWIN_MAX_PRODUCTS_PER_FEED` | `5000` (Schutz für Speicher und Suche; mehr nur bei Bedarf) |
 
@@ -87,11 +88,11 @@ und die offiziellen Awin-Adressen.
    bewerben. Der Händler entscheidet. Erst „Joined“ zählt; Markterl liest das aus der Feedliste.
 3. **Programmbedingungen lesen** (je Programm): Sind Produktbilder, Vergleichspreise (UVP), Gutscheincodes und das
    Werbeumfeld „Kleinanzeigen-/Preisvergleichsplattform“ erlaubt? Das Ergebnis kommt in die Dokumentation der
-   Freigabe und in die Häkchen.
+   Freigabe. Bilder und Vergleichspreise sind standardmäßig an, Gutscheincodes aus.
 4. **Produktfeed**: Manche Händler geben ihren Feed erst auf Anfrage frei (*Toolbox → Create-a-Feed* zeigt nur
    freigeschaltete Feeds).
 5. **Freigabe in Markterl**: Admin-Bereich → **Affiliate** → Programm → „Freigabe bearbeiten“ (mindestens 20 Zeichen
-   Dokumentation, mit 2FA-Code) → Feed „Aktivieren“.
+   Dokumentation) → Feed „Aktivieren“.
 
 ## Admin-Bereich (`/admin/affiliate`)
 
@@ -115,7 +116,7 @@ eigene Zuordnung der Feedspalten; Freigaben, Sichtbarkeit, Kennzeichnung und Adm
 ## Tests
 
 - API: `apps/api/test/affiliate.e2e-spec.ts` (14 Tests) gegen einen lokalen Awin-Testserver: Zuordnung, aus ohne
-  Schlüssel, nur Freigegebenes, Freigaberegeln mit 2FA, Import mit Kennzeichnung und Bild, Bildverbot,
+  Schlüssel, nur Freigegebenes, Freigaberegeln ohne zusätzliche 2FA, Import mit Kennzeichnung und Bild, Bildverbot,
   Änderungserkennung und Preisupdate, Ende und Reaktivierung, Pause und verlorene Partnerschaft, Wiederholungen und
   angehaltene Feeds ohne Schlüssel im Fehlertext, strikte Trennung, Meldungen und Moderation, Höchstzahl, Aktionen und
   Gutscheine, manueller Abruf.
