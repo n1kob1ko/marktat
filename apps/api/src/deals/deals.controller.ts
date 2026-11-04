@@ -43,7 +43,7 @@ export class DealsController {
     summary: 'Aktuelle Deals suchen',
     description:
       'Parameter wie in der Such-URL der Website (siehe docs/deals.md): q, kategorie, haendler, kanal (online/lokal), bundesland, plz, ort, ' +
-      'umkreis (km), preis_ab, preis_bis (Euro), rabatt_ab (%), sortierung (relevanz, neueste, endet_bald, rabatt, preis_auf, preis_ab, entfernung), seite, pageSize.',
+      'umkreis (km), preis_ab, preis_bis (Euro), rabatt_ab (%), sortierung (relevanz, top, neueste, endet_bald, rabatt, preis_auf, preis_ab, entfernung), seite, pageSize.',
   })
   list(@Query() query: RawSearchParams) {
     return this.search.searchParams(query);

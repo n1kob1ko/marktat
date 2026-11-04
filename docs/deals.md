@@ -145,11 +145,13 @@ Die Parameter sind deutsch, wie bei `/suche`:
 | `plz` oder `ort` + `umkreis` | Umkreissuche (PostGIS, Ortsmittelpunkt der PLZ der Filiale) |
 | `preis_ab`, `preis_bis` | Preisspanne |
 | `rabatt_ab` | Mindestrabatt (nur berechnete Rabatte) |
-| `sortierung=relevanz\|neueste\|endet_bald\|rabatt\|preis_auf\|preis_ab\|entfernung` | Sortierung. Ohne Ort fällt `entfernung` auf `relevanz` (mit Suchbegriff) bzw. `neueste` zurück. |
+| `sortierung=relevanz\|top\|neueste\|endet_bald\|rabatt\|preis_auf\|preis_ab\|entfernung` | Sortierung. Standard ist `relevanz` mit Suchbegriff, sonst `top`. Ohne Ort fällt `entfernung` auf diesen Standard zurück. |
 
 Gefilterte Seiten sind `noindex`.
 
-Die öffentliche Suche liefert zusätzlich `facets`: Shops (höchstens 50) und Marken (höchstens 30) mit Anzahl, meiste zuerst, und die Anzahl je Kategorie. Jede Liste berücksichtigt alle anderen Filter, aber nicht den eigenen – so lässt sich der Shop wechseln, ohne ihn erst zu entfernen. Meilisearch zählt dafür bei aktivem Shop-, Marken- oder Kategoriefilter in je einer zusätzlichen Abfrage ohne Treffer; im Ausweichbetrieb zählt PostgreSQL. Die Website zeigt daraus die Shop-Leiste über den Angeboten, die Auswahl für Shop und Marke und die Anzahl je Kategorie (Kategorien ohne Treffer werden ausgeblendet). „Geschäfte in der Nähe“ ist zugeklappt, solange kein Ortsfilter aktiv ist.
+Die öffentliche Suche liefert zusätzlich `facets`: Shops (höchstens 50) und Marken (höchstens 30) mit Anzahl, meiste zuerst, und die Anzahl je Kategorie. Jede Liste berücksichtigt alle anderen Filter, aber nicht den eigenen – so lässt sich der Shop wechseln, ohne ihn erst zu entfernen. Meilisearch zählt dafür bei aktivem Shop-, Marken- oder Kategoriefilter in je einer zusätzlichen Abfrage ohne Treffer; im Ausweichbetrieb zählt PostgreSQL. Die Website zeigt daraus die Shop-Leiste über den Angeboten, die Auswahl für Shop und Marke und die Anzahl je Kategorie (Kategorien ohne Treffer werden ausgeblendet). „Geschäfte in der Nähe“ ist zugeklappt, solange kein Ortsfilter aktiv ist. Ohne gewählte Kategorie stehen die Kategorien mit Treffern zusätzlich als wischbare Fotokacheln über den Angeboten (meiste zuerst).
+
+**Top-Deals** (`sortierung=top`, Standard ohne Suchbegriff) mischt die Shops reihum, damit ein großer Feed (z. B. Media Markt mit rund 40.000 Angeboten) die Liste nicht allein füllt: Jeder Shop stellt seine Angebote nach Rabatt (höchster zuerst), dann nach Veröffentlichung; die Seite nimmt abwechselnd das nächste Angebot jedes Shops, Shops mit mehr Angeboten zuerst. Hat ein Shop keine mehr, geht es mit den übrigen weiter. Meilisearch holt dazu die Anzahl je Shop und dann je Shop genau den Ausschnitt, der auf die Seite fällt (bei mehr als 200 Shops: einfach nach Rabatt). PostgreSQL rechnet dasselbe mit `row_number()` je Shop. Mit Shop- oder Händlerfilter ist `top` einfach nach Rabatt sortiert.
 
 ## Weiterleitung „Zum Angebot“
 

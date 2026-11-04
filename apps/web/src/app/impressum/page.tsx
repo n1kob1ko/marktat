@@ -54,7 +54,7 @@ export default function ImprintPage() {
       </p>
       <h2 id="fotos">Fotos</h2>
       <p>
-        Die Kategoriefotos auf der Startseite stammen von <a href={unsplash('')}>Unsplash</a>{' '}
+        Die Kategoriefotos (Startseite, Suche und Deals) stammen von <a href={unsplash('')}>Unsplash</a>{' '}
         (<a href="https://unsplash.com/license">Unsplash-Lizenz</a>). Danke an:
       </p>
       <ul>

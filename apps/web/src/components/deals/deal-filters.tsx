@@ -9,6 +9,7 @@ import { Input, Select, buttonClasses, cn } from '@marktat/ui';
 import {
   DEAL_CHANNEL_PARAMS,
   DEAL_DISCOUNT_STEPS,
+  dealDefaultSort,
   SEARCH_RADII,
   STATES,
   type DealCategoryView,
@@ -264,7 +265,7 @@ export function DealFilters({
 
 
             {query.merchantId ? <input type="hidden" name="haendler" value={query.merchantId} /> : null}
-            {query.sort !== (query.q ? 'relevanz' : 'neueste') ? <input type="hidden" name="sortierung" value={query.sort} /> : null}
+            {query.sort !== dealDefaultSort(query.q) ? <input type="hidden" name="sortierung" value={query.sort} /> : null}
 
             <button type="submit" className={buttonClasses({ className: 'hidden w-full lg:inline-flex' })}>
               Filter anwenden

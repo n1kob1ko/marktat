@@ -41,6 +41,39 @@ const isFacetActive = (query: DealSearchQuery, key: FacetKey) => Boolean(key ===
 
 const EMPTY_FACETS: DealFacets = { shops: [], brands: [], categories: {} };
 
+/** Top-Deals: Reihenfolge innerhalb eines Shops (wie „Höchster Rabatt“) */
+const TOP_LANE_SORT = ['discountPercent:desc', 'publishedAt:desc', 'id:desc'];
+/** Ab so vielen Shops wird nicht mehr gemischt (die Facette liefert höchstens maxValuesPerFacet Werte) */
+const MAX_MIX_SHOPS = 200;
+
+/**
+ * Shops abwechselnd: Runde für Runde je ein Angebot von jedem Shop, der noch welche hat (größter Shop zuerst).
+ * Liefert für die Seite ab `offset` die Reihenfolge der Shops und je Shop, ab welcher Stelle wie viele Treffer nötig sind.
+ */
+export function roundRobinSlots(counts: [shop: string, count: number][], offset: number, limit: number) {
+  const shops = counts.filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de'));
+  const taken = new Map<string, number>();
+  const order: string[] = [];
+  let position = 0;
+  for (let round = 0; position < offset + limit; round++) {
+    const active = shops.filter(([, n]) => n > round);
+    if (!active.length) break;
+    for (const [shop] of active) {
+      if (position >= offset + limit) break;
+      if (position >= offset) order.push(shop);
+      else taken.set(shop, (taken.get(shop) ?? 0) + 1);
+      position++;
+    }
+  }
+  const lanes = new Map<string, { offset: number; limit: number }>();
+  for (const shop of order) {
+    const lane = lanes.get(shop) ?? { offset: taken.get(shop) ?? 0, limit: 0 };
+    lane.limit++;
+    lanes.set(shop, lane);
+  }
+  return { order, lanes };
+}
+
 function topValues(counts: Record<string, number> | undefined, limit: number): DealFacetValue[] {
   return Object.entries(counts ?? {})
     .filter(([value, count]) => value.trim() !== '' && count > 0)
@@ -268,6 +301,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const newest = ['publishedAt:desc', 'id:desc'];
     const sort = {
       relevanz: newest,
+      top: TOP_LANE_SORT,
       neueste: newest,
       endet_bald: ['endsAt:asc', 'id:desc'],
       rabatt: ['discountPercent:desc', ...newest],
@@ -279,25 +313,62 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const inMain = withFacets ? FACET_KEYS.filter((key) => !isFacetActive(query, key)) : [];
     const separate = withFacets ? FACET_KEYS.filter((key) => isFacetActive(query, key)) : [];
     const base = { q: query.q ?? '', attributesToRetrieve: ['id'], matchingStrategy: 'all' };
-    const [response, ...counts] = await Promise.all([
-      client.search<{ id: string }>(this.index.uid, {
+    const separateCounts = Promise.all(
+      separate.map((key) => client.search<{ id: string }>(this.index.uid, { ...base, filter: without(key), page: 1, hitsPerPage: 0, facets: [FACET_FIELDS[key]] })),
+    );
+    let page: { ids: string[]; total: number; distribution?: Record<string, Record<string, number>> };
+    const mixShops = query.sort === 'top' && !query.shop && !query.merchantId;
+    if (mixShops) {
+      // Top-Deals: erst die Anzahl je Shop, dann je Shop genau die Treffer, die auf diese Seite fallen
+      const head = await client.search<{ id: string }>(this.index.uid, {
+        ...base,
+        filter: without(),
+        page: 1,
+        hitsPerPage: 0,
+        facets: [...new Set(['merchantName', ...inMain.map((key) => FACET_FIELDS[key])])],
+      });
+      const shopCounts = Object.entries(head.facetDistribution?.merchantName ?? {});
+      const slots = shopCounts.length < MAX_MIX_SHOPS ? roundRobinSlots(shopCounts, (query.page - 1) * query.pageSize, query.pageSize) : null;
+      let ids: string[];
+      if (slots) {
+        const lanes = await Promise.all(
+          [...slots.lanes].map(([shop, lane]) =>
+            client
+              .search<{ id: string }>(this.index.uid, { ...base, filter: [...without(), `merchantName = ${quote(shop)}`], sort: TOP_LANE_SORT, offset: lane.offset, limit: lane.limit })
+              .then((res) => [shop, res.hits.map((hit) => hit.id)] as const),
+          ),
+        );
+        const byShop = new Map(lanes);
+        ids = slots.order.flatMap((shop) => {
+          const id = byShop.get(shop)?.shift();
+          return id ? [id] : [];
+        });
+      } else {
+        // Sehr viele Shops: kein Mischen, nur nach Rabatt und Aktualität
+        const res = await client.search<{ id: string }>(this.index.uid, { ...base, filter: without(), sort: TOP_LANE_SORT, page: query.page, hitsPerPage: query.pageSize });
+        ids = res.hits.map((hit) => hit.id);
+      }
+      page = { ids, total: head.totalHits ?? 0, distribution: head.facetDistribution };
+    } else {
+      const response = await client.search<{ id: string }>(this.index.uid, {
         ...base,
         filter: without(),
         sort,
         page: query.page,
         hitsPerPage: query.pageSize,
         ...(inMain.length && { facets: inMain.map((key) => FACET_FIELDS[key]) }),
-      }),
-      ...separate.map((key) => client.search<{ id: string }>(this.index.uid, { ...base, filter: without(key), page: 1, hitsPerPage: 0, facets: [FACET_FIELDS[key]] })),
-    ]);
+      });
+      page = { ids: response.hits.map((hit) => hit.id), total: response.totalHits ?? 0, distribution: response.facetDistribution };
+    }
+    const counts = await separateCounts;
     let facets: DealFacets | undefined;
     if (withFacets) {
       const distribution: Partial<Record<FacetKey, Record<string, number>>> = {};
-      for (const key of inMain) distribution[key] = response.facetDistribution?.[FACET_FIELDS[key]];
+      for (const key of inMain) distribution[key] = page.distribution?.[FACET_FIELDS[key]];
       separate.forEach((key, i) => (distribution[key] = counts[i]?.facetDistribution?.[FACET_FIELDS[key]]));
       facets = toDealFacets(distribution);
     }
-    return { ids: response.hits.map((hit) => hit.id), total: response.totalHits ?? 0, engine: 'meilisearch' as const, ...(facets && { facets }) };
+    return { ids: page.ids, total: page.total, engine: 'meilisearch' as const, ...(facets && { facets }) };
   }
 
   /** Deals mit mindestens einer Filiale im Umkreis (PostGIS, Ortsmittelpunkt der PLZ) */
@@ -376,6 +447,13 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const newest = Prisma.sql`dl.published_at DESC NULLS LAST, dl.id COLLATE "C" DESC`;
     let order: Prisma.Sql;
     switch (query.sort) {
+      case 'top':
+        // Wie bei Meilisearch: Runde für Runde je Shop eins (größter Shop zuerst), im Shop höchster Rabatt, dann neueste
+        order = query.shop || query.merchantId
+          ? Prisma.sql`dl.discount_percent DESC NULLS LAST, ${newest}`
+          : Prisma.sql`row_number() OVER (PARTITION BY ${dealSellerSql} ORDER BY dl.discount_percent DESC NULLS LAST, dl.published_at DESC NULLS LAST, dl.id COLLATE "C" DESC) ASC,
+              count(*) OVER (PARTITION BY ${dealSellerSql}) DESC, ${dealSellerSql} ASC, dl.id COLLATE "C" DESC`;
+        break;
       case 'endet_bald':
         order = Prisma.sql`dl.ends_at ASC, dl.id COLLATE "C" DESC`;
         break;

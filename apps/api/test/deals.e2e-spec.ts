@@ -312,6 +312,32 @@ describe('Deals & Angebote', () => {
       await request(server()).get(`/v1/deals?shop=${'x'.repeat(121)}`).expect(400);
     });
 
+    it('mischt bei „Top-Deals“ (Standard ohne Suchbegriff) die Shops: je Runde einer pro Shop, im Shop zuerst mit Rabatt', async () => {
+      const huber = await signInMerchant(app, 'Elektro Huber GmbH');
+      const garten = await signInMerchant(app, 'Gartenwelt KG');
+      const noReference = { referencePriceCents: null, referencePriceType: null, referencePriceSource: null, referenceConfirmed: undefined };
+      const a = await publishDeal(app, huber.auth, { title: 'Monitor 27 Zoll', url: 'https://shop.example.at/a', ...noReference });
+      const b = await publishDeal(app, huber.auth, { title: 'Notebook mit Rabatt', url: 'https://shop.example.at/b' });
+      const c = await publishDeal(app, huber.auth, { title: 'Tastatur kabellos', url: 'https://shop.example.at/c', ...noReference });
+      const d = await publishDeal(app, garten.auth, { title: 'Gartenschlauch 20 m', categorySlug: 'baumarkt-garten', url: 'https://garten.example.at/d', ...noReference });
+      const expected = [b.id, d.id, c.id, a.id];
+
+      expect(await searchIds()).toEqual(expected);
+      expect(await searchIds('sortierung=top')).toEqual(expected);
+      expect(await searchIds('pageSize=2&seite=2')).toEqual([c.id, a.id]);
+      // Mit gewähltem Shop: nur noch nach Rabatt, dann neueste
+      expect(await searchIds('shop=Elektro%20Huber%20GmbH')).toEqual([b.id, c.id, a.id]);
+
+      const fallback = await createTestApp({ meiliUrl: 'http://127.0.0.1:1' });
+      try {
+        const res = await request(fallback.app.getHttpServer()).get('/v1/deals').expect(200);
+        expect(res.body.engine).toBe('postgres');
+        expect(res.body.items.map((item: { id: string }) => item.id)).toEqual(expected);
+      } finally {
+        await fallback.app.close();
+      }
+    });
+
     it('zeigt nur aktuelle Deals: geplante, pausierte, abgelaufene, ausverkaufte und unbestätigte nicht', async () => {
       const merchant = await signInMerchant(app);
       const live = await publishDeal(app, merchant.auth);
