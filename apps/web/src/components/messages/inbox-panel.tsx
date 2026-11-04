@@ -68,7 +68,7 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
             className="h-10 w-full rounded-xl border border-line-strong bg-canvas pr-3 pl-9 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
           />
         </form>
-        <nav aria-label="Unterhaltungen filtern" className="-mx-1 flex gap-1 overflow-x-auto">
+        <nav aria-label="Unterhaltungen filtern" className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
           {INBOX_FILTERS.map((f) => {
             const query = inboxQuery({ filter: f.value, q: params.q });
             const current = params.filter === f.value;

@@ -42,7 +42,7 @@ async function Favorites({ searchParams }: Pick<PageProps<'/konto/merkliste'>, '
   return (
     <div className="space-y-5">
       <FlashMessage hinweis={hinweis} fehler={fehler} />
-      <nav aria-label="Merkliste" className="flex gap-1 overflow-x-auto rounded-xl border border-line bg-surface p-1">
+      <nav aria-label="Merkliste" className="flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-xl border border-line bg-surface p-1">
         {TABS.map((t) => (
           <Link
             key={t.art}

@@ -45,7 +45,7 @@ export function CategoryBrowser({
           className={cn(
             // relative: unsichtbare Texte (sr-only, absolut positioniert) bleiben in der Leiste, sonst wird die Seite breit
             // Smartphone: wischbare Leiste mit quadratischen Kacheln, ab Tablet alle nebeneinander in einer Zeile
-            'relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+            'relative -mx-4 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
             'sm:mx-0 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-3 sm:overflow-visible sm:px-0',
           )}
         >
@@ -74,7 +74,7 @@ export function CategoryBrowser({
         className={cn(
           // relative: unsichtbare Texte (sr-only, absolut positioniert) bleiben in der Leiste, sonst wird die Seite breit
           // Smartphone: seitlich wischbare Leiste, damit die Anzeigen nicht weit nach unten rutschen
-          'relative -mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+          'relative -mx-4 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
           'sm:mx-0 sm:grid sm:grid-cols-2 sm:gap-x-4 sm:gap-y-0.5 sm:overflow-visible sm:rounded-[var(--radius-card)] sm:border sm:border-line sm:bg-surface sm:p-2 xl:grid-cols-3',
         )}
       >
