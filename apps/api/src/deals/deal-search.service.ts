@@ -1,8 +1,12 @@
 import { BadRequestException, Injectable, Logger, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
 import {
+  DEAL_FACET_BRANDS,
+  DEAL_FACET_SHOPS,
   DEAL_VERIFY_DAYS,
   parseDealSearchParams,
   stateBySlug,
+  type DealFacets,
+  type DealFacetValue,
   type DealSearchQuery,
   type DealSearchResult,
   type LocationSummary,
@@ -28,6 +32,31 @@ const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 const escapeLike = (value: string) => value.replace(/[\\%_]/g, (c) => `\\${c}`);
 
 type Center = { latitude: number; longitude: number; postalCode: string; summary: LocationSummary };
+
+/** Filter mit eigener Auswahlliste (Facette): Feld im Suchindex */
+const FACET_FIELDS = { shop: 'merchantName', brand: 'brand', category: 'categorySlug' } as const;
+type FacetKey = keyof typeof FACET_FIELDS;
+const FACET_KEYS = Object.keys(FACET_FIELDS) as FacetKey[];
+const isFacetActive = (query: DealSearchQuery, key: FacetKey) => Boolean(key === 'category' ? query.category : query[key]);
+
+const EMPTY_FACETS: DealFacets = { shops: [], brands: [], categories: {} };
+
+function topValues(counts: Record<string, number> | undefined, limit: number): DealFacetValue[] {
+  return Object.entries(counts ?? {})
+    .filter(([value, count]) => value.trim() !== '' && count > 0)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'de'))
+    .slice(0, limit)
+    .map(([value, count]) => ({ value, count }));
+}
+
+/** Facettenzählung aus Meilisearch bzw. PostgreSQL in die Form der API bringen */
+export function toDealFacets(distribution: Partial<Record<FacetKey, Record<string, number>>>): DealFacets {
+  return {
+    shops: topValues(distribution.shop, DEAL_FACET_SHOPS),
+    brands: topValues(distribution.brand, DEAL_FACET_BRANDS),
+    categories: Object.fromEntries(Object.entries(distribution.category ?? {}).filter(([, count]) => count > 0)),
+  };
+}
 
 /** Suchdokument: nur, was Suche, Filter und Sortierung brauchen */
 export function toDealDocument(deal: DealWithRelations) {
@@ -65,12 +94,29 @@ export function toDealDocument(deal: DealWithRelations) {
 const INDEX_SETTINGS = {
   displayedAttributes: ['id', 'updatedAt', 'v'],
   searchableAttributes: ['title', 'brand', 'merchantName', 'categoryName', 'description'],
-  filterableAttributes: ['categorySlug', 'discountPercent', 'endsAt', 'id', 'local', 'merchantId', 'online', 'postalCodes', 'priceCents', 'startsAt', 'stateCodes', 'verifiedUntil'],
+  filterableAttributes: [
+    'brand',
+    'categorySlug',
+    'discountPercent',
+    'endsAt',
+    'id',
+    'local',
+    'merchantId',
+    'merchantName',
+    'online',
+    'postalCodes',
+    'priceCents',
+    'startsAt',
+    'stateCodes',
+    'verifiedUntil',
+  ],
   sortableAttributes: ['discountPercent', 'endsAt', 'id', 'priceCents', 'publishedAt'],
   rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
   typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },
   localizedAttributes: null,
   pagination: { maxTotalHits: MAX_TOTAL_HITS },
+  // Häufigste Werte zuerst, damit bei vielen Marken die wichtigen nicht abgeschnitten werden
+  faceting: { maxValuesPerFacet: 200, sortFacetValuesBy: { '*': 'count' } },
   synonyms: {
     handy: ['smartphone'],
     smartphone: ['handy'],
@@ -148,15 +194,15 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     if (issues.length) {
       throw new BadRequestException({ statusCode: 400, message: 'Bitte prüfe die Suchparameter.', errors: issues.map((i) => ({ path: i.param, message: i.message })) });
     }
-    return this.search(query);
+    return this.search(query, { facets: true });
   }
 
-  async search(query: DealSearchQuery, options: { publishedAfter?: Date; publishedUntil?: Date } = {}): Promise<DealSearchResult> {
+  async search(query: DealSearchQuery, options: { publishedAfter?: Date; publishedUntil?: Date; facets?: boolean } = {}): Promise<DealSearchResult> {
     const center = await this.resolveCenter(query);
-    let page: { ids: string[]; total: number; engine: 'meilisearch' | 'postgres' } | null = null;
+    let page: { ids: string[]; total: number; engine: 'meilisearch' | 'postgres'; facets?: DealFacets } | null = null;
     const needsSql = query.sort === 'entfernung' || options.publishedAfter !== undefined;
     if (!needsSql && this.index.enabled && Date.now() >= this.meiliUnavailableUntil) {
-      page = await this.searchMeili(query, center).catch((error: Error) => {
+      page = await this.searchMeili(query, center, options.facets ?? false).catch((error: Error) => {
         this.meiliUnavailableUntil = Date.now() + BACKOFF_MS;
         this.logger.warn(`Meilisearch-Suche (Deals) fehlgeschlagen, Ausweichbetrieb über PostgreSQL: ${error.message}`);
         return null;
@@ -181,32 +227,44 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
       totalPages: Math.min(Math.ceil(total / query.pageSize), Math.floor(MAX_TOTAL_HITS / query.pageSize)),
       location: center?.summary ?? null,
       engine: page.engine,
+      ...(page.facets && { facets: page.facets }),
     };
   }
 
   // --- Meilisearch ---------------------------------------------------------------------
 
-  private async searchMeili(query: DealSearchQuery, center: Center | null) {
-    const client = this.index.client!;
-    if (!(await this.index.ensureReady())) throw new Error('Suchindex nicht bereit');
+  /** Filter für Meilisearch; null = keine Filiale im Umkreis, also keine Treffer */
+  private async meiliFilters(query: DealSearchQuery, center: Center | null): Promise<{ key?: FacetKey; expr: string }[] | null> {
     const now = seconds(new Date());
-    const filter = [`startsAt <= ${now}`, `endsAt > ${now}`, `verifiedUntil > ${now}`];
-    if (query.category) filter.push(`categorySlug = ${quote(query.category)}`);
-    if (query.merchantId) filter.push(`merchantId = ${quote(query.merchantId)}`);
-    if (query.channel === 'online') filter.push('online = true');
-    if (query.channel === 'lokal') filter.push('local = true');
-    if (query.state) filter.push(`stateCodes = ${quote(stateBySlug(query.state)!.code)}`);
+    const filter: { key?: FacetKey; expr: string }[] = [`startsAt <= ${now}`, `endsAt > ${now}`, `verifiedUntil > ${now}`].map((expr) => ({ expr }));
+    const add = (expr: string, key?: FacetKey) => filter.push({ key, expr });
+    if (query.category) add(`categorySlug = ${quote(query.category)}`, 'category');
+    if (query.shop) add(`merchantName = ${quote(query.shop)}`, 'shop');
+    if (query.brand) add(`brand = ${quote(query.brand)}`, 'brand');
+    if (query.merchantId) add(`merchantId = ${quote(query.merchantId)}`);
+    if (query.channel === 'online') add('online = true');
+    if (query.channel === 'lokal') add('local = true');
+    if (query.state) add(`stateCodes = ${quote(stateBySlug(query.state)!.code)}`);
     if (center && query.radiusKm) {
       const candidates = await this.dealsNear(center, query.radiusKm, MAX_GEO_CANDIDATES + 1);
       if (candidates.length > MAX_GEO_CANDIDATES) throw new Error('Zu viele Deals im Umkreis für die Vorauswahl');
-      if (!candidates.length) return { ids: [], total: 0, engine: 'meilisearch' as const };
-      filter.push(`id IN [${candidates.map(quote).join(', ')}]`);
+      if (!candidates.length) return null;
+      add(`id IN [${candidates.map(quote).join(', ')}]`);
     } else if (center) {
-      filter.push(`postalCodes = ${quote(center.postalCode)}`);
+      add(`postalCodes = ${quote(center.postalCode)}`);
     }
-    if (query.priceMin !== undefined) filter.push(`priceCents >= ${Math.round(query.priceMin * 100)}`);
-    if (query.priceMax !== undefined) filter.push(`priceCents <= ${Math.round(query.priceMax * 100)}`);
-    if (query.discountMin !== undefined) filter.push(`discountPercent >= ${query.discountMin}`);
+    if (query.priceMin !== undefined) add(`priceCents >= ${Math.round(query.priceMin * 100)}`);
+    if (query.priceMax !== undefined) add(`priceCents <= ${Math.round(query.priceMax * 100)}`);
+    if (query.discountMin !== undefined) add(`discountPercent >= ${query.discountMin}`);
+    return filter;
+  }
+
+  private async searchMeili(query: DealSearchQuery, center: Center | null, withFacets: boolean) {
+    const client = this.index.client!;
+    if (!(await this.index.ensureReady())) throw new Error('Suchindex nicht bereit');
+    const filter = await this.meiliFilters(query, center);
+    if (!filter) return { ids: [], total: 0, engine: 'meilisearch' as const, ...(withFacets && { facets: EMPTY_FACETS }) };
+    const without = (key?: FacetKey) => filter.filter((part) => !key || part.key !== key).map((part) => part.expr);
     const newest = ['publishedAt:desc', 'id:desc'];
     const sort = {
       relevanz: newest,
@@ -217,16 +275,29 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
       preis_ab: ['priceCents:desc', ...newest],
       entfernung: newest,
     }[query.sort];
-    const response = await client.search<{ id: string }>(this.index.uid, {
-      q: query.q ?? '',
-      filter,
-      sort,
-      page: query.page,
-      hitsPerPage: query.pageSize,
-      attributesToRetrieve: ['id'],
-      matchingStrategy: 'all',
-    });
-    return { ids: response.hits.map((hit) => hit.id), total: response.totalHits ?? 0, engine: 'meilisearch' as const };
+    // Facetten ohne eigenen Filter zählen direkt in der Hauptsuche; ein aktiver Filter braucht eine eigene Zählung ohne sich selbst
+    const inMain = withFacets ? FACET_KEYS.filter((key) => !isFacetActive(query, key)) : [];
+    const separate = withFacets ? FACET_KEYS.filter((key) => isFacetActive(query, key)) : [];
+    const base = { q: query.q ?? '', attributesToRetrieve: ['id'], matchingStrategy: 'all' };
+    const [response, ...counts] = await Promise.all([
+      client.search<{ id: string }>(this.index.uid, {
+        ...base,
+        filter: without(),
+        sort,
+        page: query.page,
+        hitsPerPage: query.pageSize,
+        ...(inMain.length && { facets: inMain.map((key) => FACET_FIELDS[key]) }),
+      }),
+      ...separate.map((key) => client.search<{ id: string }>(this.index.uid, { ...base, filter: without(key), page: 1, hitsPerPage: 0, facets: [FACET_FIELDS[key]] })),
+    ]);
+    let facets: DealFacets | undefined;
+    if (withFacets) {
+      const distribution: Partial<Record<FacetKey, Record<string, number>>> = {};
+      for (const key of inMain) distribution[key] = response.facetDistribution?.[FACET_FIELDS[key]];
+      separate.forEach((key, i) => (distribution[key] = counts[i]?.facetDistribution?.[FACET_FIELDS[key]]));
+      facets = toDealFacets(distribution);
+    }
+    return { ids: response.hits.map((hit) => hit.id), total: response.totalHits ?? 0, engine: 'meilisearch' as const, ...(facets && { facets }) };
   }
 
   /** Deals mit mindestens einer Filiale im Umkreis (PostGIS, Ortsmittelpunkt der PLZ) */
@@ -246,7 +317,8 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
 
   // --- PostgreSQL ----------------------------------------------------------------------
 
-  private async searchPostgres(query: DealSearchQuery, center: Center | null, options: { publishedAfter?: Date; publishedUntil?: Date }) {
+  /** Bedingungen für PostgreSQL; `except` lässt einen Facettenfilter weg (für dessen Auswahlliste) */
+  private sqlConditions(query: DealSearchQuery, center: Center | null, options: { publishedAfter?: Date; publishedUntil?: Date }, except?: FacetKey): Prisma.Sql[] {
     const conditions: Prisma.Sql[] = [dealVisibleSql()];
     if (options.publishedAfter) conditions.push(Prisma.sql`dl.published_at > ${options.publishedAfter}`);
     if (options.publishedUntil) conditions.push(Prisma.sql`dl.published_at <= ${options.publishedUntil}`);
@@ -256,7 +328,9 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
         conditions.push(Prisma.sql`(dl.title ILIKE ${pattern} OR dl.description ILIKE ${pattern} OR dl.brand ILIKE ${pattern} OR dc.name ILIKE ${pattern} OR ${dealSellerSql} ILIKE ${pattern})`);
       }
     }
-    if (query.category) conditions.push(Prisma.sql`dc.slug = ${query.category}`);
+    if (query.category && except !== 'category') conditions.push(Prisma.sql`dc.slug = ${query.category}`);
+    if (query.shop && except !== 'shop') conditions.push(Prisma.sql`lower(${dealSellerSql}) = lower(${query.shop})`);
+    if (query.brand && except !== 'brand') conditions.push(Prisma.sql`lower(dl.brand) = lower(${query.brand})`);
     if (query.merchantId) conditions.push(Prisma.sql`dl.merchant_id = ${query.merchantId}::uuid`);
     if (query.channel === 'online') conditions.push(Prisma.sql`dl.channel IN ('ONLINE', 'BOTH')`);
     if (query.channel === 'lokal') conditions.push(Prisma.sql`dl.channel IN ('LOCAL', 'BOTH')`);
@@ -279,6 +353,25 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     if (query.priceMin !== undefined) conditions.push(Prisma.sql`dl.price_cents >= ${Math.round(query.priceMin * 100)}`);
     if (query.priceMax !== undefined) conditions.push(Prisma.sql`dl.price_cents <= ${Math.round(query.priceMax * 100)}`);
     if (query.discountMin !== undefined) conditions.push(Prisma.sql`dl.discount_percent >= ${query.discountMin}`);
+    return conditions;
+  }
+
+  /** Auswahllisten im Ausweichbetrieb (je Facette ohne deren eigenen Filter) */
+  private async postgresFacets(query: DealSearchQuery, center: Center | null): Promise<DealFacets> {
+    const from = (except: FacetKey) =>
+      Prisma.sql`FROM deals dl ${dealJoinsSql()} JOIN deal_categories dc ON dc.id = dl.category_id WHERE ${Prisma.join(this.sqlConditions(query, center, {}, except), ' AND ')}`;
+    type Row = { value: string | null; count: bigint };
+    const [shops, brands, categories] = await Promise.all([
+      this.prisma.$queryRaw<Row[]>`SELECT ${dealSellerSql} AS value, count(*) AS count ${from('shop')} GROUP BY 1 ORDER BY 2 DESC LIMIT ${DEAL_FACET_SHOPS}`,
+      this.prisma.$queryRaw<Row[]>`SELECT dl.brand AS value, count(*) AS count ${from('brand')} AND dl.brand IS NOT NULL AND dl.brand <> '' GROUP BY 1 ORDER BY 2 DESC LIMIT ${DEAL_FACET_BRANDS}`,
+      this.prisma.$queryRaw<Row[]>`SELECT dc.slug AS value, count(*) AS count ${from('category')} GROUP BY 1`,
+    ]);
+    const toRecord = (rows: Row[]) => Object.fromEntries(rows.filter((row) => row.value).map((row) => [row.value!, Number(row.count)]));
+    return toDealFacets({ shop: toRecord(shops), brand: toRecord(brands), category: toRecord(categories) });
+  }
+
+  private async searchPostgres(query: DealSearchQuery, center: Center | null, options: { publishedAfter?: Date; publishedUntil?: Date; facets?: boolean }) {
+    const conditions = this.sqlConditions(query, center, options);
 
     const newest = Prisma.sql`dl.published_at DESC NULLS LAST, dl.id COLLATE "C" DESC`;
     let order: Prisma.Sql;
@@ -310,11 +403,12 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     }
     const from = Prisma.sql`FROM deals dl ${dealJoinsSql()} JOIN deal_categories dc ON dc.id = dl.category_id WHERE ${Prisma.join(conditions, ' AND ')}`;
     const offset = (query.page - 1) * query.pageSize;
-    const [rows, count] = await Promise.all([
+    const [rows, count, facets] = await Promise.all([
       this.prisma.$queryRaw<{ id: string }[]>`SELECT dl.id ${from} ORDER BY ${order} LIMIT ${query.pageSize} OFFSET ${offset}`,
       this.prisma.$queryRaw<{ total: bigint }[]>`SELECT count(*) AS total ${from}`,
+      options.facets ? this.postgresFacets(query, center) : Promise.resolve(undefined),
     ]);
-    return { ids: rows.map((row) => row.id), total: Number(count[0]?.total ?? 0), engine: 'postgres' as const };
+    return { ids: rows.map((row) => row.id), total: Number(count[0]?.total ?? 0), engine: 'postgres' as const, ...(facets && { facets }) };
   }
 
   /** Ort aus `ort` (ID) bzw. Hauptort der `plz` – wie in der Inseratssuche */

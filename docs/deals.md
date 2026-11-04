@@ -137,7 +137,9 @@ Die Parameter sind deutsch, wie bei `/suche`:
 | --- | --- |
 | `q` | Suchbegriff |
 | `kategorie` | Kategorie |
-| `haendler` | Händler |
+| `haendler` | Händler (Konto-ID) |
+| `shop` | Shop nach angezeigtem Namen (Händler oder Partnerprogramm, z. B. `Media Markt AT`), Groß-/Kleinschreibung egal |
+| `marke` | Marke laut Angebot, Groß-/Kleinschreibung egal |
 | `kanal=online\|lokal` | `BOTH` zählt bei beiden |
 | `bundesland` | Bundesland |
 | `plz` oder `ort` + `umkreis` | Umkreissuche (PostGIS, Ortsmittelpunkt der PLZ der Filiale) |
@@ -146,6 +148,8 @@ Die Parameter sind deutsch, wie bei `/suche`:
 | `sortierung=relevanz\|neueste\|endet_bald\|rabatt\|preis_auf\|preis_ab\|entfernung` | Sortierung. Ohne Ort fällt `entfernung` auf `relevanz` (mit Suchbegriff) bzw. `neueste` zurück. |
 
 Gefilterte Seiten sind `noindex`.
+
+Die öffentliche Suche liefert zusätzlich `facets`: Shops (höchstens 50) und Marken (höchstens 30) mit Anzahl, meiste zuerst, und die Anzahl je Kategorie. Jede Liste berücksichtigt alle anderen Filter, aber nicht den eigenen – so lässt sich der Shop wechseln, ohne ihn erst zu entfernen. Meilisearch zählt dafür bei aktivem Shop-, Marken- oder Kategoriefilter in je einer zusätzlichen Abfrage ohne Treffer; im Ausweichbetrieb zählt PostgreSQL. Die Website zeigt daraus die Shop-Leiste über den Angeboten, die Auswahl für Shop und Marke und die Anzahl je Kategorie (Kategorien ohne Treffer werden ausgeblendet). „Geschäfte in der Nähe“ ist zugeklappt, solange kein Ortsfilter aktiv ist.
 
 ## Weiterleitung „Zum Angebot“
 

@@ -45,6 +45,8 @@ export function dealChips(query: DealSearchQuery, location: LocationSummary | nu
   const chips: DealChip[] = [];
   const without = (change: Partial<DealSearchQuery>) => dealSearchHref({ ...query, ...change, page: 1 });
   if (query.category) chips.push({ id: 'kategorie', label: dealCategoryBySlug(query.category)?.name ?? query.category, removeHref: without({ category: undefined }) });
+  if (query.shop) chips.push({ id: 'shop', label: query.shop, removeHref: without({ shop: undefined }) });
+  if (query.brand) chips.push({ id: 'marke', label: `Marke: ${query.brand}`, removeHref: without({ brand: undefined }) });
   if (query.channel) chips.push({ id: 'kanal', label: DEAL_CHANNEL_PARAMS[query.channel], removeHref: without({ channel: undefined }) });
   if (query.merchantId) chips.push({ id: 'haendler', label: merchantName ?? 'Händler', removeHref: without({ merchantId: undefined }) });
   if (query.locationId || query.postalCode) {

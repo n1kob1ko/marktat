@@ -1,6 +1,7 @@
 /**
  * Suchparameter der Deals – gleiche Namen in der URL der Website (/deals?…) und in `GET /v1/deals`, z. B.
  *   /deals?kategorie=elektronik-computer&kanal=lokal&plz=1010&umkreis=10&rabatt_ab=20
+ *   /deals?shop=Media+Markt+AT&marke=Samsung
  */
 import { isAustrianPostalCode, stateBySlug } from '../austria.js';
 import { parseLocaleNumber } from '../attributes/validation.js';
@@ -28,6 +29,11 @@ export type DealChannelParam = keyof typeof DEAL_CHANNEL_PARAMS;
 export const DEAL_DISCOUNT_STEPS = [10, 20, 30, 50] as const;
 
 export const DEAL_PAGE_SIZE = 24;
+export const DEAL_SHOP_MAX_LENGTH = 120;
+export const DEAL_BRAND_MAX_LENGTH = 60;
+/** So viele Shops bzw. Marken liefert die Suche höchstens als Filterauswahl */
+export const DEAL_FACET_SHOPS = 50;
+export const DEAL_FACET_BRANDS = 30;
 const MAX_PRICE_EUR = 1_000_000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -37,6 +43,10 @@ export interface DealSearchQuery {
   category?: string;
   /** Händler (Konto-ID) */
   merchantId?: string;
+  /** Shop nach Name (Händler oder Partnerprogramm, wie auf der Karte angezeigt) */
+  shop?: string;
+  /** Marke laut Angebot */
+  brand?: string;
   channel?: DealChannelParam;
   state?: string;
   postalCode?: string;
@@ -83,6 +93,16 @@ export function parseDealSearchParams(input: RawSearchParams): { query: DealSear
   if (merchant) {
     if (UUID.test(merchant)) query.merchantId = merchant.toLowerCase();
     else issues.push({ param: 'haendler', message: 'Unbekannter Händler.' });
+  }
+  const shop = first(input.shop);
+  if (shop) {
+    if (shop.length > DEAL_SHOP_MAX_LENGTH) issues.push({ param: 'shop', message: `Der Shop darf höchstens ${DEAL_SHOP_MAX_LENGTH} Zeichen lang sein.` });
+    else query.shop = shop.replace(/\s+/g, ' ');
+  }
+  const brand = first(input.marke);
+  if (brand) {
+    if (brand.length > DEAL_BRAND_MAX_LENGTH) issues.push({ param: 'marke', message: `Die Marke darf höchstens ${DEAL_BRAND_MAX_LENGTH} Zeichen lang sein.` });
+    else query.brand = brand.replace(/\s+/g, ' ');
   }
   const channel = first(input.kanal);
   if (channel) {
@@ -156,6 +176,8 @@ export function toDealSearchParams(query: DealSearchQuery): Record<string, strin
   if (query.q) params.q = query.q;
   if (query.category) params.kategorie = query.category;
   if (query.merchantId) params.haendler = query.merchantId;
+  if (query.shop) params.shop = query.shop;
+  if (query.brand) params.marke = query.brand;
   if (query.channel) params.kanal = query.channel;
   if (query.state) params.bundesland = query.state;
   if (query.locationId) params.ort = String(query.locationId);
@@ -179,7 +201,7 @@ export function dealSearchHref(query: DealSearchQuery): string {
 
 export function hasActiveDealFilters(query: DealSearchQuery): boolean {
   return Boolean(
-    query.q || query.category || query.merchantId || query.channel || query.state || query.postalCode || query.locationId ||
+    query.q || query.category || query.merchantId || query.shop || query.brand || query.channel || query.state || query.postalCode || query.locationId ||
       query.priceMin !== undefined || query.priceMax !== undefined || query.discountMin !== undefined,
   );
 }

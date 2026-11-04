@@ -22,6 +22,7 @@ import { dealChips } from '@/lib/deals';
 import { AffiliatePromotions } from '@/components/deals/affiliate-promotions';
 import { DealCard } from '@/components/deals/deal-card';
 import { DealFilters } from '@/components/deals/deal-filters';
+import { ShopBar } from '@/components/deals/shop-bar';
 import { SortSelect } from '@/components/search/sort-select';
 import { Pagination } from '@/components/pagination';
 import { SaveSearchButton } from '@/components/saved-search/save-search-button';
@@ -90,8 +91,10 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
   const location = result?.location ?? null;
   const merchantName = query.merchantId ? result?.items[0]?.merchant?.name : undefined;
   const chips = dealChips(query, location, merchantName);
+  // Der gewählte Shop steht schon in der Shop-Leiste – dort nicht noch einmal als Chip
+  const shownChips = result?.facets ? chips.filter((chip) => chip.id !== 'shop') : chips;
   const category = query.category ? dealCategoryBySlug(query.category) : undefined;
-  const heading = query.q ? `Angebote für „${query.q}“` : (category?.name ?? 'Alle Angebote');
+  const heading = query.q ? `Angebote für „${query.q}“` : (category?.name ?? query.shop ?? 'Alle Angebote');
 
   const sorts: DealSort[] = [...(query.q ? (['relevanz'] as const) : []), 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', ...(location ? (['entfernung'] as const) : [])];
   const sortHrefs = Object.fromEntries(sorts.map((sort) => [sort, dealSearchHref({ ...query, sort, page: 1 })]));
@@ -103,7 +106,15 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
   return (
     <div className="grid gap-5 lg:grid-cols-[18rem_1fr] lg:gap-8">
       <aside aria-label="Filter" className="lg:self-start">
-        <DealFilters key={dealSearchHref(query)} query={query} categories={categories} location={location} activeCount={chips.length} total={result?.total ?? null} />
+        <DealFilters
+          key={dealSearchHref(query)}
+          query={query}
+          categories={categories}
+          location={location}
+          activeCount={chips.length}
+          total={result?.total ?? null}
+          facets={result?.facets ?? null}
+        />
       </aside>
 
       <section aria-labelledby="deals-heading" className="min-w-0">
@@ -124,9 +135,11 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
           </div>
         </div>
 
-        {chips.length ? (
+        {result?.facets ? <ShopBar query={query} shops={result.facets.shops} /> : null}
+
+        {shownChips.length ? (
           <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Aktive Filter">
-            {chips.map((chip) => (
+            {shownChips.map((chip) => (
               <Link
                 key={chip.id}
                 href={chip.removeHref}
@@ -138,7 +151,7 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
                 <X className="size-3.5" aria-hidden="true" />
               </Link>
             ))}
-            {chips.length > 1 ? (
+            {shownChips.length > 1 ? (
               <Link href={query.q ? `/deals?${new URLSearchParams({ q: query.q })}` : '/deals'} className="px-2 text-sm font-semibold text-brand-700 hover:underline">
                 Alle zurücksetzen
               </Link>

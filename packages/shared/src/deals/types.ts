@@ -116,10 +116,31 @@ export interface DealFavoriteItem {
   savedAt: string;
 }
 
+/** Ein Filterwert mit Anzahl passender Angebote */
+export interface DealFacetValue {
+  value: string;
+  count: number;
+}
+
+/**
+ * Auswahl für die Filter, passend zur aktuellen Suche. Jede Liste berücksichtigt alle anderen Filter, aber nicht
+ * den eigenen – so lässt sich z. B. der Shop wechseln, ohne ihn vorher zu entfernen.
+ */
+export interface DealFacets {
+  /** Shops, meiste Angebote zuerst (höchstens DEAL_FACET_SHOPS) */
+  shops: DealFacetValue[];
+  /** Häufigste Marken (höchstens DEAL_FACET_BRANDS) */
+  brands: DealFacetValue[];
+  /** Anzahl je Kategorie-Slug */
+  categories: Record<string, number>;
+}
+
 export interface DealSearchResult extends Paginated<DealSummary> {
   totalPages: number;
   location: LocationSummary | null;
   engine: 'meilisearch' | 'postgres';
+  /** Nur bei der öffentlichen Suche */
+  facets?: DealFacets;
 }
 
 /** Eigene Deals im Händlerbereich */
