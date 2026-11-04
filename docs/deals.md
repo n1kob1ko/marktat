@@ -201,6 +201,8 @@ Deals lassen sich merken und als Suche speichern, mit höchstens einer Sammel-E-
 
 **Preisverlauf**: Die Detailseite zeichnet die erfassten Preise (`deal_price_records`, höchstens 60) als Stufenlinie bis heute; die Werte stehen zusätzlich aufklappbar als Tabelle. Es sind nur Preise, die Markterl selbst gesehen hat – keine Marktpreise.
 
+**Preisvergleich (EAN)**: Angebote mit derselben GTIN/EAN gelten als dasselbe Produkt. Suchtreffer bekommen `comparison` (Anzahl Shops und Tiefstpreis, nur ab zwei verschiedenen Shops; eine Abfrage je Ergebnisseite über den Index `deals_gtin_idx`), die Karte zeigt „bei 2 Shops, ab € …“ bzw. „günstigster von 2 Shops“. Die Detailseite listet unter „Preisvergleich“ je anderem Shop das günstigste sichtbare Angebot (`otherOffers`, höchstens 10). Ohne GTIN kein Vergleich – Feeds liefern sie meist (`ean`/`product_GTIN`), Händler können sie im Formular eintragen.
+
 **Preisalarm**: „Preisalarm“ auf der Detailseite (`PUT/DELETE /v1/me/favorites/deals/:id/price-alert`) merkt den Deal und speichert den aktuellen Preis (`deal_favorites.alert_price_cents`). Der Job `deal-price-alerts` (Takt wie gespeicherte Suchen, `SAVED_SEARCH_ALERT_MINUTES`) schickt je Person eine Sammelmail mit allen sichtbaren Deals, deren Preis darunter liegt (höchstens 10, größte Senkung zuerst), und nimmt dann den neuen Preis als Ausgangspunkt. Abschaltbar mit „Neue Treffer für gespeicherte Suchen und Preisalarme“ in den Benachrichtigungen; „Merken“ aufheben löscht auch den Alarm.
 
 ## Tests

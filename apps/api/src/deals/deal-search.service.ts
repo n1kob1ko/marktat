@@ -20,6 +20,7 @@ import { GeoService, locationInclude, toLocationSummary } from '../geo/geo.servi
 import { MediaUrls } from '../images/media.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { createMeiliClient, SecondaryIndex } from '../search/secondary-index.js';
+import { dealComparisons } from './deal-comparison.js';
 import { dealInclude, dealJoinsSql, dealSellerName, dealSellerSql, dealVisibleSql, isDealPublic, publicDealWhere, toDealSummary, type DealWithRelations } from './deals.mapper.js';
 
 const BACKOFF_MS = 30_000;
@@ -251,9 +252,13 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const byId = new Map(rows.map((row) => [row.id, row]));
     const stale = page.ids.filter((id) => !byId.has(id));
     if (stale.length) this.index.syncMany(stale);
+    const comparisons = await dealComparisons(this.prisma, rows.flatMap((row) => (row.gtin ? [row.gtin] : [])));
     const items = page.ids.flatMap((id) => {
       const row = byId.get(id);
-      return row ? [toDealSummary(row, this.urls, center)] : [];
+      if (!row) return [];
+      const summary = toDealSummary(row, this.urls, center);
+      const comparison = row.gtin ? comparisons.get(row.gtin) : undefined;
+      return [comparison ? { ...summary, comparison } : summary];
     });
     const total = Math.max(0, page.total - stale.length);
     return {

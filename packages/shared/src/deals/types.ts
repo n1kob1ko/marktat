@@ -69,6 +69,23 @@ export interface DealSummary {
   storeCount: number;
   /** Nächstgelegene Filiale (Suche mit Ort) bzw. erste Filiale */
   nearestStore: { name: string; postalCode: string; place: string; distanceKm: number | null } | null;
+  /** Nur in Suchergebnissen: dasselbe Produkt (GTIN/EAN) gibt es aktuell bei mehreren Shops */
+  comparison?: DealComparison;
+}
+
+/** Preisvergleich über die GTIN/EAN: wie viele Shops, ab welchem Preis (dieses Angebot eingeschlossen) */
+export interface DealComparison {
+  shops: number;
+  lowestPriceCents: number;
+}
+
+/** Dasselbe Produkt bei einem anderen Shop (günstigstes Angebot je Shop) */
+export interface DealOffer {
+  id: string;
+  sellerName: string;
+  priceCents: number;
+  discountPercent: number | null;
+  isAffiliateLink: boolean;
 }
 
 /** Erfasster Preis (eigene Aufzeichnung von Markterl, keine Schätzung) */
@@ -92,6 +109,8 @@ export interface DealDetail extends DealSummary {
   stores: DealStoreView[];
   /** Preisänderungen, die Markterl selbst erfasst hat (neueste zuerst, max. 20) */
   priceHistory: DealPricePoint[];
+  /** Dasselbe Produkt (gleiche GTIN/EAN) bei anderen Shops, günstigstes zuerst (höchstens 10) */
+  otherOffers: DealOffer[];
   /** Niedrigster bei Markterl erfasster Preis der 30 Tage vor dem aktuellen Preis */
   lowestRecordedPrice30d: number | null;
   source: DealSource;

@@ -41,6 +41,7 @@ import {
   statusAfterChange,
 } from './deal-fields.js';
 import { DealSearchService } from './deal-search.service.js';
+import { otherDealOffers } from './deal-comparison.js';
 import { dealInclude, dealVisibilityInclude, isDealPublic, toDealDetail, toMerchantDeal } from './deals.mapper.js';
 
 const DAY_MS = 86_400_000;
@@ -380,7 +381,8 @@ export class DealsService {
     });
     const favorite =
       viewer && !isOwner ? await this.prisma.dealFavorite.findUnique({ where: { userId_dealId: { userId: viewer.id, dealId: id } }, select: { priceAlert: true } }) : null;
-    const detail = toDealDetail(deal, this.urls, { priceRecords, viewerId: viewer?.id, isFavorite: favorite !== null, priceAlert: favorite?.priceAlert ?? false, webUrl: loadEnv().WEB_URL });
+    const otherOffers = await otherDealOffers(this.prisma, deal);
+    const detail = toDealDetail(deal, this.urls, { priceRecords, otherOffers, viewerId: viewer?.id, isFavorite: favorite !== null, priceAlert: favorite?.priceAlert ?? false, webUrl: loadEnv().WEB_URL });
     if (isOwner || isStaff) {
       detail.moderation = await this.moderation.dealModerationInfo(deal);
       detail.reviewReason = deal.reviewReason;

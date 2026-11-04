@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import { Globe, ImageIcon, MapPin, Store } from 'lucide-react';
+import { Globe, ImageIcon, MapPin, Scale, Store } from 'lucide-react';
 import { cn } from '@marktat/ui';
-import { formatDate, type DealSummary } from '@marktat/shared';
+import { formatDate, formatPriceCents, type DealSummary } from '@marktat/shared';
 import { dealValidity, endsSoon } from '@/lib/deals';
 import { AdLabel } from './ad-label';
 import { DealPrice, DiscountBadge } from './deal-price';
@@ -49,6 +49,14 @@ export function DealCard({ deal, className }: { deal: DealSummary; className?: s
           </Link>
         </h3>
         <DealPrice deal={deal} />
+        {deal.comparison ? (
+          <p className="flex items-center gap-1 text-xs font-medium text-brand-800">
+            <Scale className="size-3.5 shrink-0" aria-hidden="true" />
+            {deal.comparison.lowestPriceCents < deal.priceCents
+              ? `bei ${deal.comparison.shops} Shops, ab ${formatPriceCents(deal.comparison.lowestPriceCents)}`
+              : `günstigster von ${deal.comparison.shops} Shops`}
+          </p>
+        ) : null}
         <ul className="mt-auto space-y-1 pt-1 text-xs text-ink-600">
           <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
             {online ? (

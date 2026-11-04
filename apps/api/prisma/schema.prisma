@@ -1183,6 +1183,7 @@ model Deal {
   @@index([merchantId, status])
   @@index([categoryId, status])
   @@index([lastVerifiedAt])
+  @@index([gtin])
   @@index([linkCheckedAt])
   @@index([feedId])
   @@map("deals")
