@@ -2,6 +2,7 @@ import {
   DEAL_CHANNEL_PARAMS,
   REFERENCE_PRICE_LABELS,
   dealCategoryBySlug,
+  dealDefaultSort,
   dealSearchHref,
   formatDate,
   formatPriceCents,
@@ -54,7 +55,7 @@ export function dealChips(query: DealSearchQuery, location: LocationSummary | nu
     chips.push({
       id: 'ort',
       label: query.radiusKm ? `${where} + ${query.radiusKm} km` : where,
-      removeHref: without({ locationId: undefined, postalCode: undefined, radiusKm: undefined, sort: query.sort === 'entfernung' ? 'neueste' : query.sort }),
+      removeHref: without({ locationId: undefined, postalCode: undefined, radiusKm: undefined, sort: query.sort === 'entfernung' ? dealDefaultSort(query.q) : query.sort }),
     });
   }
   if (query.state) chips.push({ id: 'bundesland', label: stateBySlug(query.state)?.name ?? query.state, removeHref: without({ state: undefined }) });

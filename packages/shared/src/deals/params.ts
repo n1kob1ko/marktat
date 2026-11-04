@@ -8,11 +8,12 @@ import { parseLocaleNumber } from '../attributes/validation.js';
 import { MAX_SEARCH_PAGE, SEARCH_RADII, type RawSearchParams, type SearchParamIssue, type SearchRadius } from '../search/params.js';
 import { dealCategoryBySlug } from './categories.js';
 
-export const DEAL_SORTS = ['relevanz', 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', 'entfernung'] as const;
+export const DEAL_SORTS = ['relevanz', 'top', 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', 'entfernung'] as const;
 export type DealSort = (typeof DEAL_SORTS)[number];
 
 export const DEAL_SORT_LABELS: Record<DealSort, string> = {
   relevanz: 'Beste Treffer',
+  top: 'Top-Deals',
   neueste: 'Neueste zuerst',
   endet_bald: 'Endet bald',
   rabatt: 'Höchster Rabatt',
@@ -20,6 +21,14 @@ export const DEAL_SORT_LABELS: Record<DealSort, string> = {
   preis_ab: 'Preis absteigend',
   entfernung: 'Entfernung',
 };
+
+/**
+ * Standard ohne Suchbegriff: „Top-Deals“ – die Shops wechseln sich ab (sonst füllt der größte Shop die ersten Seiten),
+ * innerhalb eines Shops zuerst der höchste belegte Rabatt, dann die neuesten. Mit Suchbegriff: Relevanz.
+ */
+export function dealDefaultSort(q?: string): DealSort {
+  return q ? 'relevanz' : 'top';
+}
 
 /** Online: auch Angebote, die online und im Geschäft gelten; lokal ebenso */
 export const DEAL_CHANNEL_PARAMS = { online: 'Online', lokal: 'Lokal im Geschäft' } as const;
@@ -77,7 +86,7 @@ function parseAmount(raw: string | undefined, param: string, issues: SearchParam
 /** Ungültige Werte werden als `issues` gemeldet: Die Website ignoriert sie, die API antwortet mit 400. */
 export function parseDealSearchParams(input: RawSearchParams): { query: DealSearchQuery; issues: SearchParamIssue[] } {
   const issues: SearchParamIssue[] = [];
-  const query: DealSearchQuery = { sort: 'neueste', page: 1, pageSize: DEAL_PAGE_SIZE };
+  const query: DealSearchQuery = { sort: dealDefaultSort(), page: 1, pageSize: DEAL_PAGE_SIZE };
 
   const q = first(input.q);
   if (q) {
@@ -147,12 +156,12 @@ export function parseDealSearchParams(input: RawSearchParams): { query: DealSear
   }
 
   const hasCenter = Boolean(query.locationId || query.postalCode);
-  query.sort = query.q ? 'relevanz' : 'neueste';
+  query.sort = dealDefaultSort(query.q);
   const sort = first(input.sortierung);
   if (sort) {
     if (!(DEAL_SORTS as readonly string[]).includes(sort)) issues.push({ param: 'sortierung', message: 'Unbekannte Sortierung.' });
-    else if (sort === 'relevanz' && !query.q) query.sort = 'neueste';
-    else if (sort === 'entfernung' && !hasCenter) query.sort = query.q ? 'relevanz' : 'neueste';
+    else if (sort === 'relevanz' && !query.q) query.sort = dealDefaultSort();
+    else if (sort === 'entfernung' && !hasCenter) query.sort = dealDefaultSort(query.q);
     else query.sort = sort as DealSort;
   }
   const page = first(input.seite);
@@ -186,7 +195,7 @@ export function toDealSearchParams(query: DealSearchQuery): Record<string, strin
   if (query.priceMin !== undefined) params.preis_ab = String(query.priceMin);
   if (query.priceMax !== undefined) params.preis_bis = String(query.priceMax);
   if (query.discountMin !== undefined) params.rabatt_ab = String(query.discountMin);
-  if (query.sort !== (query.q ? 'relevanz' : 'neueste')) params.sortierung = query.sort;
+  if (query.sort !== dealDefaultSort(query.q)) params.sortierung = query.sort;
   if (query.page > 1) params.seite = String(query.page);
   if (query.pageSize !== DEAL_PAGE_SIZE) params.pageSize = String(query.pageSize);
   return params;

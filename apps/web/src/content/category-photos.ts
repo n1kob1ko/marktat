@@ -68,7 +68,36 @@ export const CATEGORY_PHOTOS: Record<string, CategoryPhoto> = {
   'jobs/praktika': photo('photo-1515378960530-7c0da6231fb1', 'mfB1B1s4sMc', 'Christin Hume', 'christinhumephoto', '#d9d9d9'),
   'jobs/geringfuegige-beschaeftigung': photo('photo-1595475038705-1af15f928681', 'UYaBqDP6JoY', 'Brooke Cagle', 'brookecagle', '#f3f3f3'),
   'jobs/freelance': photo('photo-1605719125065-3dd9e3f79057', 'RgPQNvoIcdg', 'Helena Lopes', 'helenalopesph', '#d9d9d9'),
+
+  // Deal-Kategorien ohne passende Marktplatz-Kategorie
+  'deals/haushalt-kueche': photo('photo-1707241358597-bafcc8a8e73d', 'A_90G6Ta56A', 'Jakub Żerdzicki', 'jakubzerdzicki', '#595959'),
+  'deals/lebensmittel': photo('photo-1588964895597-cfccd6e2dbf9', '8RaUEd8zD-U', 'Maria Lin Kim', 'mrsmaria', '#d9c08c'),
+  'deals/reisen-freizeit': photo('photo-1473625247510-8ceb1760943f', '_g1WdcKcV3w', 'Mantas Hesthaven', 'mantashesthaven', '#260c0c'),
 };
+
+/** Fotos der Deal-Kategorien: eigene (`deals/<slug>`) oder die der verwandten Marktplatz-Kategorie */
+const DEAL_PHOTO_KEYS: Record<string, string> = {
+  'elektronik-computer': 'marktplatz/computer-software',
+  'smartphones-tablets': 'marktplatz/smartphones-telefonie',
+  gaming: 'marktplatz/games-konsolen',
+  'tv-audio': 'marktplatz/kameras-tv-multimedia',
+  'moebel-wohnen': 'marktplatz/wohnen-haushalt-gastronomie',
+  'baumarkt-garten': 'marktplatz/haus-garten-werkstatt',
+  'mode-schuhe': 'marktplatz/mode-accessoires',
+  'sport-freizeit': 'marktplatz/sport-sportgeraete',
+  'baby-familie': 'marktplatz/baby-kind',
+  autozubehoer: 'auto-motor/fahrzeugzubehoer',
+  drogerie: 'marktplatz/beauty-gesundheit-wellness',
+  'sonstige-angebote': 'marktplatz/sonstiges',
+};
+
+export function dealCategoryPhoto(slug: string, relatedCategoryPath?: string | null): CategoryPhoto | undefined {
+  return (
+    CATEGORY_PHOTOS[`deals/${slug}`] ??
+    (DEAL_PHOTO_KEYS[slug] ? CATEGORY_PHOTOS[DEAL_PHOTO_KEYS[slug]] : undefined) ??
+    (relatedCategoryPath ? nearestCategoryPhoto(relatedCategoryPath) : undefined)
+  );
+}
 
 export const UNSPLASH_ORIGIN = 'https://images.unsplash.com';
 

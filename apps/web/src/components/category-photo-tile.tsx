@@ -13,6 +13,7 @@ export function CategoryPhotoTile({
   icon,
   sizes,
   className,
+  unit = ['Anzeige', 'Anzeigen'],
 }: {
   href: string;
   name: string;
@@ -23,6 +24,8 @@ export function CategoryPhotoTile({
   /** Breite der Kachel im Layout, damit nicht größer als nötig geladen wird */
   sizes: string;
   className?: string;
+  /** Wort zur Anzahl (Einzahl, Mehrzahl) */
+  unit?: [string, string];
 }) {
   return (
     <Link
@@ -55,7 +58,7 @@ export function CategoryPhotoTile({
         </span>
         {count ? (
           <span className="mt-0.5 block text-xs text-white/80 tabular-nums">
-            {count.toLocaleString('de-AT')} {count === 1 ? 'Anzeige' : 'Anzeigen'}
+            {count.toLocaleString('de-AT')} {count === 1 ? unit[0] : unit[1]}
           </span>
         ) : null}
       </span>

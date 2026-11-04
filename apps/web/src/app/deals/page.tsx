@@ -21,6 +21,7 @@ import { getDealCategories } from '@/lib/data';
 import { dealChips } from '@/lib/deals';
 import { AffiliatePromotions } from '@/components/deals/affiliate-promotions';
 import { DealCard } from '@/components/deals/deal-card';
+import { DealCategoryTiles } from '@/components/deals/deal-category-tiles';
 import { DealFilters } from '@/components/deals/deal-filters';
 import { ShopBar } from '@/components/deals/shop-bar';
 import { SortSelect } from '@/components/search/sort-select';
@@ -96,7 +97,7 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
   const category = query.category ? dealCategoryBySlug(query.category) : undefined;
   const heading = query.q ? `Angebote für „${query.q}“` : (category?.name ?? query.shop ?? 'Alle Angebote');
 
-  const sorts: DealSort[] = [...(query.q ? (['relevanz'] as const) : []), 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', ...(location ? (['entfernung'] as const) : [])];
+  const sorts: DealSort[] = [...(query.q ? (['relevanz'] as const) : []), 'top', 'neueste', 'endet_bald', 'rabatt', 'preis_auf', 'preis_ab', ...(location ? (['entfernung'] as const) : [])];
   const sortHrefs = Object.fromEntries(sorts.map((sort) => [sort, dealSearchHref({ ...query, sort, page: 1 })]));
   const saveParams = toDealSearchParams({ ...query, page: 1 });
   delete saveParams.pageSize;
@@ -136,6 +137,7 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
         </div>
 
         {result?.facets ? <ShopBar query={query} shops={result.facets.shops} /> : null}
+        {result?.facets ? <DealCategoryTiles query={query} categories={categories} counts={result.facets.categories} /> : null}
 
         {shownChips.length ? (
           <div className="mt-4 flex flex-wrap items-center gap-2" aria-label="Aktive Filter">
