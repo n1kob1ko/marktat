@@ -298,10 +298,9 @@ describe('Affiliate-Deals (Awin)', () => {
       await request(server()).post(`/v1/admin/affiliate/programs/${joined.id}/review`).set(moderator.auth).send(body).expect(403);
       await request(server()).post(`/v1/admin/affiliate/programs/${joined.id}/review`).set(admin.auth).send({ ...body, note: 'passt' }).expect(400);
       await request(server()).post(`/v1/admin/affiliate/programs/${notJoined.id}/review`).set(admin.auth).send(body).expect(409);
-      // Mit 2FA: frische Bestätigung nötig (wie andere kritische Admin-Aktionen)
+      // Keine zusätzliche 2FA-Bestätigung: auch eine ältere Anmeldung darf freigeben (Entscheidung des Betreibers)
       const stale = await mfaToken(admin, 3600);
-      await request(server()).post(`/v1/admin/affiliate/programs/${joined.id}/review`).set(stale.auth).send(body).expect(403);
-      const approved = await request(server()).post(`/v1/admin/affiliate/programs/${joined.id}/review`).set(admin.auth).send(body).expect(200);
+      const approved = await request(server()).post(`/v1/admin/affiliate/programs/${joined.id}/review`).set(stale.auth).send(body).expect(200);
       expect(approved.body).toMatchObject({ status: 'APPROVED', approvalNote: approveNote, reviewedBy: 'Testperson' });
       const feed = approved.body.feeds[0];
       await request(server()).post(`/v1/admin/affiliate/feeds/${feed.id}/review`).set(moderator.auth).send({ decision: 'ACTIVATE' }).expect(403);

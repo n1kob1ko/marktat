@@ -473,7 +473,7 @@ export async function reviewDealFeedAction(_prev: FormState, formData: FormData)
 
 // --- Partnerprogramme (Affiliate) -------------------------------------------------
 
-/** Programm freigeben, anhalten oder ablehnen (nur Administratoren, Freigabe mit 2FA-Bestätigung – prüft die API) */
+/** Programm freigeben, anhalten oder ablehnen (nur Administratoren, ohne zusätzliche 2FA-Bestätigung) */
 export async function reviewAffiliateProgramAction(_prev: FormState, formData: FormData): Promise<FormState> {
   const id = String(formData.get('id') ?? '');
   if (!ENTITY_ID.test(id)) return invalid;
@@ -493,11 +493,9 @@ export async function reviewAffiliateProgramAction(_prev: FormState, formData: F
       : { decision, note },
   );
   if (!parsed.success) return { status: 'error', message: 'Bitte prüfe die markierten Felder.', fieldErrors: zodFieldErrors(parsed.error.issues), values: kept };
-  const session = await requireStaff('/admin/affiliate');
-  const auth = await stepUpToken(formData, session.token);
-  if ('fieldError' in auth) return stepUpCodeError(auth.fieldError, kept);
+  const { token } = await requireStaff('/admin/affiliate');
   try {
-    await api(`/admin/affiliate/programs/${id}/review`, { method: 'POST', token: auth.token, body: parsed.data });
+    await api(`/admin/affiliate/programs/${id}/review`, { method: 'POST', token, body: parsed.data });
   } catch (error) {
     return failure(error, kept);
   }

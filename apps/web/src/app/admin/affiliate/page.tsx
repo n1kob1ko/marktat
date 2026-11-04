@@ -49,7 +49,6 @@ async function Affiliate() {
   const { user, token } = await requireStaff('/admin/affiliate');
   const [overview, categories] = await Promise.all([api<AffiliateOverview>('/admin/affiliate', { token, cache: 'no-store' }), getDealCategories()]);
   const isAdmin = user.role === 'ADMIN';
-  const stepUp = { enabled: user.security?.level === 'aal2', maxAgeMinutes: user.security?.stepUpMaxAgeMinutes ?? 10 };
   const { config, counts } = overview;
   const liveReady = config.enabled && config.missing.length === 0;
 
@@ -114,7 +113,7 @@ async function Affiliate() {
         ) : (
           <ul className="space-y-4">
             {overview.programs.map((program) => (
-              <ProgramItem key={program.id} program={program} isAdmin={isAdmin} stepUp={stepUp} categories={categories} liveReady={liveReady} />
+              <ProgramItem key={program.id} program={program} isAdmin={isAdmin} categories={categories} liveReady={liveReady} />
             ))}
           </ul>
         )}
@@ -150,13 +149,11 @@ async function Affiliate() {
 function ProgramItem({
   program,
   isAdmin,
-  stepUp,
   categories,
   liveReady,
 }: {
   program: AffiliateProgramView;
   isAdmin: boolean;
-  stepUp: { enabled: boolean; maxAgeMinutes: number };
   categories: DealCategoryView[];
   liveReady: boolean;
 }) {
@@ -199,7 +196,7 @@ function ProgramItem({
       {isAdmin ? (
         <details className="rounded-md border border-line bg-canvas p-3">
           <summary className="cursor-pointer font-semibold text-ink-800">Freigabe bearbeiten</summary>
-          <AffiliateProgramForm program={program} categories={categories} stepUp={stepUp} />
+          <AffiliateProgramForm program={program} categories={categories} />
         </details>
       ) : null}
     </li>

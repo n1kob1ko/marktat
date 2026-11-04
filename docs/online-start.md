@@ -176,12 +176,13 @@ Awin prüft bei der Anmeldung die Website, deshalb erst, wenn Markterl öffentli
    Österreich. **Nicht** den Advertiser-Tarif wählen.
 2. Bei gewünschten Händlern (Advertisers) bewerben und Programmbedingungen lesen: Bilder? UVP? Gutscheincodes?
    Erlaubtes Werbeumfeld?
-3. Schlüssel holen: **Benutzermenü → API Credentials → Show my API token**; **Toolbox → Create-a-Feed** → in der
-   Download-Adresse der Teil nach `apikey/`; Publisher-ID oben links im Konto.
+3. Schlüssel holen: **Benutzermenü → API Credentials → Show my API token**; **Toolbox → Create-a-Feed** → im Kasten
+   „Feed List Download“ die 32 Zeichen zwischen `publisher/<ID>/` und `/1/feedList`; Publisher-ID oben links im Konto.
 4. Auf dem Server in `/opt/marktat/.env`: `AWIN_PUBLISHER_ID`, `AWIN_API_TOKEN`, `AWIN_FEED_API_KEY`, dann
-   `AWIN_ENABLED=true`; neu ausrollen (Actions → Deployment). Der Ausroll-Check lehnt unvollständige Werte ab.
+   `AWIN_ENABLED=true`; prüfen mit `/opt/marktat/current/deploy.sh check`, übernehmen mit
+   `/opt/marktat/current/deploy.sh compose up -d api` (oder neu ausrollen).
 5. Markterl → `/admin/affiliate`: „Jetzt abrufen“ → Programme erscheinen → je Programm „Freigabe bearbeiten“
-   (Dokumentation, Häkchen laut Bedingungen, 2FA-Code) → Feed „Aktivieren“. Ab dann läuft alles automatisch
+   (Dokumentation; Bilder und Vergleichspreise sind standardmäßig an) → Feed „Aktivieren“. Ab dann läuft alles automatisch
    (stündlich Feedliste, Feeds nur bei neuem Stand, Aktionen alle 4 Stunden).
 
 Provisionen sind Einnahmen: steuerliche Behandlung und ob dafür ein Gewerbe nötig ist, mit Steuerberatung klären.
