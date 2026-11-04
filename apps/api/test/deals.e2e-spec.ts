@@ -338,6 +338,28 @@ describe('Deals & Angebote', () => {
       }
     });
 
+    it('blendet mit zubehoer=aus Hüllen, Kabel und Co. aus – in Meilisearch und im Ausweichbetrieb', async () => {
+      const merchant = await signInMerchant(app);
+      const phone = await publishDeal(app, merchant.auth, { title: 'Smartphone 256 GB', url: 'https://shop.example.at/p' });
+      const headphones = await publishDeal(app, merchant.auth, { title: 'Kabelloser Kopfhörer', url: 'https://shop.example.at/k' });
+      const cover = await publishDeal(app, merchant.auth, { title: 'Clear Case, Backcover, für Apple iPhone 17', url: 'https://shop.example.at/c' });
+      const cable = await publishDeal(app, merchant.auth, { title: 'USB-C-Kabel 2 m', url: 'https://shop.example.at/u' });
+      const products = [phone.id, headphones.id].sort();
+
+      expect((await searchIds()).sort()).toEqual([phone.id, headphones.id, cover.id, cable.id].sort());
+      expect((await searchIds('zubehoer=aus')).sort()).toEqual(products);
+      await request(server()).get('/v1/deals?zubehoer=vielleicht').expect(400);
+
+      const fallback = await createTestApp({ meiliUrl: 'http://127.0.0.1:1' });
+      try {
+        const res = await request(fallback.app.getHttpServer()).get('/v1/deals?zubehoer=aus').expect(200);
+        expect(res.body.engine).toBe('postgres');
+        expect(res.body.items.map((item: { id: string }) => item.id).sort()).toEqual(products);
+      } finally {
+        await fallback.app.close();
+      }
+    });
+
     it('zeigt nur aktuelle Deals: geplante, pausierte, abgelaufene, ausverkaufte und unbestätigte nicht', async () => {
       const merchant = await signInMerchant(app);
       const live = await publishDeal(app, merchant.auth);

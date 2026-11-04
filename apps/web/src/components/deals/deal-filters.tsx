@@ -214,6 +214,14 @@ export function DealFilters({
               <p className="text-xs text-ink-500">Nur Angebote mit belegtem Vergleichspreis haben einen Rabatt.</p>
             </Group>
 
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-800">
+              <input type="checkbox" name="zubehoer" value="aus" defaultChecked={query.hideAccessories} className="mt-0.5 size-4.5 shrink-0 accent-brand-700" />
+              <span>
+                <span className="font-semibold text-ink-900">Zubehör ausblenden</span>
+                <span className="block text-xs text-ink-500">Hüllen, Schutzgläser, Kabel, Adapter, Ersatzteile</span>
+              </span>
+            </label>
+
             <fieldset className="space-y-2">
               <legend className="mb-1.5 text-sm font-semibold text-ink-900">Wo gilt das Angebot?</legend>
               {([['', 'Online und im Geschäft'], ...Object.entries(DEAL_CHANNEL_PARAMS)] as [string, string][]).map(([value, label]) => (

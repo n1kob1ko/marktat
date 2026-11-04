@@ -2,6 +2,7 @@
  * Suchparameter der Deals – gleiche Namen in der URL der Website (/deals?…) und in `GET /v1/deals`, z. B.
  *   /deals?kategorie=elektronik-computer&kanal=lokal&plz=1010&umkreis=10&rabatt_ab=20
  *   /deals?shop=Media+Markt+AT&marke=Samsung
+ *   /deals?zubehoer=aus
  */
 import { isAustrianPostalCode, stateBySlug } from '../austria.js';
 import { parseLocaleNumber } from '../attributes/validation.js';
@@ -66,6 +67,8 @@ export interface DealSearchQuery {
   priceMax?: number;
   /** Mindestrabatt in Prozent (nur Deals mit zulässigem Vergleichspreis) */
   discountMin?: number;
+  /** Zubehör (Hüllen, Kabel, Ersatzteile …) ausblenden, siehe isDealAccessory */
+  hideAccessories?: boolean;
   sort: DealSort;
   page: number;
   pageSize: number;
@@ -154,6 +157,11 @@ export function parseDealSearchParams(input: RawSearchParams): { query: DealSear
     if (Number.isInteger(n) && n >= 1 && n <= 99) query.discountMin = n;
     else issues.push({ param: 'rabatt_ab', message: 'Rabatt ab muss eine ganze Zahl zwischen 1 und 99 sein.' });
   }
+  const accessories = first(input.zubehoer);
+  if (accessories) {
+    if (accessories === 'aus') query.hideAccessories = true;
+    else if (accessories !== 'an') issues.push({ param: 'zubehoer', message: 'Zubehör muss „aus“ oder „an“ sein.' });
+  }
 
   const hasCenter = Boolean(query.locationId || query.postalCode);
   query.sort = dealDefaultSort(query.q);
@@ -195,6 +203,7 @@ export function toDealSearchParams(query: DealSearchQuery): Record<string, strin
   if (query.priceMin !== undefined) params.preis_ab = String(query.priceMin);
   if (query.priceMax !== undefined) params.preis_bis = String(query.priceMax);
   if (query.discountMin !== undefined) params.rabatt_ab = String(query.discountMin);
+  if (query.hideAccessories) params.zubehoer = 'aus';
   if (query.sort !== dealDefaultSort(query.q)) params.sortierung = query.sort;
   if (query.page > 1) params.seite = String(query.page);
   if (query.pageSize !== DEAL_PAGE_SIZE) params.pageSize = String(query.pageSize);
@@ -211,6 +220,6 @@ export function dealSearchHref(query: DealSearchQuery): string {
 export function hasActiveDealFilters(query: DealSearchQuery): boolean {
   return Boolean(
     query.q || query.category || query.merchantId || query.shop || query.brand || query.channel || query.state || query.postalCode || query.locationId ||
-      query.priceMin !== undefined || query.priceMax !== undefined || query.discountMin !== undefined,
+      query.priceMin !== undefined || query.priceMax !== undefined || query.discountMin !== undefined || query.hideAccessories,
   );
 }

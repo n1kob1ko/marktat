@@ -7,6 +7,7 @@ import {
   dealSearchHref,
   dealStartsAt,
   hasActiveDealFilters,
+  isDealAccessory,
   isSafeExternalUrl,
   isValidGtin,
   lowestRecordedPrice,
@@ -135,6 +136,40 @@ describe('Deal-Formular', () => {
   });
 });
 
+describe('Zubehör', () => {
+  it('erkennt Hüllen, Schutzgläser, Kabel und Zubehör „für“ bekannte Geräte', () => {
+    for (const title of [
+      'Puro Lightfeel Case, Backcover, für Apple iPhone 17',
+      'Puro Zweifarbige Blend Mag Hülle, Backcover',
+      'ISY IPG-3002-2.5D Retail NC Displayschutzglas',
+      'APPLE Smart Folio Schutzhülle, für iPad Air',
+      'Apple Handgelenk Band, für AirPods Pro & AirPods 4',
+      'Apple Clear Case mit MagSafe Backcover',
+      'Hama USB-C-Kabel, 1,5 m',
+      'SKROSS Reiseadapter Europa',
+      'Cellular Line KFZ-Halterung',
+      'Oral-B Aufsteckbürsten Precision Clean, 4 Stück',
+    ]) {
+      expect(isDealAccessory(title), title).toBe(true);
+    }
+  });
+
+  it('lässt eigenständige Geräte stehen', () => {
+    for (const title of [
+      'APPLE iPad Air 13" (2025) Wi-Fi + Cellular',
+      'JBL live 780NC Kabelloser Over-Ear Kopfhörer',
+      'Sennheiser HD 560S kabelgebundener Kopfhörer',
+      'Philips EP5541/50 Latte Go Kaffeevollautomat',
+      'Samsung Galaxy S26 Ultra 512 GB',
+      'Super Mario Odyssey - Nintendo Switch',
+      'Kinderwagen Joie Versatrax',
+      'Showcase Vitrine aus Glas',
+    ]) {
+      expect(isDealAccessory(title), title).toBe(false);
+    }
+  });
+});
+
 describe('Suchparameter', () => {
   it('liest alle Filter und erzeugt eine kanonische URL', () => {
     const { query, issues } = parseDealSearchParams({
@@ -159,6 +194,12 @@ describe('Suchparameter', () => {
     expect(hasActiveDealFilters({ ...query, category: undefined, brand: undefined })).toBe(true);
     expect(dealSearchHref(query)).toBe('/deals?kategorie=tv-audio&shop=Media+Markt+AT&marke=Samsung');
     expect(parseDealSearchParams({ shop: 'x'.repeat(121), marke: 'y'.repeat(61) }).issues.map((i) => i.param)).toEqual(['shop', 'marke']);
+    const accessories = parseDealSearchParams({ zubehoer: 'aus' }).query;
+    expect(accessories.hideAccessories).toBe(true);
+    expect(hasActiveDealFilters(accessories)).toBe(true);
+    expect(dealSearchHref(accessories)).toBe('/deals?zubehoer=aus');
+    expect(parseDealSearchParams({ zubehoer: 'an' }).query.hideAccessories).toBeUndefined();
+    expect(parseDealSearchParams({ zubehoer: 'egal' }).issues.map((i) => i.param)).toEqual(['zubehoer']);
   });
 
   it('meldet ungültige Werte', () => {

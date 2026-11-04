@@ -145,6 +145,7 @@ Die Parameter sind deutsch, wie bei `/suche`:
 | `plz` oder `ort` + `umkreis` | Umkreissuche (PostGIS, Ortsmittelpunkt der PLZ der Filiale) |
 | `preis_ab`, `preis_bis` | Preisspanne |
 | `rabatt_ab` | Mindestrabatt (nur berechnete Rabatte) |
+| `zubehoer=aus` | Zubehör ausblenden: Hüllen, Schutzgläser, Kabel, Adapter, Ladegeräte, Halterungen, Ersatzteile, Verbrauchsmaterial und „…, für iPhone/Galaxy/AirPods …“. Erkannt am Titel (`isDealAccessory`, ein Muster für Meilisearch und PostgreSQL) |
 | `sortierung=relevanz\|top\|neueste\|endet_bald\|rabatt\|preis_auf\|preis_ab\|entfernung` | Sortierung. Standard ist `relevanz` mit Suchbegriff, sonst `top`. Ohne Ort fällt `entfernung` auf diesen Standard zurück. |
 
 Gefilterte Seiten sind `noindex`.

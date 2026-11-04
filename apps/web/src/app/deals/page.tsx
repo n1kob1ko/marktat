@@ -123,8 +123,18 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
           <div className="min-w-0">
             <h2 id="deals-heading" className="text-xl font-bold text-ink-950 sm:text-2xl">{heading}</h2>
             {result ? (
-              <p className="mt-1 text-sm text-ink-500" aria-live="polite">
-                {result.total.toLocaleString('de-AT')} {result.total === 1 ? 'Angebot' : 'Angebote'}
+              <p className="mt-1 text-sm text-ink-500">
+                <span aria-live="polite">
+                  {result.total.toLocaleString('de-AT')} {result.total === 1 ? 'Angebot' : 'Angebote'}
+                </span>
+                {' · '}
+                <Link
+                  href={dealSearchHref({ ...query, hideAccessories: query.hideAccessories ? undefined : true, page: 1 })}
+                  scroll={false}
+                  className="font-semibold text-brand-700 hover:underline"
+                >
+                  {query.hideAccessories ? 'Zubehör anzeigen' : 'Zubehör ausblenden'}
+                </Link>
               </p>
             ) : null}
           </div>
