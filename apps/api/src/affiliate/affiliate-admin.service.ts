@@ -7,6 +7,7 @@ import {
   type AffiliateOverview,
   type AffiliateProgramReviewInput,
   type AffiliateProgramView,
+  type AffiliateSourceCategory,
   type AffiliateSyncRunView,
   type AffiliateSyncStats,
   type AffiliateWarning,
@@ -22,6 +23,8 @@ import { AwinClient } from './awin.client.js';
 import { AFFILIATE_MANUAL_JOB, AffiliateSyncService } from './affiliate-sync.service.js';
 
 const DAY_MS = 86_400_000;
+/** So viele Feed-Kategorien je Programm zeigt die Übersicht */
+const SOURCE_CATEGORY_LIMIT = 40;
 
 type ProgramWithFeeds = AffiliateProgram & { feeds: AffiliateFeed[]; defaultCategory: { slug: string } | null; reviewer?: { displayName: string } | null };
 
@@ -55,6 +58,7 @@ export class AffiliateAdminService {
     ]);
     const activeByProgram = await this.prisma.deal.groupBy({ by: ['affiliateProgramId'], where: { ...publicDealWhere(now), ...affiliate }, _count: { _all: true } });
     const activeCount = new Map(activeByProgram.map((row) => [row.affiliateProgramId, row._count._all]));
+    const sourceCategories = await this.sourceCategories(now);
     const reviewers = await this.prisma.user.findMany({ where: { id: { in: programs.map((p) => p.reviewedById).filter((v): v is string => Boolean(v)) } }, select: { id: true, displayName: true } });
     const reviewerName = new Map(reviewers.map((r) => [r.id, r.displayName]));
     const invalidPrices = invalidRuns.reduce((sum, run) => sum + ((run.stats as AffiliateSyncStats).skipped?.invalidPrice ?? 0), 0);
@@ -102,7 +106,10 @@ export class AffiliateAdminService {
       lastSuccessfulSync: lastSync?.toISOString() ?? null,
       lastSuccessfulFeedSync: lastFeedSuccess?.finishedAt?.toISOString() ?? null,
       warnings,
-      programs: programs.map((p) => this.toProgramView({ ...p, reviewer: p.reviewedById ? { displayName: reviewerName.get(p.reviewedById) ?? '' } : null }, activeCount.get(p.id) ?? 0)),
+      programs: programs.map((p) => ({
+        ...this.toProgramView({ ...p, reviewer: p.reviewedById ? { displayName: reviewerName.get(p.reviewedById) ?? '' } : null }, activeCount.get(p.id) ?? 0),
+        sourceCategories: sourceCategories.get(p.id) ?? [],
+      })),
       runs: runs.map((run) => this.toRunView(run)),
     };
   }
@@ -193,6 +200,25 @@ export class AffiliateAdminService {
   }
 
   // --- Hilfen -------------------------------------------------------------------------
+
+  /** Je Programm die häufigsten Feed-Kategorien sichtbarer Angebote mit ihrer Zuordnung (zum Nachschärfen der Schlagwörter) */
+  private async sourceCategories(now: Date): Promise<Map<string, AffiliateSourceCategory[]>> {
+    const rows = await this.prisma.$queryRaw<{ program_id: string; text: string | null; slug: string; count: bigint }[]>`
+      SELECT program_id, text, slug, count FROM (
+        SELECT dl.affiliate_program_id AS program_id, dl.source_category AS text, dc.slug, count(*) AS count,
+          row_number() OVER (PARTITION BY dl.affiliate_program_id ORDER BY count(*) DESC, dl.source_category) AS rank
+        FROM deals dl JOIN deal_categories dc ON dc.id = dl.category_id
+        WHERE dl.source = 'AFFILIATE' AND dl.status = 'ACTIVE' AND dl.deleted_at IS NULL AND dl.ends_at > ${now} AND dl.affiliate_program_id IS NOT NULL
+        GROUP BY dl.affiliate_program_id, dl.source_category, dc.slug
+      ) ranked WHERE rank <= ${SOURCE_CATEGORY_LIMIT} ORDER BY program_id, count DESC`;
+    const result = new Map<string, AffiliateSourceCategory[]>();
+    for (const row of rows) {
+      const list = result.get(row.program_id) ?? [];
+      list.push({ text: row.text, categorySlug: row.slug, count: Number(row.count) });
+      result.set(row.program_id, list);
+    }
+    return result;
+  }
 
   private async requireProgram(id: string) {
     if (!ENTITY_ID.test(id)) throw new NotFoundException('Dieses Programm gibt es nicht.');

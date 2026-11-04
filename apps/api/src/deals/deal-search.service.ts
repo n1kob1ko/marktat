@@ -1,8 +1,10 @@
 import { BadRequestException, Injectable, Logger, type OnApplicationBootstrap, type OnModuleDestroy } from '@nestjs/common';
 import {
+  DEAL_ACCESSORY_PATTERN,
   DEAL_FACET_BRANDS,
   DEAL_FACET_SHOPS,
   DEAL_VERIFY_DAYS,
+  isDealAccessory,
   parseDealSearchParams,
   stateBySlug,
   type DealFacets,
@@ -18,6 +20,7 @@ import { GeoService, locationInclude, toLocationSummary } from '../geo/geo.servi
 import { MediaUrls } from '../images/media.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { createMeiliClient, SecondaryIndex } from '../search/secondary-index.js';
+import { dealComparisons } from './deal-comparison.js';
 import { dealInclude, dealJoinsSql, dealSellerName, dealSellerSql, dealVisibleSql, isDealPublic, publicDealWhere, toDealSummary, type DealWithRelations } from './deals.mapper.js';
 
 const BACKOFF_MS = 30_000;
@@ -25,7 +28,7 @@ const MAINTENANCE_INTERVAL_MS = 60_000;
 const MAX_TOTAL_HITS = 5_000;
 /** Umkreissuche: so viele Deals mit Filiale im Umkreis gehen als Vorauswahl an Meilisearch, sonst PostgreSQL */
 const MAX_GEO_CANDIDATES = 2_000;
-export const DEAL_DOCUMENT_VERSION = 2;
+export const DEAL_DOCUMENT_VERSION = 3;
 
 const quote = (value: string) => `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`;
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
@@ -113,6 +116,7 @@ export function toDealDocument(deal: DealWithRelations) {
     online: deal.channel !== 'LOCAL',
     local: deal.channel !== 'ONLINE',
     priceCents: deal.priceCents,
+    accessory: isDealAccessory(deal.title),
     ...(deal.discountPercent !== null && { discountPercent: deal.discountPercent }),
     startsAt: seconds(deal.startsAt),
     endsAt: seconds(deal.endsAt),
@@ -128,6 +132,7 @@ const INDEX_SETTINGS = {
   displayedAttributes: ['id', 'updatedAt', 'v'],
   searchableAttributes: ['title', 'brand', 'merchantName', 'categoryName', 'description'],
   filterableAttributes: [
+    'accessory',
     'brand',
     'categorySlug',
     'discountPercent',
@@ -247,9 +252,13 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const byId = new Map(rows.map((row) => [row.id, row]));
     const stale = page.ids.filter((id) => !byId.has(id));
     if (stale.length) this.index.syncMany(stale);
+    const comparisons = await dealComparisons(this.prisma, rows.flatMap((row) => (row.gtin ? [row.gtin] : [])));
     const items = page.ids.flatMap((id) => {
       const row = byId.get(id);
-      return row ? [toDealSummary(row, this.urls, center)] : [];
+      if (!row) return [];
+      const summary = toDealSummary(row, this.urls, center);
+      const comparison = row.gtin ? comparisons.get(row.gtin) : undefined;
+      return [comparison ? { ...summary, comparison } : summary];
     });
     const total = Math.max(0, page.total - stale.length);
     return {
@@ -289,6 +298,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     if (query.priceMin !== undefined) add(`priceCents >= ${Math.round(query.priceMin * 100)}`);
     if (query.priceMax !== undefined) add(`priceCents <= ${Math.round(query.priceMax * 100)}`);
     if (query.discountMin !== undefined) add(`discountPercent >= ${query.discountMin}`);
+    if (query.hideAccessories) add('accessory = false');
     return filter;
   }
 
@@ -424,6 +434,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     if (query.priceMin !== undefined) conditions.push(Prisma.sql`dl.price_cents >= ${Math.round(query.priceMin * 100)}`);
     if (query.priceMax !== undefined) conditions.push(Prisma.sql`dl.price_cents <= ${Math.round(query.priceMax * 100)}`);
     if (query.discountMin !== undefined) conditions.push(Prisma.sql`dl.discount_percent >= ${query.discountMin}`);
+    if (query.hideAccessories) conditions.push(Prisma.sql`dl.title !~* ${DEAL_ACCESSORY_PATTERN}`);
     return conditions;
   }
 

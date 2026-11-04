@@ -336,6 +336,13 @@ describe('Affiliate-Deals (Awin)', () => {
         ['SKU-7', 'ACTIVE', 'AFFILIATE', null, program.id, null],
       ]);
       expect(deals.map((d) => d.category.slug)).toEqual(['tv-audio', 'tv-audio', 'mode-schuhe']);
+      expect(deals.map((d) => d.sourceCategory)).toEqual(['Elektronik > Audio > Kopfhörer', 'Elektronik > Audio > Kopfhörer', 'Mode > Schuhe']);
+      // Die Verwaltung zeigt je Programm, wie die Feed-Kategorien zugeordnet wurden (nur sichtbare Angebote)
+      const listed = (await overview(admin)).programs.find((p: { id: string }) => p.id === program.id);
+      expect(listed.sourceCategories).toEqual([
+        { text: 'Elektronik > Audio > Kopfhörer', categorySlug: 'tv-audio', count: 1 },
+        { text: 'Mode > Schuhe', categorySlug: 'mode-schuhe', count: 1 },
+      ]);
       expect(deals[0]).toMatchObject({ priceCents: 7999, referencePriceType: 'RRP', referencePriceSource: 'UVP laut Produktfeed von Testshop Elektro (Awin)', isAffiliateLink: true, url: deepLink('1') });
       // Rabatte aus dem Feed (savings_percent, product_price_old) zählen nicht
       expect(deals[2]!.referencePriceCents).toBeNull();

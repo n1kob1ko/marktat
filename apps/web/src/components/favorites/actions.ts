@@ -78,6 +78,24 @@ export async function setItemFavoriteAction(kind: FavoriteKind, id: string, favo
   return { ok: true, favorite };
 }
 
+export type PriceAlertResult = { ok: true; on: boolean } | { ok: false; reason: 'login' | 'error'; message: string };
+
+/** Preisalarm auf der Detailseite eines Deals (merkt den Deal beim Einschalten mit) */
+export async function setDealPriceAlertAction(id: string, on: boolean): Promise<PriceAlertResult> {
+  if (!ID_PATTERN.test(id)) return { ok: false, reason: 'error', message: 'Diesen Deal gibt es nicht.' };
+  const token = await getAccessToken();
+  if (!token) return { ok: false, reason: 'login', message: 'Bitte melde dich an, um einen Preisalarm zu setzen.' };
+  try {
+    await api(`/me/favorites/deals/${id}/price-alert`, { method: on ? 'PUT' : 'DELETE', token });
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return { ok: false, reason: 'login', message: 'Bitte melde dich an, um einen Preisalarm zu setzen.' };
+    const message = error instanceof ApiError ? error.message : 'Das hat nicht geklappt. Bitte versuche es erneut.';
+    return { ok: false, reason: 'error', message };
+  }
+  revalidatePath('/konto/merkliste');
+  return { ok: true, on };
+}
+
 /** „Entfernen“ für Deals und Anbieter in der Merkliste (funktioniert auch ohne JavaScript) */
 export async function removeItemFavoriteAction(formData: FormData) {
   const kind = String(formData.get('kind') ?? '');

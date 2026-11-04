@@ -32,7 +32,11 @@ export function ItemFavoriteButton({ kind, id, title, initial, className }: Item
         reason: 'error' as const,
         message: 'Das hat nicht geklappt. Bitte versuche es erneut.',
       }));
-      if (result.ok) return;
+      if (result.ok) {
+        // Preisalarm hängt am Merken: Detailseite neu laden, damit er den Stand zeigt
+        if (kind === 'deal') router.refresh();
+        return;
+      }
       setActive(!next);
       if (result.reason === 'login') {
         const back = `${window.location.pathname}${window.location.search}`;

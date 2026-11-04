@@ -6,6 +6,7 @@ import {
   type DealAffiliateInfo,
   type DealDetail,
   type DealDisplayStatus,
+  type DealOffer,
   type DealStoreView,
   type DealSummary,
   type MerchantDeal,
@@ -216,10 +217,13 @@ export function toDealSummary(deal: DealWithRelations, urls: MediaUrls, center: 
   };
 }
 
+/** So viele erfasste Preise zeigt die Detailseite (Verlauf und Tabelle) */
+const PRICE_HISTORY_POINTS = 60;
+
 export function toDealDetail(
   deal: DealWithRelations,
   urls: MediaUrls,
-  options: { priceRecords: { priceCents: number; recordedAt: Date }[]; viewerId?: string; isFavorite?: boolean; center?: Center; webUrl: string },
+  options: { priceRecords: { priceCents: number; recordedAt: Date }[]; otherOffers?: DealOffer[]; viewerId?: string; isFavorite?: boolean; priceAlert?: boolean; center?: Center; webUrl: string },
   now = new Date(),
 ): DealDetail {
   // Neueste zuerst: Seit wann gilt der aktuelle Preis? Davor erfasste Preise (max. 30 Tage) ergeben den Vergleich.
@@ -241,13 +245,15 @@ export function toDealDetail(
     imageRights: deal.imageKey ? deal.imageRights : null,
     imageCredit: deal.imageKey ? deal.imageCredit : affiliate && largeImageUrl ? `Produktbild: ${affiliate.advertiserName} (über ${affiliate.networkName})` : null,
     stores: storeViews(deal, options.center ?? null),
-    priceHistory: records.slice(0, 20).map((record) => ({ priceCents: record.priceCents, recordedAt: record.recordedAt.toISOString() })),
+    priceHistory: records.slice(0, PRICE_HISTORY_POINTS).map((record) => ({ priceCents: record.priceCents, recordedAt: record.recordedAt.toISOString() })),
+    otherOffers: options.otherOffers ?? [],
     lowestRecordedPrice30d: currentSince ? lowestRecordedPrice(records, currentSince) : null,
     source: deal.source,
     publishedAt: deal.publishedAt?.toISOString() ?? null,
     status: dealDisplayStatus(deal, now),
     isOwner: deal.merchantId !== null && options.viewerId === deal.merchantId,
     isFavorite: options.isFavorite ?? false,
+    priceAlert: options.priceAlert ?? false,
     linkStatus: deal.linkStatus,
     relatedCategoryPath: deal.category.relatedCategoryPath,
     merchantProfileUrl: deal.merchantId ? `${options.webUrl}/haendler/${deal.merchantId}` : null,

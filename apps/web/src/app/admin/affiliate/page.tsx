@@ -16,6 +16,7 @@ import {
   type AffiliateProgramStatus,
   type AffiliateProgramView,
   type AffiliateSkipReason,
+  type AffiliateSourceCategory,
   type AffiliateSyncRunView,
   type AffiliateSyncStats,
   type AffiliateSyncStatus,
@@ -193,6 +194,8 @@ function ProgramItem({
         <p className="text-ink-500">Keine Produktfeeds für dieses Programm.</p>
       )}
 
+      {program.sourceCategories?.length ? <SourceCategories rows={program.sourceCategories} categories={categories} /> : null}
+
       {isAdmin ? (
         <details className="rounded-md border border-line bg-canvas p-3">
           <summary className="cursor-pointer font-semibold text-ink-800">Freigabe bearbeiten</summary>
@@ -200,6 +203,35 @@ function ProgramItem({
         </details>
       ) : null}
     </li>
+  );
+}
+
+/** Wie die Kategorien des Feeds auf Markterl zugeordnet werden (häufigste zuerst) */
+function SourceCategories({ rows, categories }: { rows: AffiliateSourceCategory[]; categories: DealCategoryView[] }) {
+  return (
+    <details className="rounded-md border border-line bg-canvas p-3">
+      <summary className="cursor-pointer font-semibold text-ink-800">Kategorien aus dem Feed ({rows.length} häufigste)</summary>
+      <div className="mt-2 overflow-x-auto">
+        <table className="w-full text-left text-xs">
+          <thead className="text-ink-500">
+            <tr>
+              <th className="py-1 pr-3 font-medium">Kategorie laut Feed</th>
+              <th className="py-1 pr-3 font-medium">Bei Markterl</th>
+              <th className="py-1 text-right font-medium">Angebote</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row) => (
+              <tr key={`${row.text}|${row.categorySlug}`} className="border-t border-line">
+                <td className="py-1 pr-3 text-ink-800">{row.text ?? <span className="text-ink-500">ohne Angabe</span>}</td>
+                <td className="py-1 pr-3 whitespace-nowrap text-ink-700">{categories.find((c) => c.slug === row.categorySlug)?.name ?? row.categorySlug}</td>
+                <td className="py-1 text-right tabular-nums text-ink-700">{row.count.toLocaleString('de-AT')}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </details>
   );
 }
 
@@ -271,6 +303,7 @@ function runSummary(stats: AffiliateSyncStats): string {
   if (stats.ended) parts.push(`${stats.ended} beendet`);
   if (stats.review) parts.push(`${stats.review} in Prüfung`);
   if (stats.withoutImage) parts.push(`${stats.withoutImage} ohne Bild`);
+  if (stats.defaultCategory) parts.push(`${stats.defaultCategory} in der Standardkategorie`);
   if (stats.promotions != null) parts.push(`${stats.promotions} Aktionen`);
   if (stats.hidden) parts.push(`${stats.hidden} ausgeblendet`);
   const skipped = Object.entries(stats.skipped ?? {}).filter(([, n]) => n);

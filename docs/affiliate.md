@@ -62,6 +62,11 @@ Awin ──(alle 4 Stunden)── Promotions-API ─► Aktionen & Gutscheine fr
 - **Kennzeichnung**: „Werbung“ auf Karte und Detailseite, „Partnerangebot über Awin“, Händlername, „Quelle:
   Produktfeed von … über Awin“, Datenstand des Feeds, Provisionshinweis beim Knopf, Erklärseite `/deals/werbung`,
   Abschnitt in der Datenschutzerklärung.
+- **Kategorie**: `matchDealCategory` (`apps/api/src/affiliate/awin-mapping.ts`) prüft zuerst eindeutige Produktarten im
+  Titel (z. B. „[CD]“, „Kaffeevollautomat“, „Weinkühlschrank“, „Apple Watch“), weil Händler oft grob einordnen, dann
+  Schlagwörter in der Feed-Kategorie (`merchant_category`/`product_type`, `category_name`/`google_product_category`),
+  dann dieselben im Titel. Ohne Treffer gilt die Standardkategorie des Programms. Die Feed-Kategorie wird am Deal
+  gespeichert (`source_category`); geänderte Regeln wirken beim nächsten Feed-Abruf, weil die Kategorie in die Prüfsumme eingeht.
 - **Gutscheincodes** nur mit Häkchen „Gutscheincodes erlaubt“; sonst erscheint die Aktion ohne Code.
 - Keine Zugangsdaten in der Datenbank: Feed-Adressen (sie enthalten den Schlüssel) werden nie gespeichert, Fehlertexte
   werden von Schlüsseln und Tokens bereinigt, die Admin-Seite zeigt nur, *welche* Einstellungen fehlen.
@@ -104,7 +109,9 @@ Moderation sieht alles, ändern darf nur die Administration.
 - Kennzahlen: aktive Partnerangebote, verbundene Händler, fehlerhafte Feeds, abgelaufene/nicht lieferbare Angebote,
   Angebote ohne erlaubtes Bild, ungültige Preise, in Prüfung, Aktionen & Gutscheine
 - Programme mit Feeds, Freigabe/Anhalten/Ablehnen, Feeds aktivieren/anhalten, „Jetzt abrufen“ und „Feed jetzt abrufen“
-- Letzte Abrufe mit Ergebnis (neu, aktualisiert, beendet, übersprungen mit Grund)
+- Je Programm „Kategorien aus dem Feed“: die 40 häufigsten Feed-Kategorien sichtbarer Angebote mit ihrer Zuordnung –
+  Grundlage, um die Schlagwörter nachzuschärfen
+- Letzte Abrufe mit Ergebnis (neu, aktualisiert, beendet, in der Standardkategorie, übersprungen mit Grund)
 
 Alle Freigaben, Pausen und manuellen Abrufe stehen im Protokoll (`admin.affiliate_*`).
 

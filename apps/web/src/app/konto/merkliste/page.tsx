@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense, type ReactNode } from 'react';
-import { Heart, ImageOff } from 'lucide-react';
+import { BellRing, Heart, ImageOff } from 'lucide-react';
 import { buttonClasses, Card, Skeleton } from '@marktat/ui';
 import { formatDate, type DealFavoriteItem, type FavoriteItem, type Paginated, type ServiceFavoriteItem } from '@marktat/shared';
 import { cn } from '@marktat/ui';
@@ -214,6 +214,11 @@ async function DealFavorites({ token, page }: { token: string; page: number }) {
           {available.map((item) => (
             <li key={item.deal.id} className="flex flex-col gap-1">
               <DealCard deal={item.deal} className="flex-1" />
+              {item.priceAlert ? (
+                <p className="flex items-center gap-1 text-xs font-semibold text-brand-700">
+                  <BellRing className="size-3.5" aria-hidden="true" /> Preisalarm aktiv
+                </p>
+              ) : null}
               <RemoveItemForm kind="deal" id={item.deal.id} title={item.deal.title} />
             </li>
           ))}

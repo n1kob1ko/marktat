@@ -145,6 +145,7 @@ Die Parameter sind deutsch, wie bei `/suche`:
 | `plz` oder `ort` + `umkreis` | Umkreissuche (PostGIS, Ortsmittelpunkt der PLZ der Filiale) |
 | `preis_ab`, `preis_bis` | Preisspanne |
 | `rabatt_ab` | Mindestrabatt (nur berechnete Rabatte) |
+| `zubehoer=aus` | Zubehör ausblenden: Hüllen, Schutzgläser, Kabel, Adapter, Ladegeräte, Halterungen, Ersatzteile, Verbrauchsmaterial und „…, für iPhone/Galaxy/AirPods …“. Erkannt am Titel (`isDealAccessory`, ein Muster für Meilisearch und PostgreSQL) |
 | `sortierung=relevanz\|top\|neueste\|endet_bald\|rabatt\|preis_auf\|preis_ab\|entfernung` | Sortierung. Standard ist `relevanz` mit Suchbegriff, sonst `top`. Ohne Ort fällt `entfernung` auf diesen Standard zurück. |
 
 Gefilterte Seiten sind `noindex`.
@@ -197,6 +198,12 @@ Der Abschnitt „Aktuelle Deals & Angebote“ zeigt höchstens 4 öffentlich sic
 ## Merkliste und gespeicherte Suchen
 
 Deals lassen sich merken und als Suche speichern, mit höchstens einer Sammel-E-Mail am Tag. Details stehen in [nachrichten.md](nachrichten.md#deals-und-anbieterprofile-phase-10).
+
+**Preisverlauf**: Die Detailseite zeichnet die erfassten Preise (`deal_price_records`, höchstens 60) als Stufenlinie bis heute; die Werte stehen zusätzlich aufklappbar als Tabelle. Es sind nur Preise, die Markterl selbst gesehen hat – keine Marktpreise.
+
+**Preisvergleich (EAN)**: Angebote mit derselben GTIN/EAN gelten als dasselbe Produkt. Suchtreffer bekommen `comparison` (Anzahl Shops und Tiefstpreis, nur ab zwei verschiedenen Shops; eine Abfrage je Ergebnisseite über den Index `deals_gtin_idx`), die Karte zeigt „bei 2 Shops, ab € …“ bzw. „günstigster von 2 Shops“. Die Detailseite listet unter „Preisvergleich“ je anderem Shop das günstigste sichtbare Angebot (`otherOffers`, höchstens 10). Ohne GTIN kein Vergleich – Feeds liefern sie meist (`ean`/`product_GTIN`), Händler können sie im Formular eintragen.
+
+**Preisalarm**: „Preisalarm“ auf der Detailseite (`PUT/DELETE /v1/me/favorites/deals/:id/price-alert`) merkt den Deal und speichert den aktuellen Preis (`deal_favorites.alert_price_cents`). Der Job `deal-price-alerts` (Takt wie gespeicherte Suchen, `SAVED_SEARCH_ALERT_MINUTES`) schickt je Person eine Sammelmail mit allen sichtbaren Deals, deren Preis darunter liegt (höchstens 10, größte Senkung zuerst), und nimmt dann den neuen Preis als Ausgangspunkt. Abschaltbar mit „Neue Treffer für gespeicherte Suchen und Preisalarme“ in den Benachrichtigungen; „Merken“ aufheben löscht auch den Alarm.
 
 ## Tests
 

@@ -90,11 +90,11 @@ export class FavoritesService {
       this.prisma.dealFavorite.findMany({ where, orderBy: [{ createdAt: 'desc' }, { dealId: 'asc' }], skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE, include: { deal: { include: dealInclude } } }),
     ]);
     const now = new Date();
-    const items = rows.map(({ deal, createdAt }): DealFavoriteItem => {
+    const items = rows.map(({ deal, createdAt, priceAlert }): DealFavoriteItem => {
       const available = isDealPublic(deal, now);
       const summary = toDealSummary(deal, this.media, null, now);
       if (!available) summary.imageUrl = null;
-      return { deal: summary, available, savedAt: createdAt.toISOString() };
+      return { deal: summary, available, savedAt: createdAt.toISOString(), priceAlert };
     });
     return { items, page, pageSize: PAGE_SIZE, total };
   }
@@ -108,6 +108,23 @@ export class FavoritesService {
       throw new BadRequestException(`Du hast schon ${MAX_FAVORITES} Deals gemerkt. Entferne zuerst alte Einträge.`);
     }
     await this.prisma.dealFavorite.createMany({ data: [{ userId: user.id, dealId }], skipDuplicates: true });
+  }
+
+  /**
+   * Preisalarm ein- oder ausschalten. Einschalten merkt den Deal auch (falls noch nicht) und nimmt den aktuellen Preis
+   * als Ausgangspunkt: Eine E-Mail kommt erst, wenn der Preis darunter fällt (DealPriceAlertsService).
+   */
+  async setDealPriceAlert(user: AuthUser, dealId: string, on: boolean): Promise<void> {
+    if (!on) {
+      if (ENTITY_ID.test(dealId)) await this.prisma.dealFavorite.updateMany({ where: { userId: user.id, dealId }, data: { priceAlert: false } });
+      return;
+    }
+    await this.addDeal(user, dealId);
+    const deal = await this.prisma.deal.findUniqueOrThrow({ where: { id: dealId }, select: { priceCents: true } });
+    await this.prisma.dealFavorite.update({
+      where: { userId_dealId: { userId: user.id, dealId } },
+      data: { priceAlert: true, alertPriceCents: deal.priceCents },
+    });
   }
 
   async removeDeal(user: AuthUser, dealId: string): Promise<void> {

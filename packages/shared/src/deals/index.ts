@@ -1,3 +1,4 @@
+export * from './accessory.js';
 export * from './categories.js';
 export * from './dates.js';
 export * from './enums.js';

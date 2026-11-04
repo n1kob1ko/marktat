@@ -338,6 +338,51 @@ describe('Deals & Angebote', () => {
       }
     });
 
+    it('vergleicht Preise über die EAN: Anzahl Shops und Tiefstpreis in der Suche, andere Shops auf der Detailseite', async () => {
+      const huber = await signInMerchant(app, 'Elektro Huber GmbH');
+      const garten = await signInMerchant(app, 'Gartenwelt KG');
+      const gtin = '4006381333931';
+      const noReference = { referencePriceCents: null, referencePriceType: null, referencePriceSource: null, referenceConfirmed: undefined };
+      const a = await publishDeal(app, huber.auth, { title: 'Kopfhörer X1', gtin, ...noReference, priceCents: 9_900, url: 'https://shop.example.at/x1' });
+      const variant = await publishDeal(app, huber.auth, { title: 'Kopfhörer X1 (Restposten)', gtin, ...noReference, priceCents: 9_500, url: 'https://shop.example.at/x1b' });
+      const b = await publishDeal(app, garten.auth, { title: 'Kopfhörer X1 schwarz', gtin, ...noReference, priceCents: 8_900, url: 'https://garten.example.at/x1' });
+      const single = await publishDeal(app, garten.auth, { title: 'Gartenschlauch', categorySlug: 'baumarkt-garten', url: 'https://garten.example.at/s' });
+
+      const res = await search('');
+      const byId = new Map(res.items.map((item: { id: string }) => [item.id, item]));
+      expect(byId.get(a.id)).toMatchObject({ comparison: { shops: 2, lowestPriceCents: 8_900 } });
+      expect(byId.get(b.id)).toMatchObject({ comparison: { shops: 2, lowestPriceCents: 8_900 } });
+      expect(byId.get(single.id)).not.toHaveProperty('comparison');
+
+      // Je anderem Shop das günstigste Angebot; der eigene Shop erscheint nicht noch einmal
+      const detail = await request(server()).get(`/v1/deals/${a.id}`).expect(200);
+      expect(detail.body.otherOffers).toEqual([{ id: b.id, sellerName: 'Gartenwelt KG', priceCents: 8_900, discountPercent: null, isAffiliateLink: false }]);
+      const other = await request(server()).get(`/v1/deals/${b.id}`).expect(200);
+      expect(other.body.otherOffers.map((o: { id: string }) => o.id)).toEqual([variant.id]);
+    });
+
+    it('blendet mit zubehoer=aus Hüllen, Kabel und Co. aus – in Meilisearch und im Ausweichbetrieb', async () => {
+      const merchant = await signInMerchant(app);
+      const phone = await publishDeal(app, merchant.auth, { title: 'Smartphone 256 GB', url: 'https://shop.example.at/p' });
+      const headphones = await publishDeal(app, merchant.auth, { title: 'Kabelloser Kopfhörer', url: 'https://shop.example.at/k' });
+      const cover = await publishDeal(app, merchant.auth, { title: 'Clear Case, Backcover, für Apple iPhone 17', url: 'https://shop.example.at/c' });
+      const cable = await publishDeal(app, merchant.auth, { title: 'USB-C-Kabel 2 m', url: 'https://shop.example.at/u' });
+      const products = [phone.id, headphones.id].sort();
+
+      expect((await searchIds()).sort()).toEqual([phone.id, headphones.id, cover.id, cable.id].sort());
+      expect((await searchIds('zubehoer=aus')).sort()).toEqual(products);
+      await request(server()).get('/v1/deals?zubehoer=vielleicht').expect(400);
+
+      const fallback = await createTestApp({ meiliUrl: 'http://127.0.0.1:1' });
+      try {
+        const res = await request(fallback.app.getHttpServer()).get('/v1/deals?zubehoer=aus').expect(200);
+        expect(res.body.engine).toBe('postgres');
+        expect(res.body.items.map((item: { id: string }) => item.id).sort()).toEqual(products);
+      } finally {
+        await fallback.app.close();
+      }
+    });
+
     it('zeigt nur aktuelle Deals: geplante, pausierte, abgelaufene, ausverkaufte und unbestätigte nicht', async () => {
       const merchant = await signInMerchant(app);
       const live = await publishDeal(app, merchant.auth);

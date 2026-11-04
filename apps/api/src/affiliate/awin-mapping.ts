@@ -187,25 +187,44 @@ export function mapAwinRow(row: Record<string, string>, now = new Date(), option
   };
 }
 
-/** Kategorie anhand von Schlagwörtern in Feed-Kategorie und Titel (Reihenfolge = Vorrang) */
+/**
+ * Eindeutige Produktarten im Titel. Sie gehen der Feed-Kategorie vor, weil Händler oft grob oder irreführend einordnen
+ * (Kaffeevollautomat unter „Kaffee“, Weinkühlschrank unter „Wein“, CDs und Filme unter „Elektronik“).
+ */
+const TITLE_RULES: [slug: string, pattern: RegExp][] = [
+  ['filme-musik-buecher', /\[(cd|dvd|blu-ray|4k ultra hd[^\]]*|vinyl|lp|mc|hörbuch|hörspiel)\]|\(mediabook\)|\b(hörbuch|hörspiel)\b/i],
+  [
+    'haushalt-kueche',
+    /(kühlschrank|kühl-gefrier|gefrierschrank|gefriertruhe|weinkühl|weinklima|weintemperier|getränkekühl|waschmaschine|waschtrockner|wärmepumpentrockner|kondenstrockner|ablufttrockner|geschirrspüler|spülmaschine|backofen|herdset|einbauherd|kochfeld|dunstabzug|mikrowelle|kaffeevollautomat|kaffeemaschine|kaffeemühle|espressomaschine|siebträger|kapselmaschine|milchaufschäumer|wasserkocher|toaster|heißluftfritteuse|airfryer|küchenmaschine|standmixer|stabmixer|entsafter|staubsauger|saugroboter|wischroboter|nass-trocken-sauger|dampfbügel|bügeleisen|bügelstation|dampfglätter)/i,
+  ],
+  ['smartphones-tablets', /\b(smartwatch|apple watch|galaxy watch|pixel watch|fitness-?tracker|fitnessarmband)/i],
+  ['drogerie', /(zahnbürste|munddusche|rasierer|haarschneider|bartschneider|haartrockner|föhn|glätteisen|lockenstab|epilierer|massagepistole|massagegerät|personenwaage|blutdruckmess|fieberthermometer)/i],
+  ['baby-familie', /\b(lego|playmobil|carrera (?:go|digital|hybrid|evolution|first|rc)|tonies|tonie|vtech|ravensburger|spielzeug|puppe|plüsch)/i],
+  ['elektronik-computer', /(reiseadapter|reisestecker|steckdosenadapter|ladegerät|powerbank|ladekabel|usb-kabel|hdmi-kabel|patchkabel|netzwerkkabel)/i],
+];
+
+/** Allgemeine Begriffe, erst in der Feed-Kategorie, dann im Titel (Reihenfolge = Vorrang) */
 const CATEGORY_KEYWORDS: [slug: string, pattern: RegExp][] = [
-  ['smartphones-tablets', /\b(smartphone|handy|mobiltelefon|mobile phone|tablet|ipad|iphone)/i],
+  ['filme-musik-buecher', /\b(filme?|movies?|dvd|blu-ray|musik|music|cds?\b|vinyl|bücher|buch\b|books?\b|hörbücher)/i],
+  ['smartphones-tablets', /\b(smartphone|handy|mobiltelefon|mobile phone|tablet|ipad|iphone|wearables?)/i],
   ['gaming', /\b(gaming|konsole|console|playstation|xbox|nintendo|videospiel|video game)/i],
+  ['haushalt-kueche', /\b(haushalt|household|küche|kitchen|kochen|staubsauger|vacuum|waschmaschine|kühlschrank|appliance|hausgeräte|haushaltsgeräte|kaffeemaschine|kaffeevollautomat)/i],
   ['tv-audio', /\b(fernseh|tv\b|television|audio|kopfhörer|headphone|lautsprecher|speaker|soundbar|hifi|hi-fi)/i],
   ['elektronik-computer', /\b(elektronik|electronic|computer|laptop|notebook|pc\b|monitor|drucker|printer|kamera|camera|zubehör computer)/i],
-  ['autozubehoer', /\b(auto\b|autozubehör|kfz|car accessor|reifen|tyre|tire|motorrad)/i],
-  ['baby-familie', /\b(baby|kinderwagen|windel|spielzeug|toy|kinder)/i],
-  ['mode-schuhe', /\b(mode|fashion|bekleidung|clothing|schuh|shoe|sneaker|jacke|kleid|shirt|hose|tasche|bag|schmuck|jewel|uhr\b|watch)/i],
+  // „KFZ 631“ ist eine Gefrierschrank-Typenbezeichnung, „KFZ-Halterung“ Autozubehör
+  ['autozubehoer', /\b(auto\b|autozubehör|kfz(?![ -]?\d)|car accessor|reifen|tyre|tire|motorrad)/i],
+  ['baby-familie', /\b(baby|kinderwagen|windel|spielzeug|spielwaren|toys?\b|kinder)/i],
+  ['mode-schuhe', /(\b|damen|herren|kinder|baby)(mode\b|fashion|bekleidung|clothing|schuh|shoe|sneaker|jacke|kleid|shirt|hose|tasche|bag\b|schmuck|jewel|armbanduhr)/i],
   ['sport-freizeit', /\b(sport|fitness|fahrrad|bike|outdoor|camping|wander|ski\b|laufen|running)/i],
   ['drogerie', /\b(drogerie|kosmetik|cosmetic|beauty|parfum|perfume|pflege|hygiene|gesundheit|health)/i],
-  ['lebensmittel', /\b(lebensmittel|food|getränk|drink|wein|wine|kaffee|coffee|tee\b|snack)/i],
-  ['moebel-wohnen', /\b(möbel|furniture|wohnen|home decor|deko|lampe|leuchte|teppich|bett|sofa|matratze)/i],
+  ['lebensmittel', /\b(lebensmittel|food|getränk|drink|wein\b|weine\b|wine|kaffee\b|kaffeebohnen|kaffeekapsel|coffee|tee\b|snack)/i],
+  ['moebel-wohnen', /\b(möbel|furniture|wohnen|home decor|deko|lampe|leuchte|teppich|bett\b|sofa|matratze)/i],
   ['baumarkt-garten', /\b(baumarkt|garten|garden|werkzeug|tool|diy|heimwerk)/i],
-  ['haushalt-kueche', /\b(haushalt|household|küche|kitchen|kochen|staubsauger|vacuum|waschmaschine|kühlschrank|appliance)/i],
-  ['reisen-freizeit', /\b(reise|travel|hotel|urlaub|flug|flight|ticket|freizeitpark)/i],
+  ['reisen-freizeit', /\b(reise\b|reisen\b|travel\b|hotel|urlaub|flug\b|flüge|flight\b|freizeitpark)/i],
 ];
 
 export function matchDealCategory(product: Pick<AwinProduct, 'categoryText' | 'title'>): string | null {
+  for (const [slug, pattern] of TITLE_RULES) if (pattern.test(product.title)) return slug;
   for (const [slug, pattern] of CATEGORY_KEYWORDS) if (pattern.test(product.categoryText)) return slug;
   for (const [slug, pattern] of CATEGORY_KEYWORDS) if (pattern.test(product.title)) return slug;
   return null;
@@ -226,6 +245,7 @@ export function productHash(product: AwinProduct, extra: string): string {
     product.validFrom?.getTime() ?? null,
     product.validTo?.getTime() ?? null,
     product.shippingNote,
+    product.categoryText,
     extra,
   ]);
 }

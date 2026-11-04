@@ -322,6 +322,7 @@ export class AffiliateSyncService implements OnModuleInit {
         description: product.description,
         brand: product.brand,
         gtin: product.gtin,
+        sourceCategory: product.categoryText.slice(0, 200) || null,
         url: product.url,
         externalImageUrl: product.imageUrl,
         priceCents: product.priceCents,

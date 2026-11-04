@@ -29,6 +29,7 @@ export const DEAL_CATEGORIES: readonly DealCategoryDefinition[] = [
   { slug: 'baby-familie', name: 'Baby & Familie', icon: 'baby', relatedCategoryPath: 'marktplatz/baby-kind' },
   { slug: 'autozubehoer', name: 'Autozubehör', icon: 'car', relatedCategoryPath: 'auto-motor/fahrzeugzubehoer/auto-zubehoer' },
   { slug: 'reisen-freizeit', name: 'Reisen & Freizeit', icon: 'plane' },
+  { slug: 'filme-musik-buecher', name: 'Filme, Musik & Bücher', icon: 'book-open', relatedCategoryPath: 'marktplatz/buecher-filme-musik' },
   { slug: 'sonstige-angebote', name: 'Sonstige Angebote', icon: 'tag' },
 ];
 

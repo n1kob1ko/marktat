@@ -1,6 +1,7 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
+import { DealPriceAlertsService } from '../src/favorites/deal-price-alerts.service.js';
 import { SavedSearchesService } from '../src/saved-searches/saved-searches.service.js';
 import { createTestApp, flushSearch, mailsTo, mailText, publishDeal, resetData, signIn, signInAs, signInMerchant } from './helpers.js';
 
@@ -67,6 +68,40 @@ describe('Merkliste und gespeicherte Suchen für Deals und Dienstleistungen', ()
       await request(server()).put(`/v1/me/favorites/deals/${deal.id}`).set(other.auth).expect(404);
       await request(server()).delete(`/v1/me/favorites/deals/${deal.id}`).set(user.auth).expect(204);
       expect(await prisma.dealFavorite.count()).toBe(0);
+    });
+
+    it('Preisalarm: merkt den Deal mit und schickt eine E-Mail, sobald der Preis sinkt – je Senkung einmal', async () => {
+      const merchant = await signInMerchant(app);
+      const deal = await publishDeal(app, merchant.auth);
+      const user = await signIn(app);
+      const quiet = await signIn(app);
+      await prisma.user.update({ where: { id: quiet.id }, data: { notifySearchesByEmail: false } });
+      await request(server()).put(`/v1/me/favorites/deals/${deal.id}/price-alert`).expect(401);
+      await request(server()).put(`/v1/me/favorites/deals/${deal.id}/price-alert`).set(merchant.auth).expect(400);
+      await request(server()).put(`/v1/me/favorites/deals/${deal.id}/price-alert`).set(user.auth).expect(204);
+      await request(server()).put(`/v1/me/favorites/deals/${deal.id}/price-alert`).set(quiet.auth).expect(204);
+
+      expect((await request(server()).get(`/v1/deals/${deal.id}`).set(user.auth).expect(200)).body).toMatchObject({ isFavorite: true, priceAlert: true });
+      expect((await request(server()).get('/v1/me/favorites/deals').set(user.auth).expect(200)).body.items[0]).toMatchObject({ priceAlert: true });
+
+      const alerts = app.get(DealPriceAlertsService);
+      expect(await alerts.run()).toEqual({ notified: 0, deals: 0 });
+      await prisma.deal.update({ where: { id: deal.id }, data: { priceCents: 49_900 } });
+      expect(await alerts.run()).toEqual({ notified: 1, deals: 1 });
+      const mails = await mailsTo(user.email);
+      expect(mails.map((m) => m.Subject)).toEqual(['Preis gesunken: Notebook 15 Zoll, 16 GB RAM']);
+      expect(await mailText(mails[0]!.ID)).toMatch(/jetzt €\s499 statt €\s599/);
+      expect(await mailsTo(quiet.email)).toHaveLength(0);
+      // Derselbe Preis meldet sich nicht noch einmal, eine weitere Senkung schon
+      expect(await alerts.run()).toEqual({ notified: 0, deals: 0 });
+      await prisma.deal.update({ where: { id: deal.id }, data: { priceCents: 44_900 } });
+      expect(await alerts.run()).toEqual({ notified: 1, deals: 1 });
+
+      // Ausschalten lässt den Deal gemerkt
+      await request(server()).delete(`/v1/me/favorites/deals/${deal.id}/price-alert`).set(user.auth).expect(204);
+      expect((await request(server()).get(`/v1/deals/${deal.id}`).set(user.auth).expect(200)).body).toMatchObject({ isFavorite: true, priceAlert: false });
+      await prisma.deal.update({ where: { id: deal.id }, data: { priceCents: 39_900 } });
+      expect(await alerts.run()).toEqual({ notified: 0, deals: 0 });
     });
 
     it('merkt Anbieterprofile, nicht das eigene, und blendet pausierte als nicht verfügbar aus', async () => {

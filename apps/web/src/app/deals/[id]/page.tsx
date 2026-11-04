@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
-import { BadgeCheck, BadgeInfo, CalendarDays, ExternalLink, Flag, Globe, ImageIcon, MapPin, Pencil, RefreshCw, ShieldCheck, Store, Truck } from 'lucide-react';
+import { BadgeCheck, BadgeInfo, CalendarDays, ExternalLink, Flag, Globe, ImageIcon, MapPin, Pencil, RefreshCw, Scale, ShieldCheck, Store, Truck } from 'lucide-react';
 import { Alert, Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
 import {
   DEAL_AVAILABILITY_LABELS,
@@ -22,6 +22,8 @@ import { FlashMessage } from '@/components/flash-message';
 import { ItemFavoriteButton } from '@/components/favorites/item-favorite-button';
 import { AdLabel } from '@/components/deals/ad-label';
 import { DealPrice, DiscountBadge } from '@/components/deals/deal-price';
+import { PriceAlertButton } from '@/components/deals/price-alert-button';
+import { PriceHistoryChart } from '@/components/deals/price-history-chart';
 
 async function loadDeal(id: string, token: string | null) {
   try {
@@ -200,28 +202,34 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
             </Card>
           ) : null}
 
+          {deal.otherOffers.length ? <OtherOffers deal={deal} /> : null}
+
           {deal.priceHistory.length > 1 ? (
             <Card className="p-5 sm:p-7">
-              <h2 className="font-sans text-lg font-semibold tracking-normal">Erfasste Preise</h2>
+              <h2 className="font-sans text-lg font-semibold tracking-normal">Preisverlauf</h2>
               <p className="mt-1 text-sm text-ink-600">
                 {deal.affiliate ? 'Preise laut Produktfeed, wie Markterl sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
               </p>
-              <table className="mt-4 w-full text-left text-sm">
-                <thead className="text-xs text-ink-500">
-                  <tr>
-                    <th scope="col" className="py-1.5 font-medium">Seit</th>
-                    <th scope="col" className="py-1.5 text-right font-medium">Preis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {deal.priceHistory.map((point) => (
-                    <tr key={point.recordedAt} className="border-t border-line">
-                      <td className="py-2">{formatDate(point.recordedAt)}</td>
-                      <td className="py-2 text-right tabular-nums">{formatPriceCents(point.priceCents)}</td>
+              <PriceHistoryChart points={deal.priceHistory} />
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer font-semibold text-brand-700">Alle erfassten Preise</summary>
+                <table className="mt-2 w-full text-left text-sm">
+                  <thead className="text-xs text-ink-500">
+                    <tr>
+                      <th scope="col" className="py-1.5 font-medium">Seit</th>
+                      <th scope="col" className="py-1.5 text-right font-medium">Preis</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {deal.priceHistory.map((point) => (
+                      <tr key={point.recordedAt} className="border-t border-line">
+                        <td className="py-2">{formatDate(point.recordedAt)}</td>
+                        <td className="py-2 text-right tabular-nums">{formatPriceCents(point.priceCents)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </details>
             </Card>
           ) : null}
         </div>
@@ -259,7 +267,8 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 </p>
               </>
             ) : null}
-            {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
+            {!deal.isOwner && (publicView || deal.isFavorite) ? <ItemFavoriteButton key={`merken-${deal.isFavorite}`} kind="deal" id={deal.id} title={deal.title} initial={deal.isFavorite} className="mt-3" /> : null}
+            {!deal.isOwner && publicView ? <PriceAlertButton key={`preisalarm-${deal.priceAlert}`} id={deal.id} initial={deal.priceAlert} className="mt-3" /> : null}
             <p className="mt-4 text-xs leading-relaxed text-ink-500">
               Kauf und Bezahlung erfolgen direkt beim Händler. Markterl ist nicht Verkäufer und haftet nicht für Preis und Verfügbarkeit; maßgeblich sind die Angaben im Geschäft
               bzw. im Online-Shop.
@@ -330,5 +339,43 @@ function OwnerBar({ deal, staff }: { deal: DealDetail; staff: boolean }) {
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** Dasselbe Produkt (gleiche GTIN/EAN) bei anderen Shops, zusammen mit diesem Angebot nach Preis sortiert */
+function OtherOffers({ deal }: { deal: DealDetail }) {
+  const rows = [{ id: deal.id, sellerName: deal.sellerName, priceCents: deal.priceCents, current: true }, ...deal.otherOffers.map((offer) => ({ ...offer, current: false }))].sort(
+    (a, b) => a.priceCents - b.priceCents || Number(b.current) - Number(a.current),
+  );
+  const lowest = rows[0]!.priceCents;
+  return (
+    <Card className="p-5 sm:p-7">
+      <h2 className="flex items-center gap-2 font-sans text-lg font-semibold tracking-normal">
+        <Scale className="size-5 text-brand-700" aria-hidden="true" /> Preisvergleich
+      </h2>
+      <p className="mt-1 text-sm text-ink-600">
+        Dasselbe Produkt (gleiche EAN) bei {rows.length} Shops auf Markterl – aktuelle Preise laut Händler bzw. Produktfeed, ohne Versandkosten.
+      </p>
+      <ul className="mt-4 divide-y divide-line text-sm">
+        {rows.map((row) => (
+          <li key={row.id} className="flex items-center justify-between gap-3 py-2.5">
+            <span className="min-w-0">
+              {row.current ? (
+                <span className="font-semibold text-ink-900">{row.sellerName}</span>
+              ) : (
+                <Link href={`/deals/${row.id}`} className="font-semibold text-brand-700 hover:underline">
+                  {row.sellerName}
+                </Link>
+              )}
+              {row.current ? <span className="ml-2 text-xs text-ink-500">dieses Angebot</span> : null}
+            </span>
+            <span className="flex shrink-0 items-center gap-2">
+              {row.priceCents === lowest && rows.some((other) => other.priceCents > lowest) ? <Badge tone="brand">Günstigster</Badge> : null}
+              <span className="font-semibold tabular-nums text-ink-900">{formatPriceCents(row.priceCents)}</span>
+            </span>
+          </li>
+        ))}
+      </ul>
+    </Card>
   );
 }
