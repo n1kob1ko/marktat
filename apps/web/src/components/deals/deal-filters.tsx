@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition, type FormEvent, type ReactN
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { flushSync } from 'react-dom';
-import { Loader2, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronDown, Loader2, SlidersHorizontal, X } from 'lucide-react';
 import { Input, Select, buttonClasses, cn } from '@marktat/ui';
 import {
   DEAL_CHANNEL_PARAMS,
@@ -12,13 +12,15 @@ import {
   SEARCH_RADII,
   STATES,
   type DealCategoryView,
+  type DealFacets,
+  type DealFacetValue,
   type DealSearchQuery,
   type LocationSummary,
 } from '@marktat/shared';
 import { LocationInput } from '@/components/search/location-input';
 
 const DESKTOP = '(min-width: 64rem)';
-const PARAMS = ['q', 'kategorie', 'kanal', 'ort', 'plz', 'umkreis', 'bundesland', 'preis_ab', 'preis_bis', 'rabatt_ab', 'haendler', 'sortierung'];
+const PARAMS = ['q', 'shop', 'kategorie', 'marke', 'kanal', 'ort', 'plz', 'umkreis', 'bundesland', 'preis_ab', 'preis_bis', 'rabatt_ab', 'haendler', 'sortierung'];
 
 /** Formular → saubere Deal-URL: leere Felder weg, Umkreis nur mit Ort */
 export function formToDealSearch(entries: Iterable<[string, FormDataEntryValue]>): string {
@@ -55,12 +57,14 @@ export function DealFilters({
   location,
   activeCount,
   total,
+  facets,
 }: {
   query: DealSearchQuery;
   categories: DealCategoryView[];
   location: LocationSummary | null;
   activeCount: number;
   total: number | null;
+  facets: DealFacets | null;
 }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
@@ -106,6 +110,9 @@ export function DealFilters({
   }, [open, desktop]);
 
   const format = (n: number | undefined) => (n === undefined ? '' : String(n).replace('.', ','));
+  const nearbyActive = Boolean(query.locationId || query.postalCode || query.state);
+  // Mit Zählung: nur Kategorien mit passenden Angeboten (die gewählte bleibt immer sichtbar)
+  const categoryOptions = facets ? categories.filter((c) => (facets.categories[c.slug] ?? 0) > 0 || c.slug === query.category) : categories;
 
   return (
     <>
@@ -169,57 +176,22 @@ export function DealFilters({
               <Input id="d-q" name="q" type="search" defaultValue={query.q ?? ''} placeholder="z. B. Laptop, Kaffee" maxLength={100} />
             </Group>
 
+            <Group label="Shop" htmlFor="d-shop">
+              <FacetSelect id="d-shop" name="shop" value={query.shop} values={facets?.shops} allLabel="Alle Shops" />
+            </Group>
+
             <Group label="Kategorie" htmlFor="d-kategorie">
               <Select id="d-kategorie" name="kategorie" defaultValue={query.category ?? ''}>
                 <option value="">Alle Kategorien</option>
-                {categories.map((c) => (
-                  <option key={c.slug} value={c.slug}>{c.name}</option>
+                {categoryOptions.map((c) => (
+                  <option key={c.slug} value={c.slug}>{withCount(c.name, facets?.categories[c.slug])}</option>
                 ))}
               </Select>
             </Group>
 
-            <fieldset className="space-y-2">
-              <legend className="mb-1.5 text-sm font-semibold text-ink-900">Wo gilt das Angebot?</legend>
-              {([['', 'Online und im Geschäft'], ...Object.entries(DEAL_CHANNEL_PARAMS)] as [string, string][]).map(([value, label]) => (
-                <label key={value || 'alle'} className="flex cursor-pointer items-center gap-3 text-sm text-ink-800">
-                  <input type="radio" name="kanal" value={value} defaultChecked={(query.channel ?? '') === value} className="size-4.5 accent-brand-700" />
-                  {label}
-                </label>
-              ))}
-            </fieldset>
-
-            <fieldset className="space-y-3">
-              <legend className="mb-1.5 text-sm font-semibold text-ink-900">Geschäfte in der Nähe</legend>
-              <label htmlFor="f-ort" className="sr-only">PLZ oder Ort</label>
-              <LocationInput
-                initial={location}
-                initialPostalCode={query.postalCode}
-                onChange={(has, committed) => {
-                  if (!committed || !desktop) return setHasLocation(has);
-                  flushSync(() => setHasLocation(has));
-                  apply();
-                }}
-              />
-              <div className="space-y-1.5">
-                <label htmlFor="d-umkreis" className="text-sm text-ink-700">Umkreis</label>
-                <Select id="d-umkreis" name="umkreis" defaultValue={query.radiusKm ? String(query.radiusKm) : ''} disabled={!hasLocation}>
-                  <option value="">Nur diese PLZ</option>
-                  {SEARCH_RADII.map((km) => (
-                    <option key={km} value={km}>+ {km} km</option>
-                  ))}
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label htmlFor="d-bundesland" className="text-sm text-ink-700">Bundesland</label>
-                <Select id="d-bundesland" name="bundesland" defaultValue={query.state ?? ''}>
-                  <option value="">Ganz Österreich</option>
-                  {STATES.map((s) => (
-                    <option key={s.slug} value={s.slug}>{s.name}</option>
-                  ))}
-                </Select>
-              </div>
-              <p className="text-xs text-ink-500">Ort und Bundesland gelten für Angebote im Geschäft (Filialen der Händler).</p>
-            </fieldset>
+            <Group label="Marke" htmlFor="d-marke">
+              <FacetSelect id="d-marke" name="marke" value={query.brand} values={facets?.brands} allLabel="Alle Marken" />
+            </Group>
 
             <fieldset className="space-y-1.5">
               <legend className="mb-1.5 text-sm font-semibold text-ink-900">Preis in €</legend>
@@ -240,6 +212,56 @@ export function DealFilters({
               </Select>
               <p className="text-xs text-ink-500">Nur Angebote mit belegtem Vergleichspreis haben einen Rabatt.</p>
             </Group>
+
+            <fieldset className="space-y-2">
+              <legend className="mb-1.5 text-sm font-semibold text-ink-900">Wo gilt das Angebot?</legend>
+              {([['', 'Online und im Geschäft'], ...Object.entries(DEAL_CHANNEL_PARAMS)] as [string, string][]).map(([value, label]) => (
+                <label key={value || 'alle'} className="flex cursor-pointer items-center gap-3 text-sm text-ink-800">
+                  <input type="radio" name="kanal" value={value} defaultChecked={(query.channel ?? '') === value} className="size-4.5 accent-brand-700" />
+                  {label}
+                </label>
+              ))}
+            </fieldset>
+
+            {/* Selten gebraucht (Filialen der Händler): zugeklappt, außer ein Ortsfilter ist aktiv */}
+            <details open={nearbyActive || undefined} className="group border-t border-line pt-4">
+              <summary className="flex cursor-pointer list-none items-center justify-between text-sm font-semibold text-ink-900 [&::-webkit-details-marker]:hidden">
+                Geschäfte in der Nähe
+                <ChevronDown className="size-4 text-ink-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+              </summary>
+              <div className="mt-3 space-y-3">
+                <label htmlFor="f-ort" className="sr-only">PLZ oder Ort</label>
+                <LocationInput
+                  initial={location}
+                  initialPostalCode={query.postalCode}
+                  onChange={(has, committed) => {
+                    if (!committed || !desktop) return setHasLocation(has);
+                    flushSync(() => setHasLocation(has));
+                    apply();
+                  }}
+                />
+                <div className="space-y-1.5">
+                  <label htmlFor="d-umkreis" className="text-sm text-ink-700">Umkreis</label>
+                  <Select id="d-umkreis" name="umkreis" defaultValue={query.radiusKm ? String(query.radiusKm) : ''} disabled={!hasLocation}>
+                    <option value="">Nur diese PLZ</option>
+                    {SEARCH_RADII.map((km) => (
+                      <option key={km} value={km}>+ {km} km</option>
+                    ))}
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <label htmlFor="d-bundesland" className="text-sm text-ink-700">Bundesland</label>
+                  <Select id="d-bundesland" name="bundesland" defaultValue={query.state ?? ''}>
+                    <option value="">Ganz Österreich</option>
+                    {STATES.map((s) => (
+                      <option key={s.slug} value={s.slug}>{s.name}</option>
+                    ))}
+                  </Select>
+                </div>
+                <p className="text-xs text-ink-500">Ort und Bundesland gelten für Angebote im Geschäft (Filialen der Händler).</p>
+              </div>
+            </details>
+
 
             {query.merchantId ? <input type="hidden" name="haendler" value={query.merchantId} /> : null}
             {query.sort !== (query.q ? 'relevanz' : 'neueste') ? <input type="hidden" name="sortierung" value={query.sort} /> : null}
@@ -270,5 +292,22 @@ function Group({ label, htmlFor, children }: { label: string; htmlFor: string; c
       <label htmlFor={htmlFor} className="block text-sm font-semibold text-ink-900">{label}</label>
       {children}
     </div>
+  );
+}
+
+const withCount = (label: string, count: number | undefined) => (count === undefined ? label : `${label} (${count.toLocaleString('de-AT')})`);
+
+/** Auswahl aus den Facetten der Suche (Shop, Marke); der gewählte Wert bleibt auch ohne Treffer wählbar */
+function FacetSelect({ id, name, value, values, allLabel }: { id: string; name: string; value: string | undefined; values: DealFacetValue[] | undefined; allLabel: string }) {
+  const list = values ?? [];
+  const selected = value ? (list.find((v) => v.value.toLocaleLowerCase('de') === value.toLocaleLowerCase('de'))?.value ?? value) : '';
+  const options = value && !list.some((v) => v.value === selected) ? [{ value, count: undefined }, ...list] : list;
+  return (
+    <Select id={id} name={name} defaultValue={selected} disabled={!options.length}>
+      <option value="">{allLabel}</option>
+      {options.map((v) => (
+        <option key={v.value} value={v.value}>{withCount(v.value, v.count)}</option>
+      ))}
+    </Select>
   );
 }

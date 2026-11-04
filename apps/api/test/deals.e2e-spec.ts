@@ -261,6 +261,57 @@ describe('Deals & Angebote', () => {
       await request(server()).get('/v1/deals?kanal=fax').expect(400);
     });
 
+    it('filtert nach Shop und Marke und liefert Auswahllisten mit Anzahl – mit Meilisearch und ohne', async () => {
+      const huber = await signInMerchant(app, 'Elektro Huber GmbH');
+      const garten = await signInMerchant(app, 'Gartenwelt KG');
+      const lenovo = await publishDeal(app, huber.auth, { brand: 'Lenovo' });
+      const tv = await publishDeal(app, huber.auth, { title: 'Fernseher 55 Zoll', categorySlug: 'tv-audio', brand: 'Samsung', url: 'https://shop.example.at/tv' });
+      const mower = await publishDeal(app, garten.auth, { title: 'Akku-Rasenmäher 36 V', categorySlug: 'baumarkt-garten', brand: 'Samsung', url: 'https://garten.example.at/m' });
+      type Facets = { shops: { value: string; count: number }[]; brands: { value: string; count: number }[]; categories: Record<string, number> };
+      type Result = { items: { id: string }[]; total: number; facets: Facets };
+      const ids = (result: Result) => result.items.map((d) => d.id).sort();
+
+      const check = async (get: (query: string) => Promise<Result>) => {
+        expect(ids(await get('shop=Elektro%20Huber%20GmbH'))).toEqual([lenovo.id, tv.id].sort());
+        expect(ids(await get('shop=gartenwelt%20kg'))).toEqual([mower.id]);
+        expect(ids(await get('marke=samsung'))).toEqual([tv.id, mower.id].sort());
+        expect(ids(await get('shop=Elektro%20Huber%20GmbH&marke=Samsung'))).toEqual([tv.id]);
+        expect((await get('shop=Unbekannt')).total).toBe(0);
+        // Shop gewählt: die Shopliste zählt trotzdem alle Shops (sonst ließe sich der Shop nicht wechseln), Marken und Kategorien nur im Shop
+        const shop = await get('shop=Elektro%20Huber%20GmbH');
+        expect(shop.facets.shops).toEqual([
+          { value: 'Elektro Huber GmbH', count: 2 },
+          { value: 'Gartenwelt KG', count: 1 },
+        ]);
+        expect(shop.facets.brands).toEqual([
+          { value: 'Lenovo', count: 1 },
+          { value: 'Samsung', count: 1 },
+        ]);
+        expect(shop.facets.categories).toEqual({ 'elektronik-computer': 1, 'tv-audio': 1 });
+        const brand = await get('marke=Samsung');
+        expect(brand.facets.brands.map((b) => b.value)).toEqual(['Samsung', 'Lenovo']);
+        expect(brand.facets.categories).toEqual({ 'tv-audio': 1, 'baumarkt-garten': 1 });
+      };
+      expect((await search('')).engine).toBe('meilisearch');
+      await check(async (query) => {
+        await flushSearch();
+        return (await request(server()).get(`/v1/deals?${query}`).expect(200)).body as Result;
+      });
+
+      const fallback = await createTestApp({ meiliUrl: 'http://127.0.0.1:1' });
+      try {
+        await check(async (query) => {
+          const res = await request(fallback.app.getHttpServer()).get(`/v1/deals?${query}`).expect(200);
+          expect(res.body.engine).toBe('postgres');
+          return res.body as Result;
+        });
+      } finally {
+        await fallback.app.close();
+      }
+
+      await request(server()).get(`/v1/deals?shop=${'x'.repeat(121)}`).expect(400);
+    });
+
     it('zeigt nur aktuelle Deals: geplante, pausierte, abgelaufene, ausverkaufte und unbestätigte nicht', async () => {
       const merchant = await signInMerchant(app);
       const live = await publishDeal(app, merchant.auth);

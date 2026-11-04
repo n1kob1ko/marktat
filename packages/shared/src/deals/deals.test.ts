@@ -6,6 +6,7 @@ import {
   dealEndsAt,
   dealSearchHref,
   dealStartsAt,
+  hasActiveDealFilters,
   isSafeExternalUrl,
   isValidGtin,
   lowestRecordedPrice,
@@ -149,6 +150,15 @@ describe('Suchparameter', () => {
     expect(issues).toEqual([]);
     expect(query).toMatchObject({ q: 'laptop', category: 'elektronik-computer', channel: 'lokal', postalCode: '1010', radiusKm: 10, priceMax: 800, discountMin: 20, sort: 'endet_bald' });
     expect(dealSearchHref(query)).toBe('/deals?q=laptop&kategorie=elektronik-computer&kanal=lokal&plz=1010&umkreis=10&preis_bis=800&rabatt_ab=20&sortierung=endet_bald');
+  });
+
+  it('filtert nach Shop und Marke (Leerzeichen bereinigt, in der URL nach der Kategorie)', () => {
+    const { query, issues } = parseDealSearchParams({ shop: '  Media   Markt AT ', marke: 'Samsung', kategorie: 'tv-audio' });
+    expect(issues).toEqual([]);
+    expect(query).toMatchObject({ shop: 'Media Markt AT', brand: 'Samsung', category: 'tv-audio' });
+    expect(hasActiveDealFilters({ ...query, category: undefined, brand: undefined })).toBe(true);
+    expect(dealSearchHref(query)).toBe('/deals?kategorie=tv-audio&shop=Media+Markt+AT&marke=Samsung');
+    expect(parseDealSearchParams({ shop: 'x'.repeat(121), marke: 'y'.repeat(61) }).issues.map((i) => i.param)).toEqual(['shop', 'marke']);
   });
 
   it('meldet ungültige Werte', () => {
