@@ -34,7 +34,10 @@ export function activeArea(pathname: string, params: URLSearchParams): string | 
   return null;
 }
 
-/** Bereichsleiste unter dem Kopf. Auf dem Smartphone seitlich wischbar, jeder Eintrag mindestens 44 px hoch. */
+/**
+ * Bereichsleiste unter dem Kopf. Auf dem Smartphone seitlich wischbar, jeder Eintrag mindestens 44 px hoch.
+ * overflow-y-hidden: Die Leiste darf beim Wischen nur seitlich laufen; sonst lässt iOS sie auch nach oben und unten federn.
+ */
 export function AreaNav() {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -46,7 +49,7 @@ export function AreaNavList({ active }: { active: string | null }) {
   return (
     <nav aria-label="Bereiche" className="border-b border-line bg-surface">
       <Container className="px-0 sm:px-6">
-        <ul className="flex h-11 items-stretch gap-1 overflow-x-auto px-4 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <ul className="flex h-11 items-stretch gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
           {AREAS.map((area) => {
             const current = area.id === active;
             return (
@@ -55,7 +58,7 @@ export function AreaNavList({ active }: { active: string | null }) {
                   href={area.href}
                   aria-current={current ? 'page' : undefined}
                   className={cn(
-                    '-mb-px flex items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold whitespace-nowrap sm:px-3',
+                    'flex items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold whitespace-nowrap sm:px-3',
                     current ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-600 hover:border-line-strong hover:text-ink-900',
                   )}
                 >

@@ -36,7 +36,7 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
         />
       </div>
       {images.length > 1 ? (
-        <ul className="flex gap-2 overflow-x-auto pb-1">
+        <ul className="flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain pb-1">
           {images.map((image, index) => (
             <li key={image.id} className="shrink-0">
               <button

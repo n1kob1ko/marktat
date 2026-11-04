@@ -376,7 +376,7 @@ async function CategoryShelves() {
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               </div>
-              <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
+              <ul className="-mx-4 flex snap-x snap-mandatory gap-3 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 pb-2 sm:-mx-6 sm:px-6 lg:mx-0 lg:px-0">
                 {listings.map((listing) => (
                   <li key={listing.id} className="flex w-[11.5rem] shrink-0 snap-start sm:w-56">
                     <ListingCard listing={listing} />
