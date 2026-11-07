@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Container } from '@marktat/ui';
 import { VERTICAL_LABELS, VERTICAL_SLUGS, VERTICALS } from '@marktat/shared';
 import { Logo } from './logo';
+import { ThemeToggle } from './theme-toggle';
 
 export function SiteFooter() {
   return (
@@ -37,6 +38,10 @@ export function SiteFooter() {
       </Container>
       <div className="border-t border-line">
         <Container className="flex flex-col gap-2 py-5 text-xs text-ink-500 sm:flex-row sm:justify-between">
+          {/* Am Handy steht der Umschalter hier statt im Kopf (dort fehlt neben der Lupe der Platz) */}
+          <div className="sm:hidden">
+            <ThemeToggle withLabel />
+          </div>
           <p>© 2026 Markterl. Alle Preise in Euro inkl. USt., sofern nicht anders angegeben.</p>
           <p>Beta-Version · derzeit alles kostenlos · Gemacht in Österreich</p>
         </Container>

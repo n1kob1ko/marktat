@@ -53,6 +53,8 @@ test('Nach dem Kontakt bewerten, Sterne bei der Anzeige, öffentliche Antwort', 
   await seller.page.getByLabel('Nachricht schreiben').fill('Ja, komm gerne vorbei.');
   await seller.page.getByRole('button', { name: 'Senden' }).click();
   await expect(seller.page.getByTestId('chat-log').getByText('Ja, komm gerne vorbei.')).toBeVisible();
+  // Erst wenn die Nachricht beim Server ist („Zugestellt“), kennt die Gegenseite nach dem Neuladen das Bewerten
+  await expect(seller.page.getByTestId('chat-log').getByText(/Zugestellt|Gelesen/)).toBeVisible();
 
   await buyer.page.reload();
   await buyer.page.getByRole('link', { name: 'Bea Bewertet bewerten' }).click();

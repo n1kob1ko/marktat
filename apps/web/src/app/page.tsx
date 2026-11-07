@@ -56,7 +56,7 @@ export default function HomePage() {
         </div>
       </Container>
 
-      <Container className="mt-12">
+      <Container className="mt-8 sm:mt-12">
         <SectionHeading
           title="Neu eingestellt"
           action={
@@ -74,7 +74,7 @@ export default function HomePage() {
         <CategoryShelves />
       </Suspense>
 
-      <Container className="mt-14">
+      <Container className="mt-10 sm:mt-14">
         <SectionHeading
           title="Alle Kategorien im Marktplatz"
           action={
@@ -86,12 +86,12 @@ export default function HomePage() {
             </Link>
           }
         />
-        <Suspense fallback={<GridSkeleton count={10} className={TILE_CLASS} grid={TILE_GRID} />}>
+        <Suspense fallback={<GridSkeleton count={10} className={`${TILE_CLASS} ${TILE_ITEM}`} grid={TILE_GRID} />}>
           <MarketplaceCategories />
         </Suspense>
       </Container>
 
-      <Container className="mt-14">
+      <Container className="mt-10 sm:mt-14">
         <SectionHeading
           title="Aktuelle Deals & Angebote"
           action={
@@ -109,24 +109,25 @@ export default function HomePage() {
         <HomeIntro />
       </Suspense>
 
-      <Container className="mt-20">
+      <Container className="mt-12 sm:mt-20">
         <div className="grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
           <div className="rounded-[var(--radius-card)] border border-line bg-surface p-6 sm:p-10">
             <h2 className="text-2xl font-bold text-ink-950 sm:text-3xl">In drei Schritten verkauft</h2>
-            <ol className="mt-8 grid gap-6 sm:grid-cols-3">
+            {/* Am Handy nur Nummer und Titel in einer Reihe, damit die Seite kurz bleibt */}
+            <ol className="mt-6 grid grid-cols-3 gap-3 sm:mt-8 sm:gap-6">
               {[
                 { icon: Camera, title: 'Fotografieren', text: 'Gute Fotos bei Tageslicht – das wirkt sofort vertrauenswürdig.' },
                 { icon: Tag, title: 'Inserieren', text: 'Titel, Preis und Ort eingeben – die Vorschau zeigt sofort, wie es aussieht.' },
                 { icon: MessageCircle, title: 'Verkaufen', text: 'Anfragen beantworten, Treffpunkt ausmachen, fertig.' },
               ].map((step, i) => (
                 <li key={step.title}>
-                  <span className="flex size-10 items-center justify-center rounded-full bg-primary font-display text-lg font-bold text-white">
+                  <span className="flex size-9 items-center justify-center rounded-full bg-primary font-display text-lg font-bold text-white sm:size-10">
                     {i + 1}
                   </span>
-                  <h3 className="mt-4 flex items-center gap-2 font-sans text-base font-semibold tracking-normal text-ink-900">
+                  <h3 className="mt-3 flex items-center gap-2 font-sans text-sm font-semibold tracking-normal text-ink-900 sm:mt-4 sm:text-base">
                     <step.icon className="size-4.5 text-brand-600" aria-hidden="true" /> {step.title}
                   </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-600">{step.text}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-ink-600 max-sm:hidden">{step.text}</p>
                 </li>
               ))}
             </ol>
@@ -141,7 +142,7 @@ export default function HomePage() {
             </Suspense>
           </div>
           <div className="flex flex-col gap-6">
-            <div className="rounded-[var(--radius-card)] bg-accent-50 p-6 sm:p-8">
+            <div className="rounded-[var(--radius-card)] bg-accent-50 p-5 sm:p-8">
               <ShieldCheck className="size-7 text-accent-700" aria-hidden="true" />
               <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal text-ink-950">Sicher handeln</h2>
               <ul className="mt-3 space-y-2 text-sm leading-relaxed text-ink-700">
@@ -150,7 +151,7 @@ export default function HomePage() {
                 <li>Verdächtige Anzeigen über „Melden“ an unser Team schicken.</li>
               </ul>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-hero-deep p-6 text-white sm:p-8">
+            <div className="rounded-[var(--radius-card)] bg-hero-deep p-5 text-white sm:p-8">
               <Store className="size-7 text-accent-300" aria-hidden="true" />
               <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
               <p className="mt-2 text-sm leading-relaxed text-hero-muted">
@@ -187,7 +188,7 @@ function AreaTiles({ counts }: { counts: Record<string, number> }) {
               </span>
               <span className="text-sm leading-tight font-semibold text-ink-900">{tile.title}</span>
               <span className="hidden text-xs leading-tight text-ink-500 tabular-nums sm:block">
-                {count ? `${count.toLocaleString('de-AT')} ${count === 1 ? 'Anzeige' : 'Anzeigen'}` : tile.hint}
+                {publicCount(count) ? `${count!.toLocaleString('de-AT')} Anzeigen` : tile.hint}
               </span>
             </Link>
           </li>
@@ -230,7 +231,7 @@ function SectionHeading({ title, action }: { title: string; action?: React.React
 
 function GridSkeleton({ count, className, grid = 'grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4' }: { count: number; className: string; grid?: string }) {
   return (
-    <div className={`grid ${grid}`}>
+    <div className={grid.includes('sm:grid') ? grid : `grid ${grid}`}>
       {Array.from({ length: count }, (_, i) => (
         <Skeleton key={i} className={className} />
       ))}
@@ -238,10 +239,21 @@ function GridSkeleton({ count, className, grid = 'grid-cols-2 gap-3 sm:grid-cols
   );
 }
 
-/** Kleine Kacheln, damit die Startseite nicht von Fotos erschlagen wird: 3 pro Zeile am Handy, 5 am Desktop */
-const TILE_GRID = 'grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 lg:grid-cols-5';
-const TILE_CLASS = 'aspect-square sm:aspect-[3/2]';
-const TILE_SIZES = '(min-width: 1024px) 15rem, (min-width: 640px) 25vw, 33vw';
+/**
+ * Kleine Kacheln, damit die Startseite nicht von Fotos erschlagen wird: am Handy eine seitlich wischbare Reihe
+ * (statt sieben Zeilen Kacheln), ab 640 px ein Raster mit 4 bzw. 5 pro Zeile.
+ */
+const TILE_GRID = 'max-sm:-mx-4 max-sm:flex max-sm:snap-x max-sm:gap-2 max-sm:overflow-x-auto max-sm:overflow-y-hidden max-sm:overscroll-x-contain max-sm:px-4 max-sm:pb-2 max-sm:[scrollbar-width:none] sm:grid sm:grid-cols-4 sm:gap-3 lg:grid-cols-5';
+const TILE_ITEM = 'max-sm:w-28 max-sm:shrink-0 max-sm:snap-start';
+const TILE_CLASS = 'aspect-square w-full sm:aspect-[3/2]';
+const TILE_SIZES = '(min-width: 1024px) 15rem, (min-width: 640px) 25vw, 7rem';
+
+/**
+ * Trefferzahlen erst ab dieser Höhe zeigen: „1 Anzeige“ neben einer Kategorie wirkt leer, und solange die
+ * Plattform wächst, sagt die Zahl mehr über die Plattform als über die Kategorie.
+ */
+const MIN_PUBLIC_COUNT = 10;
+const publicCount = (count: number | undefined) => (count && count >= MIN_PUBLIC_COUNT ? count : undefined);
 
 /**
  * Alle Kategorien des Marktplatzes als Liste mit Icon, Anzahl der Anzeigen und den ersten Unterkategorien.
@@ -255,15 +267,15 @@ async function MarketplaceCategories() {
   }
   const total = counts[VERTICAL_SLUGS.MARKETPLACE] ?? 0;
   return (
-    <ul className={`grid ${TILE_GRID}`} aria-label="Kategorien im Marktplatz">
+    <ul className={TILE_GRID} aria-label="Kategorien im Marktplatz">
       {categories.map((category) => (
-        <li key={category.id}>
+        <li key={category.id} className={TILE_ITEM}>
           <CategoryPhotoTile
             sizes={TILE_SIZES}
             className={TILE_CLASS}
             href={`/suche?kategorie=${category.path}`}
             name={category.name}
-            count={counts[category.path]}
+            count={publicCount(counts[category.path])}
             hint={category.children
               .slice(0, 3)
               .map((c) => c.name)
@@ -273,13 +285,13 @@ async function MarketplaceCategories() {
           />
         </li>
       ))}
-      <li>
+      <li className={TILE_ITEM}>
         <CategoryPhotoTile
           sizes={TILE_SIZES}
           className={TILE_CLASS}
           href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}`}
           name="Alle Anzeigen"
-          count={total}
+          count={publicCount(total)}
           hint="Alles aus dem Marktplatz, neueste zuerst"
           icon={<LayoutGrid className="size-6" aria-hidden="true" />}
         />
@@ -302,7 +314,8 @@ async function LatestListings() {
     );
   }
   return (
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
+    // Am Handy nur die ersten sechs, sonst nimmt diese Reihe allein drei Bildschirmhöhen ein
+    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 max-sm:[&>li:nth-child(n+7)]:hidden">
       {listings.map((listing) => (
         <li key={listing.id} className="flex">
           <ListingCard listing={listing} />
@@ -372,7 +385,7 @@ async function CategoryShelves() {
                   {category.name}
                 </h2>
                 <Link href={`/suche?kategorie=${category.path}`} className="inline-flex shrink-0 items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
-                  Alle {(counts[category.path] ?? 0).toLocaleString('de-AT')} <span className="sr-only">Anzeigen in {category.name}</span>
+                  Alle{publicCount(counts[category.path]) ? ` ${counts[category.path]!.toLocaleString('de-AT')}` : ''} <span className="sr-only">Anzeigen in {category.name}</span>
                   <ArrowRight className="size-4" aria-hidden="true" />
                 </Link>
               </div>

@@ -24,8 +24,9 @@ export async function UserMenu() {
     return (
       <>
         <SessionSync userId={null} />
-        <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
-          Anmelden
+        <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'w-10 px-0 sm:w-auto sm:px-3' })}>
+          <CircleUserRound className="size-5 shrink-0 sm:hidden" aria-hidden="true" />
+          <span className="sr-only sm:not-sr-only">Anmelden</span>
         </Link>
       </>
     );
@@ -45,7 +46,7 @@ export async function UserMenu() {
           <span className="hidden xl:inline">Moderation</span>
         </Link>
       ) : null}
-      <Link href="/konto" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'max-w-44' })}>
+      <Link href="/konto" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'w-10 max-w-44 px-0 sm:w-auto sm:px-3' })}>
         <CircleUserRound className="size-5 shrink-0" aria-hidden="true" />
         <span className="hidden truncate lg:inline">{user.displayName}</span>
         <span className="sr-only sm:not-sr-only lg:hidden">Konto</span>

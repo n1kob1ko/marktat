@@ -5,14 +5,15 @@ import { buttonClasses, Container, Skeleton } from '@marktat/ui';
 import { Logo } from './logo';
 import { UserMenu } from './user-menu';
 import { ThemeToggle } from './theme-toggle';
+import { MobileSearch, MobileSearchFallback } from './mobile-search';
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <Container className="flex h-16 items-center gap-2 sm:gap-6">
         <Link href="/" className="shrink-0 rounded-lg" aria-label="Markterl – zur Startseite">
-          {/* Sehr schmale Handys (320–400 px): nur das Bildzeichen, damit „Inserieren“ Platz hat */}
-          <Logo wordmarkClassName="max-[400px]:sr-only" />
+          {/* Am Handy etwas kleiner, unter 400 px nur das Bildzeichen – Lupe, Konto und „Inserieren“ müssen daneben Platz haben */}
+          <Logo wordmarkClassName="text-lg max-[400px]:sr-only sm:text-[1.375rem]" />
         </Link>
 
         <form action="/suche" role="search" className="hidden flex-1 md:block">
@@ -31,8 +32,13 @@ export function SiteHeader() {
           </div>
         </form>
 
-        <nav aria-label="Konto" className="ml-auto flex items-center gap-1 sm:gap-2">
-          <ThemeToggle />
+        <nav aria-label="Konto" className="ml-auto flex items-center gap-0 sm:gap-2">
+          {/* Unter 768 px gibt es kein Suchfeld im Kopf – die Lupe klappt eines auf (Startseite hat zusätzlich die große Suche) */}
+          <Suspense fallback={<MobileSearchFallback />}>
+            <MobileSearch />
+          </Suspense>
+          {/* Am Handy weicht der Umschalter der Lupe und steht im Fuß (site-footer.tsx); ohne Wahl gilt die Systemeinstellung */}
+          <ThemeToggle className="hidden sm:inline-flex" />
           <Suspense fallback={<Skeleton className="h-9 w-24" />}>
             <UserMenu />
           </Suspense>
