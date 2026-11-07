@@ -28,6 +28,7 @@ import { ContactForm } from '@/components/messages/contact-form';
 import { ViewBeacon } from '@/components/stats/view-beacon';
 import { AustriaMap } from '@/components/listing/austria-map';
 import { RelatedListings, RelatedListingsSkeleton } from '@/components/listing/related-listings';
+import { MobileContactBar } from '@/components/listing/mobile-contact-bar';
 import { JsonLd } from '@/components/json-ld';
 import { serverEnv } from '@/lib/env';
 import { DEFAULT_SHARE_IMAGE, listingJsonLd, metaDescription } from '@/lib/seo';
@@ -83,8 +84,10 @@ async function ListingContent({
   const hinweis = typeof query.hinweis === 'string' ? query.hinweis : undefined;
   const fehler = typeof query.fehler === 'string' ? query.fehler : undefined;
 
+  const contact = mobileContact(listing, Boolean(token));
+
   return (
-    <div className="space-y-6">
+    <div className={contact ? 'space-y-6 pb-20 lg:pb-0' : 'space-y-6'}>
       <JsonLd data={listingJsonLd(listing, serverEnv.webUrl)} />
       <FlashMessage hinweis={hinweis} fehler={fehler} />
       {listing.isOwner ? <OwnerBar listing={listing} /> : <ViewBeacon listingId={listing.id} />}
@@ -129,12 +132,6 @@ async function ListingContent({
               salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
               className="mt-3 text-3xl"
             />
-            {/* Am Handy steht der Kontakt erst unter der Beschreibung – Abkürzung direkt dorthin */}
-            {listing.isOwner || listing.status !== 'ACTIVE' ? null : (
-              <a href="#kontakt" className={buttonClasses({ size: 'lg', className: 'mt-4 w-full lg:hidden' })}>
-                <MessageCircle className="size-5" aria-hidden="true" /> Anbieter kontaktieren
-              </a>
-            )}
             <dl className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-ink-600">
               {listing.location ? (
                 <div className="flex items-center gap-1.5">
@@ -188,7 +185,10 @@ async function ListingContent({
             ) : (
               <p className="mt-3 text-sm text-ink-500">Privatverkauf – Gewährleistung kann ausgeschlossen sein.</p>
             )}
-            <ContactArea listing={listing} signedIn={Boolean(token)} />
+            {/* Der feste Kontakt-Balken am Handy blendet sich aus, sobald dieser Bereich im Bild ist */}
+            <div id="kontakt-aktion">
+              <ContactArea listing={listing} signedIn={Boolean(token)} />
+            </div>
           </Card>
           {listing.mapPoint && listing.location ? <AustriaMap point={listing.mapPoint} location={listing.location} /> : null}
           {listing.isOwner ? null : (
@@ -203,8 +203,28 @@ async function ListingContent({
           <RelatedListings listing={listing} />
         </Suspense>
       ) : null}
+      {/* Am Handy steht der Kontakt erst unter der Beschreibung – fester Balken unten mit Preis und Knopf */}
+      {contact ? (
+        <MobileContactBar href={contact.href} label={contact.label}>
+          <PriceTag
+            priceType={listing.priceType}
+            priceCents={listing.priceCents}
+            suffix={listing.priceSuffix}
+            salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
+            className="text-xl"
+          />
+        </MobileContactBar>
+      ) : null}
     </div>
   );
+}
+
+/** Ziel des festen Kontakt-Balkens am Handy: Unterhaltung, Formular oder Anmeldung – nur bei fremden, aktiven Anzeigen */
+function mobileContact(listing: ListingDetail, signedIn: boolean): { href: string; label: string } | null {
+  if (listing.isOwner || listing.status !== 'ACTIVE') return null;
+  if (listing.conversationId) return { href: `/nachrichten/${listing.conversationId}`, label: 'Zur Unterhaltung' };
+  if (!signedIn) return { href: `/anmelden?weiter=${encodeURIComponent(`/anzeige/${listing.id}`)}&hinweis=nachricht`, label: 'Nachricht schreiben' };
+  return { href: '#kontakt', label: 'Nachricht schreiben' };
 }
 
 /** Kontakt: eigene Anzeige → Postfach, bestehende Unterhaltung → Chat, angemeldet → Formular, sonst Anmeldung */

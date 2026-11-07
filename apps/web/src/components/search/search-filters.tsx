@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, ty
 import { useRouter } from 'next/navigation';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
-import { ChevronLeft, Loader2, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, Loader2, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input, Select, buttonClasses, cn } from '@marktat/ui';
 import {
   CONDITION_PARAMS,
@@ -18,6 +18,7 @@ import {
   hasItemCondition,
   hasPrice,
   searchFiltersFor,
+  toSearchParams,
   type CategoryNode,
   type LocationSummary,
   type OptionsFilter,
@@ -144,16 +145,27 @@ export function SearchFilters({
     };
   }, [open, desktop]);
 
+  // Schnellsuche am Handy neben dem Filter-Knopf: Suchbegriff ändern, alle anderen Filter bleiben
+  const quickParams = Object.entries(toSearchParams(query, filters)).filter(([key]) => !['q', 'seite', 'pageSize'].includes(key));
+
   return (
     <>
-      <div className="lg:hidden">
+      <div className="flex gap-2 lg:hidden">
+        <form action="/suche" role="search" className="relative min-w-0 flex-1">
+          {quickParams.map(([key, value]) => (
+            <input key={key} type="hidden" name={key} value={value} />
+          ))}
+          <label htmlFor="f-q-mobil" className="sr-only">Suchbegriff</label>
+          <Search className="pointer-events-none absolute top-1/2 left-3 size-4.5 -translate-y-1/2 text-ink-400" aria-hidden="true" />
+          <Input id="f-q-mobil" name="q" type="search" defaultValue={query.q ?? ''} placeholder="Was suchst du?" maxLength={100} enterKeyHint="search" className="h-11 pl-9" />
+        </form>
         <button
           ref={triggerRef}
           type="button"
           onClick={() => setOpen(true)}
           aria-haspopup="dialog"
           aria-expanded={open}
-          className={buttonClasses({ variant: 'outline', className: 'w-full justify-center gap-2' })}
+          className={buttonClasses({ variant: 'outline', className: 'h-11 shrink-0 justify-center gap-2' })}
         >
           <SlidersHorizontal className="size-4" aria-hidden="true" />
           Filter

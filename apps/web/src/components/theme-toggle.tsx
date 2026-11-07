@@ -37,8 +37,11 @@ function subscribe(onChange: () => void) {
   };
 }
 
-/** Umschalter Hell/Dunkel im Kopf; die Wahl bleibt im Browser gespeichert. */
-export function ThemeToggle({ className }: { className?: string }) {
+/**
+ * Umschalter Hell/Dunkel; die Wahl bleibt im Browser gespeichert. Im Kopf nur als Symbol,
+ * mit `withLabel` (Fuß am Handy) mit sichtbarer Beschriftung.
+ */
+export function ThemeToggle({ className, withLabel = false }: { className?: string; withLabel?: boolean }) {
   // Auf dem Server unbekannt: zuerst „hell“ annehmen, nach dem Laden stimmt das Symbol
   const theme = useSyncExternalStore(subscribe, currentTheme, () => 'light' as Theme);
   const dark = theme === 'dark';
@@ -56,11 +59,12 @@ export function ThemeToggle({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       aria-pressed={dark}
-      aria-label="Dunkelmodus"
+      aria-label={withLabel ? undefined : 'Dunkelmodus'}
       title={dark ? 'Hell anzeigen' : 'Dunkel anzeigen'}
-      className={buttonClasses({ variant: 'ghost', size: 'sm', className: cn('w-10 px-0', className) })}
+      className={buttonClasses({ variant: 'ghost', size: 'sm', className: cn(withLabel ? '-ml-3' : 'w-10 px-0', className) })}
     >
       {dark ? <Sun className="size-5" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
+      {withLabel ? 'Dunkelmodus' : null}
     </button>
   );
 }

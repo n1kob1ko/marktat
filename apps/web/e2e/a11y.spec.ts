@@ -31,11 +31,13 @@ test('Öffentliche Seiten ohne automatisch erkennbare WCAG-Verstöße', async ({
   }
 });
 
-test('Dunkelmodus: Umschalter im Kopf, Wahl bleibt erhalten, Seiten ohne WCAG-Verstöße', async ({ page }, testInfo) => {
+test('Dunkelmodus: Umschalter im Kopf bzw. Fuß, Wahl bleibt erhalten, Seiten ohne WCAG-Verstöße', async ({ page }, testInfo) => {
   test.setTimeout(240_000);
   await page.goto('/');
   const html = page.locator('html');
-  const toggle = page.getByRole('banner').getByRole('button', { name: 'Dunkelmodus' });
+  // Am Handy steht der Umschalter im Fuß (im Kopf ist neben der Lupe kein Platz)
+  const toggleArea = () => page.getByRole(testInfo.project.name === 'mobile' ? 'contentinfo' : 'banner');
+  const toggle = toggleArea().getByRole('button', { name: 'Dunkelmodus' });
   await expect(toggle).toHaveAttribute('aria-pressed', 'false');
   await toggle.click();
   await expect(html).toHaveAttribute('data-theme', 'dark');
@@ -55,7 +57,7 @@ test('Dunkelmodus: Umschalter im Kopf, Wahl bleibt erhalten, Seiten ohne WCAG-Ve
   }
 
   // Zurück auf hell
-  await page.getByRole('banner').getByRole('button', { name: 'Dunkelmodus' }).click();
+  await toggleArea().getByRole('button', { name: 'Dunkelmodus' }).click();
   await expect(html).toHaveAttribute('data-theme', 'light');
 });
 
@@ -68,6 +70,21 @@ test('320 px breit (WCAG 1.4.10): nichts steht über, Header-Aktionen bleiben im
     expect(overflow, `${path}: seitliches Scrollen`).toBeLessThanOrEqual(0);
     const button = await page.locator('header a[href="/inserieren"]').boundingBox();
     expect(button!.x + button!.width, `${path}: „Inserieren“ im Bild`).toBeLessThanOrEqual(320);
+  }
+});
+
+test('Kopf passt auf gängige Handybreiten (kein Herauszoomen der Seite)', async ({ page }) => {
+  // Steht der Kopf über, verbreitert der mobile Browser die Layout-Breite und zoomt die ganze Seite heraus
+  for (const width of [360, 375, 390, 412, 430]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const path of ['/', '/suche?bereich=marktplatz']) {
+      await page.goto(path);
+      const layout = await page.evaluate(() => ({ inner: window.innerWidth, scroll: document.documentElement.scrollWidth }));
+      expect(layout.inner, `${path} bei ${width} px: Layout-Breite`).toBe(width);
+      expect(layout.scroll, `${path} bei ${width} px: seitliches Scrollen`).toBeLessThanOrEqual(width);
+      const button = await page.locator('header a[href="/inserieren"]').boundingBox();
+      expect(button!.x + button!.width, `${path} bei ${width} px: „Inserieren“ im Bild`).toBeLessThanOrEqual(width);
+    }
   }
 });
 
