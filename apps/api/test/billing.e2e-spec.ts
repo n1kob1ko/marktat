@@ -338,11 +338,21 @@ describe('Monetarisierung im kostenlosen Betrieb', () => {
       await request(server()).get(`/v1/dealers/${randomUUID()}`).expect(404);
 
       const png = await (await import('sharp')).default({ create: { width: 200, height: 120, channels: 3, background: '#0f766e' } }).png().toBuffer();
-      await request(server()).put('/v1/me/logo').set(privat.auth).set('Content-Type', 'image/png').send(png).expect(403);
       await request(server()).put('/v1/me/logo').set(dealer.auth).set('Content-Type', 'image/png').send(Buffer.from('kein bild')).expect(400);
       const uploaded = await request(server()).put('/v1/me/logo').set(dealer.auth).set('Content-Type', 'image/png').send(png).expect(200);
       expect(uploaded.body.logoUrl).toMatch(new RegExp(`/v1/dealers/${dealer.id}/logo\\?v=`));
       await request(server()).get(`/v1/dealers/${dealer.id}/logo`).expect(302);
+
+      // Private Konten laden dasselbe Bild als Profilbild hoch; es erscheint im öffentlichen Verkäuferprofil (kein Händlerprofil)
+      await request(server()).get(`/v1/dealers/${privat.id}/logo`).expect(404);
+      const avatar = await request(server()).put('/v1/me/logo').set(privat.auth).set('Content-Type', 'image/png').send(png).expect(200);
+      expect(avatar.body.logoUrl).toMatch(new RegExp(`/v1/dealers/${privat.id}/logo\\?v=`));
+      await request(server()).get(`/v1/dealers/${privat.id}/logo`).expect(302);
+      await request(server()).get(`/v1/dealers/${privat.id}`).expect(404);
+      const publicProfile = await request(server()).get(`/v1/users/${privat.id}`).expect(200);
+      expect(publicProfile.body.avatarUrl).toBe(avatar.body.logoUrl);
+      await request(server()).delete('/v1/me/logo').set(privat.auth).expect(200);
+      await request(server()).get(`/v1/dealers/${privat.id}/logo`).expect(404);
 
       const dashboard = await request(server()).get('/v1/me/dealer-dashboard').set(dealer.auth).expect(200);
       expect(dashboard.body).toMatchObject({ listings: { active: 1 }, activeTop: 0, activeHighlights: 0, bumps30d: 0, profileComplete: false });

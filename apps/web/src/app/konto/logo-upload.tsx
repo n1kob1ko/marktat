@@ -2,11 +2,16 @@
 
 import { useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { Store } from 'lucide-react';
-import { Alert, Button } from '@marktat/ui';
+import { Store, UserRound } from 'lucide-react';
+import { Alert, Button, cn } from '@marktat/ui';
 
-/** Firmenlogo für Händlerprofil und Anzeigen (JPEG, PNG oder WebP bis 5 MB, wird auf 400 px verkleinert). */
-export function LogoUpload({ logoUrl }: { logoUrl: string | null }) {
+/**
+ * Firmenlogo (gewerbliche Konten) bzw. Profilbild (private Konten) für Anzeigen und Profil
+ * (JPEG, PNG oder WebP bis 5 MB, wird auf 400 px verkleinert).
+ */
+export function LogoUpload({ logoUrl, kind = 'logo' }: { logoUrl: string | null; kind?: 'logo' | 'avatar' }) {
+  const noun = kind === 'logo' ? 'Logo' : 'Profilbild';
+  const article = kind === 'logo' ? 'Das Logo' : 'Das Profilbild';
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [message, setMessage] = useState<{ tone: 'success' | 'danger'; text: string } | null>(null);
@@ -21,7 +26,7 @@ export function LogoUpload({ logoUrl }: { logoUrl: string | null }) {
         setMessage({ tone: 'danger', text: data?.message ?? 'Das hat nicht geklappt. Bitte versuche es erneut.' });
         return;
       }
-      setMessage({ tone: 'success', text: method === 'PUT' ? 'Dein Logo ist gespeichert.' : 'Das Logo wurde entfernt.' });
+      setMessage({ tone: 'success', text: method === 'PUT' ? `Dein ${noun} ist gespeichert.` : `${article} wurde entfernt.` });
       router.refresh();
     });
 
@@ -30,10 +35,16 @@ export function LogoUpload({ logoUrl }: { logoUrl: string | null }) {
       <div className="flex flex-wrap items-center gap-4">
         {logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)
-          <img src={logoUrl} alt="Aktuelles Logo" width={64} height={64} className="size-16 rounded-xl border border-line bg-surface object-contain" />
+          <img
+            src={logoUrl}
+            alt={`Aktuelles ${noun}`}
+            width={64}
+            height={64}
+            className={cn('size-16 border border-line bg-surface object-contain', kind === 'logo' ? 'rounded-xl' : 'rounded-full object-cover')}
+          />
         ) : (
-          <span className="flex size-16 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-            <Store className="size-7" aria-hidden="true" />
+          <span className={cn('flex size-16 items-center justify-center bg-brand-50 text-brand-700', kind === 'logo' ? 'rounded-xl' : 'rounded-full')}>
+            {kind === 'logo' ? <Store className="size-7" aria-hidden="true" /> : <UserRound className="size-7" aria-hidden="true" />}
           </span>
         )}
         <div className="flex flex-wrap gap-2">
@@ -42,20 +53,20 @@ export function LogoUpload({ logoUrl }: { logoUrl: string | null }) {
             type="file"
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
-            aria-label="Logo auswählen"
+            aria-label={`${noun} auswählen`}
             onChange={(event) => {
               const file = event.target.files?.[0];
               event.target.value = '';
               if (!file) return;
               if (file.size > 5 * 1024 * 1024) {
-                setMessage({ tone: 'danger', text: 'Das Logo darf höchstens 5 MB groß sein.' });
+                setMessage({ tone: 'danger', text: `${article} darf höchstens 5 MB groß sein.` });
                 return;
               }
               send('PUT', file);
             }}
           />
           <Button variant="outline" size="sm" loading={pending} onClick={() => input.current?.click()}>
-            {logoUrl ? 'Logo ändern' : 'Logo hochladen'}
+            {logoUrl ? `${noun} ändern` : `${noun} hochladen`}
           </Button>
           {logoUrl ? (
             <Button variant="ghost" size="sm" disabled={pending} onClick={() => send('DELETE')}>

@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import { Container } from '@marktat/ui';
 import { AccountNav, AccountNavFallback } from '@/components/account-nav';
-import { getCurrentUser, isStaff } from '@/lib/auth';
+import { getCurrentUser } from '@/lib/auth';
 
 export default function AccountLayout({ children }: LayoutProps<'/konto'>) {
   return (
@@ -19,5 +19,5 @@ export default function AccountLayout({ children }: LayoutProps<'/konto'>) {
 
 async function AccountNavForUser() {
   const user = await getCurrentUser();
-  return <AccountNav showSecurity={isStaff(user)} showDeals={user?.accountType === 'BUSINESS'} />;
+  return <AccountNav showDeals={user?.accountType === 'BUSINESS'} />;
 }

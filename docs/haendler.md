@@ -8,9 +8,11 @@ Firmenbuchnummer und UID (Anbieterkennzeichnung), „Auf Markterl seit“ und al
 Reihenfolge wie „Neueste“ inklusive Hochschieben). Kontakt läuft über die bestehenden Nachrichten je Anzeige; die
 Detailseite einer Händleranzeige verlinkt auf das Profil.
 
-**Logo:** `PUT /v1/me/logo` (Rohdaten JPEG/PNG/WebP, max. 5 MB, mind. 64 × 64 px) → `sharp` dreht, entfernt Metadaten
-und speichert 400 px WebP unter `logos/<konto>/<uuid>.webp`; das alte wird gelöscht. Öffentlich über
-`/v1/dealers/:id/logo` (Weiterleitung, 30 min Cache). Die Web-App lädt über die Route `/api/logo` hoch (gleiche
+**Logo bzw. Profilbild:** `PUT /v1/me/logo` (Rohdaten JPEG/PNG/WebP, max. 5 MB, mind. 64 × 64 px) → `sharp` dreht,
+entfernt Metadaten und speichert 400 px WebP unter `logos/<konto>/<uuid>.webp`; das alte wird gelöscht. Öffentlich über
+`/v1/dealers/:id/logo` (Weiterleitung, 30 min Cache) für alle aktiven Konten: Gewerbliche Konten zeigen es als
+Firmenlogo (Händlerprofil, Anzeigen), private Konten als Profilbild neben dem Namen auf ihren Anzeigen
+(`PublicSeller.avatarUrl`). Die Web-App lädt über die Route `/api/logo` hoch (gleiche
 Herkunft, Token bleibt auf dem Server; Server Actions wären auf 1 MB begrenzt). Bei Kontolöschung wird das Logo
 gelöscht.
 

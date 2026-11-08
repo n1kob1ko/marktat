@@ -63,6 +63,8 @@ export type AuditAction =
   // Phase 8: Zwei-Faktor-Anmeldung
   | 'security.mfa_enrolled'
   | 'security.mfa_removed'
+  | 'security.password_changed'
+  | 'security.email_change_requested'
   | 'admin.mfa_reset'
   // Phase 10: Deals, Filialen, Importe
   | 'dealer.certified'

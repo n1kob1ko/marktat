@@ -24,7 +24,7 @@ export class DealersController {
   @Public()
   @SkipThrottle()
   @Get('dealers/:id/logo')
-  @ApiOperation({ summary: 'Händlerlogo (Weiterleitung auf den Bildspeicher)' })
+  @ApiOperation({ summary: 'Profilbild bzw. Händlerlogo (Weiterleitung auf den Bildspeicher)' })
   async logo(@Param('id', new ParseUUIDPipe()) id: string, @Res() res: Response) {
     const url = await this.dealers.logoDownload(id);
     if (!url) throw new NotFoundException('Kein Logo vorhanden.');
@@ -36,14 +36,14 @@ export class DealersController {
   @Put(LOGO_UPLOAD_PATH)
   @Throttle({ default: { limit: 10, ttl: 60_000 } })
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logo hochladen (Rohdaten: JPEG, PNG oder WebP, max. 5 MB)' })
+  @ApiOperation({ summary: 'Profilbild bzw. Logo hochladen (Rohdaten: JPEG, PNG oder WebP, max. 5 MB)' })
   upload(@CurrentUser() user: AuthUser, @Req() req: Request) {
     return this.dealers.uploadLogo(user, req.body, req.ip);
   }
 
   @Delete(LOGO_UPLOAD_PATH)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Logo entfernen' })
+  @ApiOperation({ summary: 'Profilbild bzw. Logo entfernen' })
   remove(@CurrentUser() user: AuthUser, @Req() req: Request) {
     return this.dealers.deleteLogo(user, req.ip);
   }

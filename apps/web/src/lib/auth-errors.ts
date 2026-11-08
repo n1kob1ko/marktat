@@ -6,6 +6,8 @@ const MESSAGES: Record<string, string> = {
   email_exists: 'Mit dieser E-Mail-Adresse gibt es bereits ein Konto.',
   weak_password: 'Das Passwort ist zu schwach. Bitte wähle ein längeres Passwort.',
   same_password: 'Das neue Passwort muss sich vom bisherigen unterscheiden.',
+  email_address_invalid: 'Diese E-Mail-Adresse ist ungültig.',
+  reauthentication_needed: 'Bitte melde dich erneut an und versuche es dann noch einmal.',
   over_email_send_rate_limit: 'Zu viele E-Mails in kurzer Zeit. Bitte warte einige Minuten.',
   over_request_rate_limit: 'Zu viele Versuche. Bitte warte kurz und versuche es erneut.',
   otp_expired: 'Der Link ist abgelaufen oder wurde bereits verwendet. Bitte fordere einen neuen an.',

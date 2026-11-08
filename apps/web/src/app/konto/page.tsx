@@ -37,19 +37,22 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
             <ProfileForm user={user} />
           </div>
         </Card>
-        {user.accountType === 'BUSINESS' ? (
-          <Card className="p-5 sm:p-7">
-            <h2 className="font-sans text-lg font-semibold tracking-normal">Firmenlogo</h2>
-            <p className="mt-1 text-sm text-ink-500">Erscheint auf deinem Händlerprofil und bei deinen Anzeigen.</p>
-            <div className="mt-4">
-              <LogoUpload logoUrl={user.logoUrl} />
-            </div>
-          </Card>
-        ) : null}
+        <Card className="p-5 sm:p-7">
+          <h2 className="font-sans text-lg font-semibold tracking-normal">{user.accountType === 'BUSINESS' ? 'Firmenlogo' : 'Profilbild'}</h2>
+          <p className="mt-1 text-sm text-ink-500">
+            {user.accountType === 'BUSINESS'
+              ? 'Erscheint auf deinem Händlerprofil und bei deinen Anzeigen.'
+              : 'Erscheint bei deinen Anzeigen und in Unterhaltungen – so wirkst du für Interessierte greifbarer.'}
+          </p>
+          <div className="mt-4">
+            <LogoUpload logoUrl={user.logoUrl} kind={user.accountType === 'BUSINESS' ? 'logo' : 'avatar'} />
+          </div>
+        </Card>
       </div>
       <aside className="space-y-4">
         <Card className="space-y-3 p-5 text-sm">
           <p className="font-semibold text-ink-900">{user.email}</p>
+          <Link href="/konto/sicherheit" className="inline-block font-semibold text-brand-700 hover:underline">Passwort oder E-Mail-Adresse ändern</Link>
           <div className="flex flex-wrap gap-2">
             <Badge tone={user.accountType === 'BUSINESS' ? 'brand' : 'neutral'}>
               {user.accountType === 'BUSINESS' ? 'Gewerbliches Konto' : 'Privates Konto'}
