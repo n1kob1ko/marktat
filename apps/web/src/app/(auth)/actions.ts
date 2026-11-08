@@ -10,11 +10,13 @@ import {
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { serverEnv } from '@/lib/env';
 import { authErrorMessage } from '@/lib/auth-errors';
+import { enabledProviders, isSocialProvider } from '@/lib/auth-providers';
 import { safeRedirectPath } from '@/lib/auth';
+import { captchaToken } from '@/lib/captcha';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
 import { getAssurance, needsSecondFactor, verifyTotp } from '@/lib/mfa';
 
-/** Version der Nutzungsbedingungen, der beim Registrieren zugestimmt wird (siehe /agb). */
+/** Version der Nutzungsbedingungen, der beim Registrieren zugestimmt wird (siehe /agb; gleich halten mit apps/api/src/users/terms.ts). */
 const TERMS_VERSION = '2026-10-entwurf';
 
 function siteUrl() {
@@ -47,6 +49,7 @@ export async function registerAction(_prev: FormState, formData: FormData): Prom
     password: parsed.data.password,
     options: {
       emailRedirectTo: `${siteUrl()}/auth/confirm`,
+      captchaToken: captchaToken(formData),
       data: {
         display_name: parsed.data.displayName,
         account_type: parsed.data.accountType,
@@ -70,7 +73,7 @@ export async function loginAction(_prev: FormState, formData: FormData): Promise
   if (!parsed.success) return { status: 'error', fieldErrors: zodFieldErrors(parsed.error.issues), values };
 
   const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { error } = await supabase.auth.signInWithPassword({ ...parsed.data, options: { captchaToken: captchaToken(formData) } });
   if (error) return { status: 'error', message: authErrorMessage(error), values };
 
   const target = safeRedirectPath(formData.get('weiter'));
@@ -84,6 +87,23 @@ export async function verifySecondFactorAction(_prev: FormState, formData: FormD
   const result = await verifyTotp(String(formData.get('code') ?? ''));
   if ('error' in result) return { status: 'error', message: result.error, fieldErrors: { code: [result.error] } };
   redirect(safeRedirectPath(formData.get('weiter')));
+}
+
+/**
+ * Anmeldung bzw. Registrierung über Google oder Apple: Supabase Auth leitet zum Anbieter, dieser zurück zu
+ * Supabase Auth und von dort zu /auth/callback (PKCE – der Prüfwert liegt im Cookie).
+ */
+export async function oauthAction(formData: FormData) {
+  const provider = formData.get('provider');
+  if (!isSocialProvider(provider) || !enabledProviders.includes(provider)) redirect('/anmelden?fehler=anbieter');
+  const target = safeRedirectPath(formData.get('weiter'));
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider,
+    options: { redirectTo: `${siteUrl()}/auth/callback?next=${encodeURIComponent(target)}`, skipBrowserRedirect: true },
+  });
+  if (error || !data.url) redirect('/anmelden?fehler=anbieter');
+  redirect(data.url);
 }
 
 export async function logoutAction() {
@@ -100,6 +120,7 @@ export async function forgotPasswordAction(_prev: FormState, formData: FormData)
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.resetPasswordForEmail(parsed.data.email, {
     redirectTo: `${siteUrl()}/passwort-neu`,
+    captchaToken: captchaToken(formData),
   });
   if (error && error.status === 429) return { status: 'error', message: authErrorMessage(error), values };
 

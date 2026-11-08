@@ -70,7 +70,7 @@ jobs:
       # Öffentliche Werte für das Web-Image (Adressen, Anon-Key) kommen aus der .env auf dem Server – eine Quelle
       - name: Öffentliche Werte vom Server lesen
         run: |
-          ssh marktat "grep -E '^(WEB_DOMAIN|API_DOMAIN|SUPABASE_ANON_KEY|R2_ACCOUNT_ID|R2_JURISDICTION|R2_ENDPOINT|ALLOW_INDEXING|GOOGLE_SITE_VERIFICATION)=' /opt/marktat/.env" \
+          ssh marktat "grep -E '^(WEB_DOMAIN|API_DOMAIN|SUPABASE_ANON_KEY|R2_ACCOUNT_ID|R2_JURISDICTION|R2_ENDPOINT|ALLOW_INDEXING|GOOGLE_SITE_VERIFICATION|AUTH_PROVIDERS|TURNSTILE_SITE_KEY)=' /opt/marktat/.env" \
             | sed -E 's/="(.*)"$/=\1/' > build.env
           set -a; . ./build.env; set +a
           [ -n "${WEB_DOMAIN:-}" ] && [ -n "${API_DOMAIN:-}" ] && [ -n "${SUPABASE_ANON_KEY:-}" ] \
@@ -91,6 +91,8 @@ jobs:
             --build-arg R2_ENDPOINT="${R2_ENDPOINT:-}" \
             --build-arg ALLOW_INDEXING="${ALLOW_INDEXING:-false}" \
             --build-arg GOOGLE_SITE_VERIFICATION="${GOOGLE_SITE_VERIFICATION:-}" \
+            --build-arg AUTH_PROVIDERS="${AUTH_PROVIDERS:-}" \
+            --build-arg TURNSTILE_SITE_KEY="${TURNSTILE_SITE_KEY:-}" \
             .
           docker push --quiet "$API_IMAGE:$TAG"
           docker push --quiet "$WEB_IMAGE:$TAG"

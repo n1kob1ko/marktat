@@ -205,6 +205,32 @@ describe('Nachrichten', () => {
     await request(server()).post(`/v1/listings/${fresh.id}/conversations`).set(spammer.auth).send({ body: 'Hallo' }).expect(429);
   });
 
+  it('blockiert Links neuer Konten und dieselbe Nachricht an viele Anbieter', async () => {
+    const { buyer, conversationId } = await startConversation();
+    // Frisch registriert: kein Link
+    const blocked = await send(buyer, conversationId, 'Zahl bitte vorab über https://zahlung-sicher.example/abc').expect(400);
+    expect(blocked.body.message).toContain('Links in Nachrichten nicht möglich');
+    await send(buyer, conversationId, 'Ich zahle z.B. per Überweisung, Abholung in 8010 Graz.').expect(201);
+    // Nach einem Tag sind Links erlaubt
+    await prisma.user.update({ where: { id: buyer.id }, data: { createdAt: new Date(Date.now() - 2 * 24 * 3600_000) } });
+    await send(buyer, conversationId, 'Hier die Anleitung: https://example.at/anleitung').expect(201);
+
+    // Dieselbe Nachricht an viele Anbieter: ab der dritten Unterhaltung wird gebremst
+    const text = 'Guten Tag, ich interessiere mich sehr für Ihr Angebot und würde gerne sofort kaufen.';
+    const spammer = await signIn(app);
+    for (let i = 0; i < 3; i++) {
+      const seller = await signIn(app);
+      const listing = await publishListing(app, seller.auth, { title: `Rad Nummer ${i}` });
+      await request(server()).post(`/v1/listings/${listing.id}/conversations`).set(spammer.auth).send({ body: `${text}${'!'.repeat(i)}` }).expect(201);
+    }
+    const seller = await signIn(app);
+    const listing = await publishListing(app, seller.auth, { title: 'Noch ein Rad' });
+    const mass = await request(server()).post(`/v1/listings/${listing.id}/conversations`).set(spammer.auth).send({ body: text.toUpperCase() }).expect(429);
+    expect(mass.body.message).toContain('mehreren Anbietern');
+    // Eine individuelle Nachricht geht weiterhin
+    await request(server()).post(`/v1/listings/${listing.id}/conversations`).set(spammer.auth).send({ body: 'Ist das Rad für 1,80 m Körpergröße passend?' }).expect(201);
+  });
+
   it('speichert eine erneut abgeschickte Nachricht (gleiche clientId) nur einmal', async () => {
     const seller = await signIn(app);
     const buyer = await signIn(app);

@@ -57,6 +57,8 @@ Offen – Entscheidung nötig, ggf. mit Kosten:
 | Fehlerübersicht | Admin-Bereich → **System**: unerwartete Fehler gruppiert (Anzahl, erstes/letztes Auftreten, Anfrage-ID); Einträge verschwinden 30 Tage nach dem letzten Auftreten |
 | Logs | API mit `LOG_FORMAT=json` (Standard in Produktion): eine JSON-Zeile je Anfrage (Methode, Routenmuster, Status, Dauer, Anfrage-ID) und je Fehler. Ohne IP, Query-String, Token, Pfad-IDs. Web: `web_request_error` je Serverfehler. |
 | Anfrage-ID | Antwort-Header `X-Request-Id`, steht auch in 500-Antworten und in der Fehlerübersicht – damit lassen sich Meldungen von Nutzerinnen und Nutzern zuordnen. |
+| Störungs-E-Mails | `ALERT_EMAIL` in der `.env`: stündliche Prüfung aller Komponenten durch die API; eine E-Mail je Ausfall („Markterl: Störung – …“, mit Fehlerdetail) und eine bei Erholung. Admin-Bereich → System zeigt unter „Überwachung“, ob eingerichtet. Fällt die API oder der Server komplett aus, kann nur ein externer Uptime-Dienst warnen. |
+| Uptime von außen | Kostenloses Konto bei einem Uptime-Dienst (UptimeRobot, Better Stack o. Ä.): `https://<API_DOMAIN>/v1/health/ready` und `https://<WEB_DOMAIN>/` alle 5 Minuten, Alarm per E-Mail/Push. Braucht ein Konto von Niko. |
 
 ### Verhalten bei Ausfällen (geprüft am 27.10.2026, lokal)
 
@@ -67,13 +69,14 @@ Offen – Entscheidung nötig, ggf. mit Kosten:
 | Supabase Auth | Bestehende Sitzungen funktionieren weiter; Anmelden/Registrieren zeigt „Die Anmeldung ist gerade nicht erreichbar …“, Eingaben bleiben erhalten. |
 | Datenbank / API | Startseite und Anmeldeseite laden; Seiten mit Daten zeigen eine deutsche Fehlerseite mit „Erneut versuchen“. Nach der Störung erholt sich alles ohne Neustart. |
 
-### Sentry o. Ä. (vorbereitet, nicht aktiv)
+### Sentry oder GlitchTip (vorbereitet, aus)
 
-Es ist **kein** externer Dienst angebunden und es fallen keine Kosten an. Anschlusspunkte, falls freigegeben:
-- API: `ErrorReporter.capture()` in `apps/api/src/monitoring/error-reporter.ts` – dort zusätzlich an das SDK melden.
-  Die Meldung ist bereits datensparsam (E-Mail-Adressen und IDs ersetzt).
-- Web: `onRequestError` in `apps/web/src/instrumentation.ts`.
-- Vor der Aktivierung: AV-Vertrag, EU-Region, `sendDefaultPii: false`, keine Request-Bodies/Cookies, Sampling.
+Ohne `SENTRY_DSN` ist kein externer Dienst angebunden. Mit DSN schicken API (`error-forwarder.ts`) und Web
+(`instrumentation.ts`) dieselbe bereinigte Meldung wie in der Fehlerübersicht als Sentry-Envelope – ohne SDK,
+ohne Request-Daten, Cookies, E-Mail-Adressen oder IDs; Sendefehler bleiben still. Funktioniert mit Sentry
+(EU-Region wählen) und mit GlitchTip (auch selbst betreibbar). Vor der Aktivierung: AV-Vertrag abschließen,
+Datenschutzerklärung ergänzen. Einschalten: `SENTRY_DSN` in der `.env`, dann `deploy.sh deploy` (API und Web
+lesen den Wert beim Start).
 
 ## Notfälle
 

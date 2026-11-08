@@ -134,3 +134,13 @@ test('Profilbild für private Konten: hochladen, auf der Anzeige sehen, entferne
   await expect(page.getByText('Das Profilbild wurde entfernt.')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Profilbild hochladen' })).toBeVisible();
 });
+
+test('Rückkehr von Google/Apple ohne gültigen Code führt mit Hinweis zur Anmeldung', async ({ page }) => {
+  await page.goto('/auth/callback?next=/konto');
+  await expect(page).toHaveURL(/\/anmelden\?fehler=anbieter/);
+  await expect(page.getByText('Die Anmeldung über den Anbieter wurde abgebrochen')).toBeVisible();
+  // Ohne konfigurierte Anbieter gibt es keine Schaltflächen und kein Captcha – Anmeldung per E-Mail bleibt
+  await expect(page.getByRole('button', { name: /Mit Google|Mit Apple/ })).toHaveCount(0);
+  await expect(page.getByTestId('captcha')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Anmelden' })).toBeVisible();
+});

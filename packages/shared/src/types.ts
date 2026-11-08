@@ -836,6 +836,8 @@ export interface SystemHealth {
   checks: Record<string, HealthCheck>;
   jobs: { backend: 'redis' | 'memory'; waiting: number; delayed: number; failed: number; recentFailures: JobFailure[] } | null;
   errors: ErrorEventEntry[];
+  /** Was an Überwachung eingerichtet ist (nur ja/nein, keine Werte) */
+  monitoring: { alertEmail: boolean; errorService: boolean; offsiteBackup: boolean };
   process: {
     startedAt: string;
     uptimeSeconds: number;

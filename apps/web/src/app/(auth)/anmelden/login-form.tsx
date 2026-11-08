@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useActionState } from 'react';
 import { Alert, Field, Input } from '@marktat/ui';
+import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
 import { loginAction } from '../actions';
@@ -24,6 +25,7 @@ export function LoginForm({ next }: { next?: string }) {
           Passwort vergessen?
         </Link>
       </div>
+      <Captcha />
       <SubmitButton className="w-full" size="lg">
         Anmelden
       </SubmitButton>

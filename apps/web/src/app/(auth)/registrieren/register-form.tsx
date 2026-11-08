@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useActionState, useState } from 'react';
 import { Building2, User } from 'lucide-react';
 import { Alert, Checkbox, cn, Field, Input } from '@marktat/ui';
+import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
 import { registerAction } from '../actions';
@@ -109,6 +110,7 @@ export function RegisterForm() {
         ) : null}
       </div>
 
+      <Captcha />
       <SubmitButton className="w-full" size="lg">
         Konto erstellen
       </SubmitButton>

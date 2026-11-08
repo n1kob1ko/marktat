@@ -95,7 +95,7 @@
 | --- | --- |
 | CSP mit Nonce | Aktuell `'unsafe-inline'` für Skripte, weil Next.js Inline-Skripte erzeugt. Umstellung auf Nonce über den Proxy, sobald die Seiten-Caching-Strategie feststeht. |
 | 2FA | Umgesetzt in Phase 8 (siehe unten). Offen: Wiederherstellungscodes (Supabase bietet derzeit keine eigenen; Ersatz: zweites Gerät oder Zurücksetzen durch die Administration). |
-| Monitoring und Alarmierung | Phase 8: Healthchecks, Systemzustand und Fehlerübersicht im Admin-Bereich, JSON-Logs ([betrieb.md](betrieb.md)). Offen: externer Dienst (Sentry o. Ä.) und Alarme per E-Mail/Chat – brauchen Freigabe. |
+| Monitoring und Alarmierung | Umgesetzt: Healthchecks, Systemzustand, Fehlerübersicht, Störungs-E-Mails (`ALERT_EMAIL`) und Weiterleitung an Sentry/GlitchTip (`SENTRY_DSN`), siehe [betrieb.md](betrieb.md). Offen: externer Uptime-Dienst (Konto von Niko). |
 | Endgültige Löschung soft-gelöschter Inserate | Vom Anbieter gelöschte Inserate bleiben als `DELETED` erhalten; Frist und Löschauftrag festlegen (inkl. Bilder in R2). |
 | Bilder im Datenexport | Export enthält Bild-Metadaten, nicht die Dateien. |
 | Meldungen ohne Konto | Meldeformular nur angemeldet; ob das nach Art. 16 DSA reicht, rechtlich prüfen. |
@@ -114,6 +114,33 @@
   laufende Änderung (`new_email`) an. Die App-Datenbank übernimmt die Adresse beim nächsten Request aus dem Token.
   Protokoll: `security.email_change_requested`.
 - Die Zwei-Faktor-Anmeldung (unten) bleibt auf derselben Seite, vorerst nur für Team-Konten.
+
+## Anmeldung über Google und Apple (vorbereitet)
+
+- Supabase Auth (GoTrue) übernimmt OAuth; die Web-App zeigt nur Schaltflächen (`AUTH_PROVIDERS` beim Bau des
+  Web-Images, z. B. `google,apple`) und tauscht nach der Rückkehr den Code gegen eine Sitzung (`/auth/callback`, PKCE).
+- Einschalten: in der `.env` des Servers `GOOGLE_LOGIN_ENABLED=true` + Client-ID/-Secret (Google Cloud Console →
+  OAuth-Client „Webanwendung“, autorisierte Weiterleitungs-URI `https://api.<domain>/auth/v1/callback`), analog
+  `APPLE_*` (Apple Developer Program, kostenpflichtig; das Secret ist ein signiertes JWT, höchstens 6 Monate gültig).
+  Danach `AUTH_PROVIDERS` setzen und neu deployen.
+- Konten über Google/Apple entstehen als private Konten; der Anzeigename kommt aus dem Namen beim Anbieter
+  (kürzbar unter „Profil“). Die Zustimmung zu AGB und Datenschutz steht neben den Schaltflächen; die API speichert
+  dafür die aktuelle AGB-Version (`apps/api/src/users/terms.ts`). Für den Datenschutztext: Google bzw. Apple
+  erfahren bei der Anmeldung, dass die Person Markterl nutzt (Hinweis in /datenschutz ergänzen, sobald aktiv).
+
+## Bot-Schutz (vorbereitet, Captcha aus)
+
+- **Cloudflare Turnstile** bei Registrierung, Anmeldung, Passwort-Reset sowie Passwort- und E-Mail-Änderung:
+  `TURNSTILE_SITE_KEY` (öffentlich, ins Web-Image gebaut) blendet das Widget ein, `AUTH_CAPTCHA_ENABLED=true` +
+  `TURNSTILE_SECRET_KEY` lassen Supabase Auth den Prüfwert verlangen. Beides zusammen setzen, sonst scheitert jede
+  Anmeldung (`captcha_failed`). Die CSP erlaubt `challenges.cloudflare.com` nur mit gesetztem Site-Key.
+- **Have I Been Pwned:** `AUTH_HIBP_ENABLED` (Standard an) prüft neue Passwörter gegen bekannte Datenlecks
+  (k-Anonymität, nur ein Hash-Präfix verlässt den Server); bei Problemen des Dienstes wird das Passwort angenommen.
+- **Spam-Filter für Nachrichten** (`apps/api/src/messages/message-filter.ts`): Konten jünger als 24 Stunden können
+  keine Links schicken (400, Audit `message.blocked`); dieselbe Nachricht (normalisiert, ab 25 Zeichen) an drei
+  oder mehr Anbieter innerhalb einer Stunde wird gebremst (429). Ergänzt die Mengenlimits `MESSAGE_LIMITS`;
+  Administratorkonten sind ausgenommen.
+- Weiterhin aktiv: Honeypot-Feld bei der Registrierung, Rate-Limits von Supabase Auth und der API.
 
 ## Phase 8: Härtung vor dem Start
 

@@ -1,8 +1,13 @@
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import request from 'supertest';
+import { resetEnvCache } from '../src/config/env.js';
 import { ListingsService } from '../src/listings/listings.service.js';
+import { HealthAlertService } from '../src/monitoring/health-alert.service.js';
+import { HealthService } from '../src/monitoring/health.service.js';
+import { JobsService } from '../src/jobs/jobs.service.js';
+import { MailService } from '../src/mail/mail.service.js';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, resetData, signIn, signInAs } from './helpers.js';
+import { createTestApp, mailsTo, mailText, resetData, signIn, signInAs } from './helpers.js';
 
 describe('Systemzustand und Fehlerübersicht', () => {
   let app: NestExpressApplication;
@@ -59,6 +64,41 @@ describe('Systemzustand und Fehlerübersicht', () => {
 
     await request(server()).delete(`/v1/admin/system/errors/${system.body.errors[0].id}`).set(admin.auth).expect(204);
     expect(await prisma.errorEvent.count()).toBe(0);
+  });
+
+  it('schickt bei Ausfall einer Komponente eine Störungs-E-Mail und bei Erholung eine Entwarnung', async () => {
+    const to = `alarm-${Date.now()}@example.at`;
+    process.env.ALERT_EMAIL = to;
+    resetEnvCache();
+    try {
+      // Eigene Instanz, damit ALERT_EMAIL aus der frischen Umgebung gelesen wird
+      const health = app.get(HealthService);
+      const alerts = new HealthAlertService(health, app.get(JobsService), app.get(MailService));
+      const ok = { status: 'ok' as const, latencyMs: 1, critical: false };
+      const checks = vi.spyOn(health, 'checks');
+
+      checks.mockResolvedValue({ database: { ...ok, critical: true }, redis: { status: 'down', latencyMs: 2000, critical: false, detail: 'Zeitüberschreitung' }, search: ok, auth: ok, mail: ok });
+      expect(await alerts.run(new Date('2026-11-08T03:00:00Z'))).toEqual({ down: ['redis'], recovered: [] });
+      // Gleicher Zustand: keine zweite E-Mail
+      expect(await alerts.run()).toEqual({ down: ['redis'], recovered: [] });
+      checks.mockResolvedValue({ database: { ...ok, critical: true }, redis: ok, search: ok, auth: ok, mail: ok });
+      expect(await alerts.run()).toEqual({ down: [], recovered: ['redis'] });
+
+      const mails = await mailsTo(to);
+      expect(mails.map((m) => m.Subject).sort()).toEqual(['Markterl: Störung – Redis (Aufträge, Echtzeit, Rate-Limits)', 'Markterl: wieder in Ordnung – Redis (Aufträge, Echtzeit, Rate-Limits)']);
+      const text = await mailText(mails.find((m) => m.Subject.includes('Störung'))!.ID);
+      expect(text).toContain('Zeitüberschreitung');
+      expect(text).toContain('/admin/system');
+    } finally {
+      delete process.env.ALERT_EMAIL;
+      resetEnvCache();
+    }
+  });
+
+  it('zeigt Administratoren, was an Überwachung eingerichtet ist', async () => {
+    const admin = await signInAs(app, 'ADMIN');
+    const system = await request(server()).get('/v1/admin/system').set(admin.auth).expect(200);
+    expect(system.body.monitoring).toEqual({ alertEmail: false, errorService: false, offsiteBackup: false });
   });
 
   it('meldet eine ausgefallene Suche als eingeschränkt, nicht als Ausfall', async () => {

@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { Alert, Field, Input } from '@marktat/ui';
+import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
 import { forgotPasswordAction } from '../actions';
@@ -15,6 +16,7 @@ export function ForgotPasswordForm() {
       <Field label="E-Mail-Adresse" error={state.fieldErrors?.email} required>
         <Input name="email" type="email" autoComplete="email" defaultValue={state.values?.email} />
       </Field>
+      <Captcha />
       <SubmitButton className="w-full" size="lg">
         Link anfordern
       </SubmitButton>

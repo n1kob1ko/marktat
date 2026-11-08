@@ -190,7 +190,11 @@ Wiederherstellung einmal im Quartal auf der Generalprobe üben (siehe unten).
 
 - `https://<API_DOMAIN>/v1/health/ready` prüft Datenbank, Redis, Suche, Supabase Auth und E-Mail-Versand
 - Admin-Bereich → System: Zustand der Dienste und Fehlerübersicht
-- externer Uptime-Dienst (Punkt 8 oben) alarmiert, wenn die Seite nicht erreichbar ist
+- externer Uptime-Dienst (Punkt 9 oben) alarmiert, wenn die Seite nicht erreichbar ist
+- `ALERT_EMAIL` in der `.env`: die API meldet Ausfälle einzelner Komponenten (Redis, Suche, Anmeldung, E-Mail) per
+  E-Mail und gibt Entwarnung; `SENTRY_DSN` leitet Fehler an Sentry/GlitchTip weiter ([betrieb.md](betrieb.md))
+- Admin-Bereich → System → „Überwachung“ zeigt, ob Störungs-E-Mails, Fehlerdienst und Sicherung außer Haus
+  (`BACKUP_R2_BUCKET`) eingerichtet sind
 - Speicherplatz: `df -h /` und `docker system df` monatlich; Logs sind je Container auf 5 × 10 MB begrenzt
 
 ## Verwaltung am laufenden System

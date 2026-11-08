@@ -10,6 +10,7 @@ import { serverEnv } from '@/lib/env';
 import { zodFieldErrors, type FormState } from '@/lib/form-state';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { verifyPassword } from '@/lib/supabase/verify-password';
+import { captchaToken } from '@/lib/captcha';
 
 /** Höchstzahl eingerichteter Geräte (Supabase erlaubt mehr; zwei bis drei reichen als Ersatz) */
 const MAX_FACTORS = 3;
@@ -51,7 +52,7 @@ export async function changePasswordAction(_prev: FormState, formData: FormData)
     return { status: 'error', fieldErrors: { password: ['Das neue Passwort muss sich vom bisherigen unterscheiden.'] } };
   }
 
-  const check = await verifyPassword(user.email, parsed.data.currentPassword);
+  const check = await verifyPassword(user.email, parsed.data.currentPassword, captchaToken(formData));
   if (!check.ok) return { status: 'error', fieldErrors: { currentPassword: [wrongPassword(check.error)] } };
 
   const supabase = await createSupabaseServerClient();
@@ -75,7 +76,7 @@ export async function changeEmailAction(_prev: FormState, formData: FormData): P
     return { status: 'error', fieldErrors: { email: ['Das ist bereits deine aktuelle E-Mail-Adresse.'] }, values };
   }
 
-  const check = await verifyPassword(user.email, parsed.data.password);
+  const check = await verifyPassword(user.email, parsed.data.password, captchaToken(formData));
   if (!check.ok) return { status: 'error', fieldErrors: { password: [wrongPassword(check.error)] }, values };
 
   const supabase = await createSupabaseServerClient();

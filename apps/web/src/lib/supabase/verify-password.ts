@@ -9,12 +9,13 @@ import { serverEnv } from '@/lib/env';
  * angemeldetes Gerät in fremde Hände gerät). Läuft über einen Wegwerf-Client ohne Cookies, damit die
  * eigentliche Sitzung unverändert bleibt; die dabei entstandene Sitzung wird sofort wieder beendet.
  */
-export async function verifyPassword(email: string, password: string): Promise<{ ok: true } | { ok: false; error: { code?: string; status?: number; message?: string } }> {
+export async function verifyPassword(email: string, password: string, captchaToken?: string): Promise<{ ok: true } | { ok: false; error: { code?: string; status?: number; message?: string } }> {
   const client = createClient(serverEnv.supabaseUrl, serverEnv.supabaseAnonKey, {
     auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
     global: { headers: forwardedFor(await headers()) },
   });
-  const { data, error } = await client.auth.signInWithPassword({ email, password });
+  // Mit aktivem Bot-Schutz verlangt Supabase Auth auch hier einen Captcha-Prüfwert
+  const { data, error } = await client.auth.signInWithPassword({ email, password, options: { captchaToken } });
   if (error) return { ok: false, error };
   if (data.session) await client.auth.signOut({ scope: 'local' }).catch(() => undefined);
   return { ok: true };

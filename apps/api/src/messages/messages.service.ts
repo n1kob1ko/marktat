@@ -35,6 +35,7 @@ import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
 import { effectiveStatus } from '../listings/listings.mapper.js';
 import { serviceProfileImageUrl } from '../services/service-images.js';
+import { containsLink, isMassMessage, isNewAccount, LINK_BLOCKED_MESSAGE, MASS_MESSAGE_BLOCKED } from './message-filter.js';
 import { isProjectPublic, isServiceProfilePublic, publicProjectWhere, publicServiceProfileWhere } from '../services/visibility.js';
 
 /** Grenzwerte gegen Spam und massenhaftes Anschreiben (je Konto, gilt über alle API-Instanzen). */
@@ -168,6 +169,7 @@ export class MessagesService implements OnModuleInit {
     const existing = await this.prisma.conversation.findUnique({ where: key, select: { id: true } });
     if (!existing) await this.assertConversationLimit(user);
     await this.assertMessageLimit(user);
+    await this.assertContentAllowed(user, body, existing?.id);
 
     let created: { conversationId: string; message: Message };
     try {
@@ -329,6 +331,7 @@ export class MessagesService implements OnModuleInit {
     const reason = sendBlockedReason(partner, blockedByMe, blockedMe);
     if (reason) throw new ForbiddenException(reason);
     await this.assertMessageLimit(user);
+    await this.assertContentAllowed(user, body, conversation.id);
 
     let message: Message;
     try {
@@ -647,6 +650,27 @@ export class MessagesService implements OnModuleInit {
     ]);
     if (lastMinute >= MESSAGE_LIMITS.perMinute) throw tooMany('Du schreibst gerade sehr schnell. Bitte warte einen Moment.');
     if (lastHour >= MESSAGE_LIMITS.perHour) throw tooMany('Du hast in der letzten Stunde sehr viele Nachrichten geschickt. Bitte versuche es später wieder.');
+  }
+
+  /** Inhaltlicher Spam-Schutz (siehe message-filter.ts); Administratorkonten sind ausgenommen */
+  private async assertContentAllowed(user: Pick<AuthUser, 'id' | 'role'>, body: string, conversationId?: string) {
+    if (isUnlimitedAccount(user)) return;
+    if (containsLink(body)) {
+      const account = await this.prisma.user.findUnique({ where: { id: user.id }, select: { createdAt: true } });
+      if (account && isNewAccount(account.createdAt)) {
+        this.audit.log({ action: 'message.blocked', actorId: user.id, entityType: 'conversation', entityId: conversationId, metadata: { reason: 'link_new_account' } });
+        throw new BadRequestException(LINK_BLOCKED_MESSAGE);
+      }
+    }
+    const recent = await this.prisma.message.findMany({
+      where: { senderId: user.id, createdAt: { gt: new Date(Date.now() - 3600_000) } },
+      select: { body: true, conversationId: true },
+      take: MESSAGE_LIMITS.perHour,
+    });
+    if (isMassMessage(body, recent, conversationId)) {
+      this.audit.log({ action: 'message.blocked', actorId: user.id, entityType: 'conversation', entityId: conversationId, metadata: { reason: 'mass_message' } });
+      throw tooMany(MASS_MESSAGE_BLOCKED);
+    }
   }
 
   private async assertConversationLimit(user: Pick<AuthUser, 'id' | 'role'>) {
