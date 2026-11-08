@@ -9,6 +9,7 @@ const TONES: Record<ListingStatus, BadgeTone> = {
   EXPIRED: 'warning',
   REJECTED: 'danger',
   DELETED: 'danger',
+  SOLD: 'neutral',
 };
 
 export function ListingStatusBadge({ status }: { status: ListingStatus }) {

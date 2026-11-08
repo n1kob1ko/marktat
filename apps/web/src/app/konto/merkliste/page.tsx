@@ -112,7 +112,7 @@ async function ListingFavorites({ token, page }: { token: string; page: number }
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-semibold text-ink-500 line-through decoration-ink-300">{item.listing.title}</p>
                     <p className="text-xs text-ink-500">
-                      Verkauft, pausiert oder abgelaufen · gemerkt am {formatDate(item.savedAt)}
+                      {item.listing.status === 'SOLD' ? 'Verkauft' : 'Pausiert, abgelaufen oder entfernt'} · gemerkt am {formatDate(item.savedAt)}
                     </p>
                   </div>
                   <form action={removeFavoriteAction}>

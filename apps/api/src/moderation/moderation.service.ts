@@ -35,8 +35,8 @@ const LISTING_ACTIONS = {
 
 /** Von welchen Status aus eine Maßnahme möglich ist */
 const ALLOWED_FROM: Record<ListingDecisionInput['decision'], ListingStatus[]> = {
-  REJECT: ['ACTIVE', 'PAUSED', 'EXPIRED', 'PENDING_REVIEW'],
-  HIDE: ['ACTIVE', 'PAUSED', 'EXPIRED'],
+  REJECT: ['ACTIVE', 'PAUSED', 'EXPIRED', 'PENDING_REVIEW', 'SOLD'],
+  HIDE: ['ACTIVE', 'PAUSED', 'EXPIRED', 'SOLD'],
   RESTORE: ['REJECTED', 'PENDING_REVIEW'],
 };
 
@@ -885,10 +885,10 @@ export class ModerationService {
     return toAdminDecision(await this.prisma.moderationDecision.findUniqueOrThrow({ where: { id }, include: decisionInclude }));
   }
 
-  /** Nach einer Freigabe: zurück zu „pausiert“, wenn das Inserat vorher pausiert war; abgelaufene bleiben abgelaufen. */
+  /** Nach einer Freigabe: zurück zu „pausiert“ bzw. „verkauft“, wenn das Inserat das vorher war; abgelaufene bleiben abgelaufen. */
   private restoredStatus(listing: { expiresAt: Date | null }, snapshot: Prisma.JsonValue | undefined): ListingStatus {
     const before = (snapshot as { statusBefore?: ListingStatus } | null)?.statusBefore;
-    if (before === 'PAUSED') return 'PAUSED';
+    if (before === 'PAUSED' || before === 'SOLD') return before;
     return listing.expiresAt && listing.expiresAt > new Date() ? 'ACTIVE' : 'EXPIRED';
   }
 

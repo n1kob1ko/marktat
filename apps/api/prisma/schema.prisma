@@ -54,6 +54,8 @@ enum ListingStatus {
   EXPIRED
   REJECTED
   DELETED
+  /// Vom Anbieter als verkauft markiert: nicht mehr in der Suche, die Seite bleibt eine Zeit lang als „Verkauft“ erreichbar
+  SOLD
 }
 
 enum ItemCondition {
@@ -92,6 +94,8 @@ model User {
   notifyMessagesByEmail Boolean     @default(true) @map("notify_messages_by_email")
   /// E-Mail bei neuen Treffern gespeicherter Suchen (nur Suchen mit aktivierter Benachrichtigung)
   notifySearchesByEmail Boolean     @default(true) @map("notify_searches_by_email")
+  /// E-Mail vor Ablauf und nach Ablauf eigener Anzeigen
+  notifyListingsByEmail Boolean     @default(true) @map("notify_listings_by_email")
   /// Zeitpunkt der aktuellen Sperre (Begründung in moderation_decisions)
   suspendedAt           DateTime?   @map("suspended_at")
   /// Meldungen dieser Person werden bis dahin nicht angenommen (Art. 23 DSA, nach Verwarnung)
@@ -252,6 +256,13 @@ model Listing {
   createdAt        DateTime       @default(now()) @map("created_at")
   updatedAt        DateTime       @updatedAt @map("updated_at")
   deletedAt        DateTime?      @map("deleted_at")
+  /// Vom Anbieter als reserviert markiert (bleibt aktiv und suchbar, nur mit Kennzeichnung)
+  reservedAt       DateTime?      @map("reserved_at")
+  /// Zeitpunkt der Verkauft-Markierung (Status SOLD)
+  soldAt           DateTime?      @map("sold_at")
+  /// E-Mail „läuft bald ab“ bzw. „ist abgelaufen“ verschickt (wird beim Verlängern zurückgesetzt)
+  expiryReminderAt DateTime?      @map("expiry_reminder_at")
+  expiredNoticeAt  DateTime?      @map("expired_notice_at")
   /// Zusatzleistungen (Phase 7) – abgeleitet aus aktiven Buchungen, damit Suche und Karten ohne Join auskommen.
   /// Maßgeblich bleibt die Buchung; nach Ablauf wirken die Felder nicht mehr (Abfragen vergleichen mit „jetzt“).
   highlightedUntil DateTime?      @map("highlighted_until")

@@ -138,6 +138,30 @@ export class ListingsController {
     return this.listings.resume(user, id, req.ip);
   }
 
+  @Post(':id/sold')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Inserat als verkauft markieren' })
+  markSold(@CurrentUser() user: AuthUser, @Param('id') id: string, @Req() req: Request) {
+    return this.listings.markSold(user, id, req.ip);
+  }
+
+  @Post(':id/reserve')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Inserat als reserviert markieren' })
+  reserve(@CurrentUser() user: AuthUser, @Param('id') id: string, @Req() req: Request) {
+    return this.listings.setReserved(user, id, true, req.ip);
+  }
+
+  @Post(':id/unreserve')
+  @HttpCode(200)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reservierung aufheben' })
+  unreserve(@CurrentUser() user: AuthUser, @Param('id') id: string, @Req() req: Request) {
+    return this.listings.setReserved(user, id, false, req.ip);
+  }
+
   @Delete(':id')
   @HttpCode(204)
   @ApiBearerAuth()

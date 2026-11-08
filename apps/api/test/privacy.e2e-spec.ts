@@ -85,7 +85,7 @@ describe('Datenschutz: Export und Kontolöschung', () => {
     expect(res.headers['cache-control']).toBe('no-store');
     const data = res.body;
     expect(data.profile).toMatchObject({ id: user.id, email: user.email, displayName: 'Lena Löschen' });
-    expect(data.settings).toEqual({ notifyMessagesByEmail: true, notifySearchesByEmail: true });
+    expect(data.settings).toEqual({ notifyMessagesByEmail: true, notifySearchesByEmail: true, notifyListingsByEmail: true });
     expect(data.listings.map((l: { id: string }) => l.id)).toContain(listing.id);
     expect(data.favorites).toHaveLength(1);
     expect(data.savedSearches[0]).toMatchObject({ name: 'Kinderwagen', notify: true });

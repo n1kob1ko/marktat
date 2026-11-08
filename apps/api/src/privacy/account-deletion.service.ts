@@ -285,6 +285,7 @@ export class AccountDeletionService implements OnModuleInit {
           lastSeenAt: null,
           notifyMessagesByEmail: false,
           notifySearchesByEmail: false,
+          notifyListingsByEmail: false,
           reportingBlockedUntil: null,
         },
       });

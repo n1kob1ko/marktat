@@ -14,6 +14,7 @@ export async function updateNotificationsAction(_prev: FormState, formData: Form
       body: {
         notifyMessagesByEmail: formData.get('notifyMessagesByEmail') === 'on',
         notifySearchesByEmail: formData.get('notifySearchesByEmail') === 'on',
+        notifyListingsByEmail: formData.get('notifyListingsByEmail') === 'on',
       },
     });
   } catch (error) {

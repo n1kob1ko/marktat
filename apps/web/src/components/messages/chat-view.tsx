@@ -255,7 +255,14 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
       {!subject.available ? (
         <p className="flex items-center gap-2 border-b border-line bg-warning-50 px-4 py-2 text-sm text-warning-700">
           <Info className="size-4 shrink-0" aria-hidden="true" />
-          {subject.kind === 'service' ? 'Dieses Anbieterprofil ist nicht mehr online.' : subject.kind === 'project' ? 'Dieser Projektauftrag ist nicht mehr online.' : 'Diese Anzeige ist nicht mehr online.'} Ihr könnt trotzdem weiterschreiben.
+          {subject.kind === 'service'
+            ? 'Dieses Anbieterprofil ist nicht mehr online.'
+            : subject.kind === 'project'
+              ? 'Dieser Projektauftrag ist nicht mehr online.'
+              : listing?.status === 'SOLD'
+                ? 'Diese Anzeige ist als verkauft markiert.'
+                : 'Diese Anzeige ist nicht mehr online.'}{' '}
+          Ihr könnt trotzdem weiterschreiben.
         </p>
       ) : null}
 

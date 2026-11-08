@@ -40,6 +40,7 @@ export const LISTING_STATUSES = [
   'EXPIRED',
   'REJECTED',
   'DELETED',
+  'SOLD',
 ] as const;
 export type ListingStatus = (typeof LISTING_STATUSES)[number];
 
@@ -51,6 +52,7 @@ export const LISTING_STATUS_LABELS: Record<ListingStatus, string> = {
   EXPIRED: 'Abgelaufen',
   REJECTED: 'Abgelehnt',
   DELETED: 'Gelöscht',
+  SOLD: 'Verkauft',
 };
 
 export const ITEM_CONDITIONS = ['NEW', 'LIKE_NEW', 'GOOD', 'ACCEPTABLE', 'DEFECTIVE'] as const;
