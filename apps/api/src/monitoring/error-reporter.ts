@@ -2,6 +2,8 @@ import { createHash } from 'node:crypto';
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { redact } from '../common/redact.js';
+import { loadEnv } from '../config/env.js';
+import { forwardError, parseDsn } from './error-forwarder.js';
 
 export interface ErrorContext {
   source: 'http' | 'job' | 'web';
@@ -33,14 +35,18 @@ function shortStack(error: unknown): string | null {
 
 /**
  * Sammelt unerwartete Fehler datensparsam in `error_events` (Fehlerübersicht im Admin-Bereich) und schreibt
- * eine strukturierte Logzeile. Ein externer Dienst (z. B. Sentry) lässt sich hier anschließen – siehe
- * docs/betrieb.md; ohne Freigabe ist keiner aktiv.
+ * eine strukturierte Logzeile. Mit SENTRY_DSN geht dieselbe bereinigte Meldung zusätzlich an Sentry bzw.
+ * GlitchTip (error-forwarder.ts) – siehe docs/betrieb.md; ohne DSN bleibt alles im Haus.
  */
 @Injectable()
 export class ErrorReporter {
   private readonly logger = new Logger('Fehler');
+  private readonly env = loadEnv();
+  private readonly dsn = parseDsn(this.env.SENTRY_DSN);
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {
+    if (this.env.SENTRY_DSN && !this.dsn) this.logger.warn('SENTRY_DSN ist ungültig – Fehler werden nicht weitergeleitet.');
+  }
 
   capture(error: unknown, context: ErrorContext): void {
     const errorName = error instanceof Error ? error.name : typeof error;
@@ -52,6 +58,9 @@ export class ErrorReporter {
       `${context.source} ${context.route}: ${errorName}: ${message}${context.requestId ? ` (Anfrage ${context.requestId})` : ''}`,
       stack ?? undefined,
     );
+    if (this.dsn) {
+      void forwardError(this.dsn, { errorName, message, stack, source: context.source, route: context.route, environment: this.env.NODE_ENV, release: process.env.APP_VERSION });
+    }
     // Asynchron: Ein Fehler beim Speichern (z. B. Datenbank weg) darf die Antwort nicht verzögern
     this.prisma.errorEvent
       .upsert({

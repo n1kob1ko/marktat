@@ -98,6 +98,11 @@ export class HealthService {
         firstSeenAt: e.firstSeenAt.toISOString(),
         lastSeenAt: e.lastSeenAt.toISOString(),
       })),
+      monitoring: {
+        alertEmail: Boolean(this.env.ALERT_EMAIL),
+        errorService: Boolean(this.env.SENTRY_DSN),
+        offsiteBackup: Boolean(this.env.BACKUP_R2_BUCKET),
+      },
       process: {
         startedAt: startedAt.toISOString(),
         uptimeSeconds: Math.round(process.uptime()),

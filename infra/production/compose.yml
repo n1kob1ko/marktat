@@ -48,6 +48,8 @@ services:
     environment:
       # Server-zu-Server direkt im internen Netz; der Browser nutzt die öffentliche API-Adresse
       API_INTERNAL_URL: http://api:4000
+      # Optional: Serverfehler der Web-App an Sentry/GlitchTip weiterleiten (wie die API)
+      SENTRY_DSN: ${SENTRY_DSN:-}
     depends_on:
       api:
         condition: service_healthy
@@ -137,8 +139,24 @@ services:
       GOTRUE_JWT_DEFAULT_GROUP_NAME: authenticated
       GOTRUE_JWT_ADMIN_ROLES: service_role
       GOTRUE_PASSWORD_MIN_LENGTH: '10'
+      # Passwörter gegen bekannte Datenlecks prüfen (Have I Been Pwned, k-Anonymität: nur die ersten 5 Zeichen des
+      # Hashes verlassen den Server). Ist der Dienst nicht erreichbar, wird das Passwort trotzdem angenommen.
+      GOTRUE_PASSWORD_HIBP_ENABLED: ${AUTH_HIBP_ENABLED:-true}
       GOTRUE_SECURITY_REFRESH_TOKEN_ROTATION_ENABLED: 'true'
+      # Bot-Schutz (Cloudflare Turnstile) für Registrierung, Anmeldung und Passwort-Reset – siehe docs/sicherheit.md
+      GOTRUE_SECURITY_CAPTCHA_ENABLED: ${AUTH_CAPTCHA_ENABLED:-false}
+      GOTRUE_SECURITY_CAPTCHA_PROVIDER: turnstile
+      GOTRUE_SECURITY_CAPTCHA_SECRET: ${TURNSTILE_SECRET_KEY:-}
       GOTRUE_EXTERNAL_EMAIL_ENABLED: 'true'
+      # Anmeldung über Google bzw. Apple (OAuth). Rückkehradresse beim Anbieter: https://${API_DOMAIN}/auth/v1/callback
+      GOTRUE_EXTERNAL_GOOGLE_ENABLED: ${GOOGLE_LOGIN_ENABLED:-false}
+      GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_GOOGLE_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI: https://${API_DOMAIN}/auth/v1/callback
+      GOTRUE_EXTERNAL_APPLE_ENABLED: ${APPLE_LOGIN_ENABLED:-false}
+      GOTRUE_EXTERNAL_APPLE_CLIENT_ID: ${APPLE_OAUTH_CLIENT_ID:-}
+      GOTRUE_EXTERNAL_APPLE_SECRET: ${APPLE_OAUTH_CLIENT_SECRET:-}
+      GOTRUE_EXTERNAL_APPLE_REDIRECT_URI: https://${API_DOMAIN}/auth/v1/callback
       GOTRUE_MAILER_AUTOCONFIRM: 'false'
       GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED: 'true'
       GOTRUE_MAILER_OTP_EXP: '86400'

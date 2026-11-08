@@ -95,6 +95,12 @@ export const envSchema = z
     MESSAGE_EMAIL_DELAY_SECONDS: z.coerce.number().int().min(0).max(86_400).default(120),
     /** Abstand der Prüfung gespeicherter Suchen auf neue Treffer */
     SAVED_SEARCH_ALERT_MINUTES: z.coerce.number().int().min(1).max(1440).default(30),
+    /** Empfänger für Störungsmeldungen (stündliche Prüfung der Komponenten); leer = keine Alarm-E-Mails */
+    ALERT_EMAIL: optional.pipe(z.email().optional()),
+    /** Sentry-/GlitchTip-DSN für die Weiterleitung bereinigter Fehlermeldungen; leer = nur Fehlerübersicht im Admin-Bereich */
+    SENTRY_DSN: optional,
+    /** Nur Anzeige im Systemzustand: Ist die Sicherung zusätzlich außer Haus (R2) eingerichtet? (backup.sh liest denselben Wert) */
+    BACKUP_R2_BUCKET: optional,
     /**
      * Stripe (Phase 7) – nur für den späteren kostenpflichtigen Betrieb. Ohne Schlüssel läuft die Plattform
      * normal weiter (kostenlos). Erlaubt sind Testschlüssel (sk_test_/rk_test_); Live-Schlüssel nur mit

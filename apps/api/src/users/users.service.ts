@@ -10,6 +10,7 @@ import type { AccountType } from '../generated/prisma/enums.js';
 import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuditService } from '../audit/audit.service.js';
+import { CURRENT_TERMS_VERSION } from './terms.js';
 import type { AccountUser, AuthUser, SupabaseClaims } from '../auth/auth.types.js';
 import { DealSearchService } from '../deals/deal-search.service.js';
 import { SearchIndexService } from '../search/search-index.service.js';
@@ -54,7 +55,10 @@ export class UsersService {
     }
 
     const meta = claims.user_metadata ?? {};
-    const parsedName = displayNameSchema.safeParse(meta['display_name']);
+    // Google/Apple liefern keinen Anzeigenamen, sondern den vollen Namen (full_name bzw. name)
+    const provider = typeof claims.app_metadata?.['provider'] === 'string' ? claims.app_metadata['provider'] : 'email';
+    const nameCandidate = [meta['display_name'], meta['full_name'], meta['name']].find((v) => typeof v === 'string' && v.trim());
+    const parsedName = displayNameSchema.safeParse(typeof nameCandidate === 'string' ? nameCandidate.trim().slice(0, 50) : nameCandidate);
     const accountType: AccountType = ACCOUNT_TYPES.includes(meta['account_type'] as AccountType)
       ? (meta['account_type'] as AccountType)
       : 'PRIVATE';
@@ -62,7 +66,10 @@ export class UsersService {
       accountType === 'BUSINESS' && typeof meta['company_name'] === 'string'
         ? meta['company_name'].trim().slice(0, 120)
         : null;
-    const termsVersion = typeof meta['terms_version'] === 'string' ? meta['terms_version'].slice(0, 20) : null;
+    // Registrierung per E-Mail schickt die akzeptierte AGB-Version mit; bei Google/Apple gilt die Zustimmung über die
+    // Schaltfläche (Hinweis daneben), die Version ist dann die aktuelle
+    const termsVersion =
+      typeof meta['terms_version'] === 'string' ? meta['terms_version'].slice(0, 20) : provider !== 'email' ? CURRENT_TERMS_VERSION : null;
 
     const data = {
       id: claims.sub,

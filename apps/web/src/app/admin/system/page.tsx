@@ -99,6 +99,27 @@ async function System() {
         <StatCard label="Laufzeit" value={duration(health.process.uptimeSeconds)} hint={`${health.process.rssMb} MB Speicher · Node ${health.process.node}`} />
       </div>
 
+      <Section title="Überwachung">
+        <ul className="divide-y divide-line text-sm">
+          {[
+            { ok: health.monitoring.alertEmail, label: 'Störungs-E-Mails', hint: 'Stündliche Prüfung der Komponenten mit E-Mail bei Ausfall und Erholung (ALERT_EMAIL in der .env des Servers).' },
+            { ok: health.monitoring.errorService, label: 'Fehlerdienst (Sentry/GlitchTip)', hint: 'Bereinigte Fehlermeldungen zusätzlich an einen externen Dienst (SENTRY_DSN).' },
+            { ok: health.monitoring.offsiteBackup, label: 'Sicherung außer Haus', hint: 'Tägliche Datenbanksicherung zusätzlich verschlüsselt in einen eigenen R2-Bucket (BACKUP_R2_BUCKET).' },
+          ].map((item) => (
+            <li key={item.label} className="flex flex-wrap items-start justify-between gap-3 py-3">
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-semibold text-ink-900">{item.label}</p>
+                <p className="text-ink-600">{item.hint}</p>
+              </div>
+              <Badge tone={item.ok ? 'success' : 'warning'}>{item.ok ? 'eingerichtet' : 'nicht eingerichtet'}</Badge>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 text-sm text-ink-600">
+          Ob die Seite von außen erreichbar ist, kann nur ein externer Uptime-Dienst prüfen (siehe docs/deployment.md, Abschnitt Überwachung).
+        </p>
+      </Section>
+
       <Section title={`Fehlerübersicht (${health.errors.length})`}>
         <p className="mb-3 text-sm text-ink-600">
           Unerwartete Serverfehler und endgültig gescheiterte Hintergrundaufträge, zusammengefasst je Ursache. Ohne Anfragedaten, Personen oder IDs; Einträge verschwinden 30 Tage

@@ -2,6 +2,7 @@
 
 import { useActionState } from 'react';
 import { Alert, Checkbox, Field, Input } from '@marktat/ui';
+import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
 import { changeEmailAction, changePasswordAction } from './actions';
@@ -31,6 +32,7 @@ export function ChangePasswordForm() {
           </>
         }
       />
+      <Captcha />
       <SubmitButton>Passwort ändern</SubmitButton>
     </form>
   );
@@ -56,6 +58,7 @@ export function ChangeEmailForm({ currentEmail, pendingEmail }: { currentEmail: 
       <Field label="Passwort" hint="Zur Bestätigung, dass du es bist." error={state.fieldErrors?.password} required>
         <Input name="password" type="password" autoComplete="current-password" maxLength={72} />
       </Field>
+      <Captcha />
       <SubmitButton variant="outline">Bestätigungslinks schicken</SubmitButton>
     </form>
   );

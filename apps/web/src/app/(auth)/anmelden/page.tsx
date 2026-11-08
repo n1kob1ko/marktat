@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { Alert, Skeleton } from '@marktat/ui';
 import { AuthShell } from '@/components/auth-shell';
+import { SocialLogin } from '@/components/social-login';
 import { LoginForm } from './login-form';
 
 export const metadata: Metadata = { title: 'Anmelden', robots: { index: false } };
@@ -43,9 +44,13 @@ async function LoginContent({ searchParams }: Pick<PageProps<'/anmelden'>, 'sear
       {params.fehler === 'link' ? (
         <Alert tone="warning">Der Link ist ungültig oder abgelaufen. Bitte melde dich an oder fordere einen neuen Link an.</Alert>
       ) : null}
+      {params.fehler === 'anbieter' ? (
+        <Alert tone="warning">Die Anmeldung über den Anbieter wurde abgebrochen oder hat nicht geklappt. Bitte versuche es noch einmal oder melde dich mit E-Mail und Passwort an.</Alert>
+      ) : null}
       {next ? (
         <Alert tone="info">{(typeof params.hinweis === 'string' && HINTS[params.hinweis]) || 'Bitte melde dich an, um fortzufahren.'}</Alert>
       ) : null}
+      <SocialLogin next={next} />
       <LoginForm next={next} />
     </div>
   );

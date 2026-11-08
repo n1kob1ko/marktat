@@ -48,15 +48,18 @@ const PRIVATE_PATHS = [
  * Content-Security-Policy. 'unsafe-inline' für Skripte ist nötig, solange keine Nonces verwendet werden
  * (offene Aufgabe: nonce-basierte CSP über proxy.ts, siehe docs/sicherheit.md).
  */
+// Cloudflare Turnstile (Bot-Schutz) nur, wenn ein Site-Key gesetzt ist – sonst keine fremden Skripte
+const turnstileOrigin = process.env.TURNSTILE_SITE_KEY ? ' https://challenges.cloudflare.com' : '';
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ''}${turnstileOrigin}`,
   "style-src 'self' 'unsafe-inline'",
   // Bilder kommen über die API (Weiterleitung auf R2, Pfad-Stil – also genau der R2-Endpoint);
   // blob: für die Vorschau vor dem Upload, data: für den QR-Code der 2FA-Einrichtung. Kein pauschales https:.
   `img-src 'self' data: blob: ${apiUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}`,
   "font-src 'self' data:",
   `connect-src 'self' ${apiUrl} ${supabaseUrl}${uploadOrigin ? ` ${uploadOrigin}` : ''}${isDev ? ' ws:' : ''}`,
+  `frame-src ${turnstileOrigin ? turnstileOrigin.trim() : "'none'"}`,
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",
@@ -82,6 +85,9 @@ const nextConfig: NextConfig = {
     NEXT_PUBLIC_WEB_URL: process.env.WEB_URL ?? 'http://localhost:3000',
     ALLOW_INDEXING: String(allowIndexing),
     GOOGLE_SITE_VERIFICATION: process.env.GOOGLE_SITE_VERIFICATION ?? '',
+    // Anmeldung über Google/Apple (z. B. „google,apple“) und Bot-Schutz (Cloudflare Turnstile) – beides optional
+    NEXT_PUBLIC_AUTH_PROVIDERS: process.env.AUTH_PROVIDERS ?? '',
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.TURNSTILE_SITE_KEY ?? '',
   },
   turbopack: {
     root: repoRoot,

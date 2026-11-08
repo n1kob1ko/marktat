@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { AuthShell } from '@/components/auth-shell';
+import { SocialLogin } from '@/components/social-login';
 import { RegisterForm } from './register-form';
 
 export const metadata: Metadata = { title: 'Registrieren', robots: { index: false } };
@@ -19,6 +20,7 @@ export default function RegisterPage() {
         </>
       }
     >
+      <SocialLogin verb="registrieren" className="mb-5" />
       <RegisterForm />
     </AuthShell>
   );

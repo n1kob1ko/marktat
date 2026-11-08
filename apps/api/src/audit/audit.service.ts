@@ -63,6 +63,7 @@ export type AuditAction =
   // Phase 8: Zwei-Faktor-Anmeldung
   | 'security.mfa_enrolled'
   | 'security.mfa_removed'
+  | 'message.blocked'
   | 'security.password_changed'
   | 'security.email_change_requested'
   | 'admin.mfa_reset'
