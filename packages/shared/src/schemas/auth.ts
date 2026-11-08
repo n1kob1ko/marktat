@@ -81,3 +81,27 @@ export const mfaFactorNameSchema = z
 
 export const mfaEventSchema = z.object({ event: z.enum(['enrolled', 'removed']) });
 export type MfaEventInput = z.infer<typeof mfaEventSchema>;
+
+// --- Konto-Sicherheit (Passwort und E-Mail-Adresse ändern) ----------------------
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Bitte gib dein aktuelles Passwort ein.').max(72),
+    password: passwordSchema,
+    passwordConfirm: z.string(),
+    signOutOthers: z.boolean().default(true),
+  })
+  .refine((v) => v.password === v.passwordConfirm, {
+    path: ['passwordConfirm'],
+    message: 'Die Passwörter stimmen nicht überein.',
+  });
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
+
+export const changeEmailSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Bitte gib dein Passwort ein.').max(72),
+});
+export type ChangeEmailInput = z.infer<typeof changeEmailSchema>;
+
+/** Sicherheitsrelevante Änderung, die die Web-App über Supabase Auth ausgeführt hat; die API protokolliert und benachrichtigt. */
+export const securityEventSchema = z.object({ event: z.enum(['password_changed', 'email_change_requested']) });
+export type SecurityEventInput = z.infer<typeof securityEventSchema>;

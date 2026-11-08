@@ -12,12 +12,12 @@ type ProfileImageFields = {
   user: Pick<User, 'id' | 'logoKey' | 'accountType'> & { status: UserStatus; deletedAt: Date | null };
 };
 
-/** Profilbild: eigenes Bild, sonst das Firmenlogo gewerblicher Konten. Nicht öffentliche Profile nur signiert. */
+/** Profilbild: eigenes Bild, sonst das Profilbild bzw. Firmenlogo des Kontos. Nicht öffentliche Profile nur signiert. */
 export function serviceProfileImageUrl(profile: ProfileImageFields, urls: MediaUrls, variant: ImageVariant): string | null {
   if (profile.imageKey) {
     return urls.url('portfolio', `services/${profile.id}/image`, profile.id, profile.imageKey, variant, !isServiceProfilePublic(profile));
   }
-  return profile.user.accountType === 'BUSINESS' && isServiceProfilePublic(profile) ? logoUrl(profile.user) : null;
+  return isServiceProfilePublic(profile) ? logoUrl(profile.user) : null;
 }
 
 export function portfolioImageUrl(

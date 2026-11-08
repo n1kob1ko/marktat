@@ -3,7 +3,7 @@ import request from 'supertest';
 import { resetEnvCache } from '../src/config/env.js';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
 import { SupabaseAdminClient } from '../src/privacy/supabase-admin.client.js';
-import { createTestApp, mfaToken, resetData, signIn, signInAs } from './helpers.js';
+import { createTestApp, mailsTo, mailText, mfaToken, resetData, signIn, signInAs } from './helpers.js';
 
 /**
  * Zwei-Faktor-Anmeldung: Die API prüft das Sicherheitsniveau aus dem Supabase-Token (aal, amr) selbst –
@@ -130,5 +130,28 @@ describe('Zwei-Faktor-Anmeldung und Bestätigung kritischer Aktionen', () => {
     await request(server()).post('/v1/me/mfa/events').set(bearer(token.token)).send({ event: 'gelöscht' }).expect(400);
     const user = await signIn(app);
     await request(server()).post('/v1/me/mfa/events').set(user.auth).send({ event: 'enrolled' }).expect(403);
+  });
+
+  it('protokolliert Passwort- und E-Mail-Änderungen und warnt bei neuem Passwort per E-Mail', async () => {
+    const email = `sicherheit-${Date.now()}@example.at`;
+    const user = await signIn(app, { email });
+    await request(server()).post('/v1/me/security/events').set(user.auth).send({ event: 'password_changed' }).expect(200);
+    await request(server()).post('/v1/me/security/events').set(user.auth).send({ event: 'email_change_requested' }).expect(200);
+    await request(server()).post('/v1/me/security/events').set(user.auth).send({ event: 'deleted' }).expect(400);
+    await request(server()).post('/v1/me/security/events').send({ event: 'password_changed' }).expect(401);
+
+    // Das Protokoll wird ohne Warten geschrieben
+    await expect
+      .poll(async () => {
+        const rows = await prisma.auditLog.findMany({ where: { actorId: user.id, action: { startsWith: 'security.' } }, select: { action: true } });
+        return rows.map((a) => a.action).sort();
+      })
+      .toEqual(['security.email_change_requested', 'security.password_changed']);
+
+    const mails = await mailsTo(email);
+    expect(mails.map((m) => m.Subject)).toEqual(['Dein Passwort wurde geändert']);
+    const text = await mailText(mails[0]!.ID);
+    expect(text).toContain('Warst du das nicht?');
+    expect(text).toContain('/passwort-vergessen');
   });
 });

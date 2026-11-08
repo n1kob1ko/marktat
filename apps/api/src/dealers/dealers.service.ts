@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import sharp from 'sharp';
 import type { DealerProfile } from '@marktat/shared';
 import { PrismaService } from '../prisma/prisma.service.js';
@@ -15,7 +15,7 @@ export const MAX_LOGO_BYTES = 5 * 1024 * 1024;
 const LOGO_SIZE = 400;
 const PAGE_SIZE = 24;
 
-/** Öffentliches Händlerprofil und Logo. Nur aktive, nicht gelöschte gewerbliche Konten haben ein Profil. */
+/** Öffentliches Händlerprofil sowie Profilbild/Logo aller Konten. Nur aktive, nicht gelöschte gewerbliche Konten haben ein Profil. */
 @Injectable()
 export class DealersService {
   constructor(
@@ -66,18 +66,20 @@ export class DealersService {
     };
   }
 
-  /** Weiterleitung auf das Logo (nur öffentliche Händlerprofile) */
+  /** Weiterleitung auf Profilbild bzw. Logo (nur aktive Konten) */
   async logoDownload(id: string) {
-    const dealer = await this.prisma.user.findFirst({ where: { id, accountType: 'BUSINESS', status: 'ACTIVE', deletedAt: null }, select: { logoKey: true } });
-    if (!dealer?.logoKey) return null;
-    return this.storage.presignDownload(dealer.logoKey, 3600);
+    const owner = await this.prisma.user.findFirst({ where: { id, status: 'ACTIVE', deletedAt: null }, select: { logoKey: true } });
+    if (!owner?.logoKey) return null;
+    return this.storage.presignDownload(owner.logoKey, 3600);
   }
 
-  /** Logo hochladen: Inhalt wird geprüft, zugeschnitten (max. 400 × 400) und ohne Metadaten als WebP gespeichert. */
+  /**
+   * Profilbild (private Konten) bzw. Firmenlogo (gewerbliche Konten) hochladen: Inhalt wird geprüft,
+   * zugeschnitten (max. 400 × 400) und ohne Metadaten als WebP gespeichert.
+   */
   async uploadLogo(user: AuthUser, body: unknown, ip?: string) {
-    if (user.accountType !== 'BUSINESS') throw new ForbiddenException('Ein Logo gibt es nur für gewerbliche Konten.');
     if (!Buffer.isBuffer(body) || body.length === 0) throw new BadRequestException('Bitte wähle ein Bild aus.');
-    if (body.length > MAX_LOGO_BYTES) throw new BadRequestException('Das Logo darf höchstens 5 MB groß sein.');
+    if (body.length > MAX_LOGO_BYTES) throw new BadRequestException('Das Bild darf höchstens 5 MB groß sein.');
     let webp: Buffer;
     try {
       const meta = await sharp(body, { limitInputPixels: 40_000_000 }).metadata();

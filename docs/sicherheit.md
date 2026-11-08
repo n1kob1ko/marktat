@@ -101,6 +101,20 @@
 | Meldungen ohne Konto | Meldeformular nur angemeldet; ob das nach Art. 16 DSA reicht, rechtlich prüfen. |
 | Bild-Uploads | Umgesetzt (siehe [bilder.md](bilder.md)). Offen: automatische Inhaltsprüfung (z. B. bekannte Missbrauchsdarstellungen). |
 
+## Kontosicherheit für alle Konten (`/konto/sicherheit`)
+
+- **Passwort ändern:** nur mit dem aktuellen Passwort. Die Web-App prüft es über einen Wegwerf-Client bei Supabase Auth
+  (`signInWithPassword`, Sitzung sofort wieder beendet) und setzt dann das neue Passwort auf der eigenen Sitzung
+  (`updateUser`). Auf Wunsch (Standard: an) werden alle anderen Geräte abgemeldet (`signOut({ scope: 'others' })`).
+  Die API protokolliert `security.password_changed` (`POST /v1/me/security/events`) und schickt eine Warn-E-Mail
+  „Dein Passwort wurde geändert“ mit Link zum Zurücksetzen – falls es nicht die Kontoinhaberin bzw. der Kontoinhaber war.
+- **E-Mail-Adresse ändern:** nur mit Passwort. Supabase Auth läuft mit `GOTRUE_MAILER_SECURE_EMAIL_CHANGE_ENABLED`, also
+  bekommen die bisherige und die neue Adresse je einen Link (Vorlage `infra/email-templates/email-change.html`,
+  Ziel `/auth/confirm?type=email_change`). Erst wenn beide geöffnet wurden, gilt die neue Adresse; die Seite zeigt die
+  laufende Änderung (`new_email`) an. Die App-Datenbank übernimmt die Adresse beim nächsten Request aus dem Token.
+  Protokoll: `security.email_change_requested`.
+- Die Zwei-Faktor-Anmeldung (unten) bleibt auf derselben Seite, vorerst nur für Team-Konten.
+
 ## Phase 8: Härtung vor dem Start
 
 **Zwei-Faktor-Anmeldung (TOTP)**

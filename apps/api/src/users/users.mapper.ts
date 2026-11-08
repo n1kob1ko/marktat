@@ -2,7 +2,7 @@ import type { MeResponse, PublicSeller } from '@marktat/shared';
 import type { User } from '../generated/prisma/client.js';
 import { loadEnv } from '../config/env.js';
 
-/** Öffentliche Logo-URL (Weiterleitung auf den Bildspeicher); die Version ändert sich mit jedem neuen Logo. */
+/** Öffentliche URL von Profilbild bzw. Logo (Weiterleitung auf den Bildspeicher); die Version ändert sich mit jedem neuen Bild. */
 export function logoUrl(user: Pick<User, 'id' | 'logoKey'>): string | null {
   if (!user.logoKey) return null;
   const version = user.logoKey.split('/').pop()?.replace('.webp', '').slice(0, 12) ?? '1';
@@ -35,7 +35,7 @@ export function toMe(user: User, suspension: MeResponse['suspension'] = null): M
   };
 }
 
-/** Öffentliche Verkäuferdaten – keine E-Mail, keine Telefonnummer. Profilbild = Händlerlogo (falls vorhanden). */
+/** Öffentliche Verkäuferdaten – keine E-Mail, keine Telefonnummer. Profilbild = hochgeladenes Bild bzw. Händlerlogo (falls vorhanden). */
 export function toPublicSeller(
   user: Pick<User, 'id' | 'displayName' | 'accountType' | 'companyName' | 'avatarUrl' | 'createdAt' | 'logoKey'>,
 ): PublicSeller {
@@ -44,7 +44,7 @@ export function toPublicSeller(
     displayName: user.displayName,
     accountType: user.accountType,
     companyName: user.accountType === 'BUSINESS' ? user.companyName : null,
-    avatarUrl: user.accountType === 'BUSINESS' ? (logoUrl(user) ?? user.avatarUrl) : user.avatarUrl,
+    avatarUrl: logoUrl(user) ?? user.avatarUrl,
     memberSince: user.createdAt.toISOString(),
   };
 }

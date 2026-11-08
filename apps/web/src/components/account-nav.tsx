@@ -25,7 +25,7 @@ const ALIASES: Record<string, string> = {
   '/konto/entscheidungen': '/konto/mitteilungen',
 };
 
-function buildGroups({ unreadMessages, showSecurity, showDeals }: { unreadMessages: number; showSecurity: boolean; showDeals: boolean }): SectionNavGroup[] {
+function buildGroups({ unreadMessages, showDeals }: { unreadMessages: number; showDeals: boolean }): SectionNavGroup[] {
   return [
     {
       label: 'Konto',
@@ -56,8 +56,7 @@ function buildGroups({ unreadMessages, showSecurity, showDeals }: { unreadMessag
       items: [
         { href: '/konto/benachrichtigungen', label: 'Benachrichtigungen', icon: Bell },
         { href: '/konto/mitteilungen', label: 'Mitteilungen', icon: Inbox },
-        // Nur für Moderation und Administration: Zwei-Faktor-Anmeldung
-        ...(showSecurity ? [{ href: '/konto/sicherheit', label: 'Sicherheit', icon: ShieldCheck }] : []),
+        { href: '/konto/sicherheit', label: 'Sicherheit', icon: ShieldCheck },
         { href: '/konto/datenschutz', label: 'Datenschutz', icon: LockKeyhole },
       ],
     },
@@ -65,10 +64,10 @@ function buildGroups({ unreadMessages, showSecurity, showDeals }: { unreadMessag
 }
 
 /** Navigation im Kontobereich; „Nachrichten“ zeigt die Zahl ungelesener Nachrichten live. */
-export function AccountNav({ showSecurity = false, showDeals = false }: { showSecurity?: boolean; showDeals?: boolean }) {
+export function AccountNav({ showDeals = false }: { showDeals?: boolean }) {
   const pathname = usePathname();
   const unread = useUnread();
-  const groups = buildGroups({ unreadMessages: unread?.messages ?? 0, showSecurity, showDeals });
+  const groups = buildGroups({ unreadMessages: unread?.messages ?? 0, showDeals });
   const hrefs = groups.flatMap((g) => g.items.map((item) => item.href));
   const lookup = Object.entries(ALIASES).find(([from]) => pathname === from || pathname.startsWith(`${from}/`))?.[1] ?? pathname;
   return <SectionNav label="Kontobereich" groups={groups} activeHref={findActiveHref(lookup, hrefs, '/konto')} />;
@@ -76,5 +75,5 @@ export function AccountNav({ showSecurity = false, showDeals = false }: { showSe
 
 /** Ohne aktiven Eintrag – Platzhalter, solange der Pfad bei dynamischen Seiten noch nicht feststeht */
 export function AccountNavFallback() {
-  return <SectionNav label="Kontobereich" groups={buildGroups({ unreadMessages: 0, showSecurity: false, showDeals: false })} activeHref={null} />;
+  return <SectionNav label="Kontobereich" groups={buildGroups({ unreadMessages: 0, showDeals: false })} activeHref={null} />;
 }

@@ -69,10 +69,11 @@ test('2FA einrichten, mit Code anmelden, kritische Aktion bestätigen und Zurüc
   await registerConfirmed(moderator.page, 'Max Zweifaktor', emails.moderator);
   setRole(emails.admin, 'ADMIN');
 
-  // Normale Konten sehen den Reiter nicht
+  // Normale Konten sehen unter „Sicherheit“ Passwort und E-Mail, aber keine Zwei-Faktor-Anmeldung
   await moderator.page.goto('/konto');
-  await expect((await openAccountNav(moderator.page)).getByRole('link', { name: 'Datenschutz' })).toBeVisible();
-  await expect(moderator.page.getByRole('link', { name: 'Sicherheit' })).toHaveCount(0);
+  await (await openAccountNav(moderator.page)).getByRole('link', { name: 'Sicherheit' }).click();
+  await expect(moderator.page.getByRole('heading', { name: 'Passwort ändern' })).toBeVisible();
+  await expect(moderator.page.getByRole('heading', { name: /Zwei-Faktor-Anmeldung/ })).toHaveCount(0);
 
   // --- Einrichten ---
   await admin.page.goto('/konto');

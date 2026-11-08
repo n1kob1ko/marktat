@@ -58,8 +58,10 @@ services:
       GOTRUE_SMTP_SENDER_NAME: Markterl
       GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://gateway/email-templates/confirmation.html
       GOTRUE_MAILER_TEMPLATES_RECOVERY: http://gateway/email-templates/recovery.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://gateway/email-templates/email-change.html
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Bitte bestätige deine E-Mail-Adresse
       GOTRUE_MAILER_SUBJECTS_RECOVERY: Passwort zurücksetzen
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Neue E-Mail-Adresse bestätigen
       # Großzügige Limits für lokale Tests; in Supabase-Projekten im Dashboard einstellen.
       GOTRUE_RATE_LIMIT_EMAIL_SENT: '1000'
       GOTRUE_RATE_LIMIT_TOKEN_REFRESH: '1000'

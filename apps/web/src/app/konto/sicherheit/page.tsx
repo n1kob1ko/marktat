@@ -1,13 +1,13 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
 import { Alert, Card, Skeleton } from '@marktat/ui';
-import { formatDate } from '@marktat/shared';
+import { formatDate, type MeResponse } from '@marktat/shared';
 import { isStaff, requireUser } from '@/lib/auth';
 import { getAssurance } from '@/lib/mfa';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FlashMessage } from '@/components/flash-message';
+import { ChangeEmailForm, ChangePasswordForm } from './account-forms';
 import { EnrollForm, RemoveFactorForm } from './mfa-forms';
 
 export const metadata: Metadata = { title: 'Sicherheit', robots: { index: false } };
@@ -24,17 +24,47 @@ export default function SecurityPage({ searchParams }: PageProps<'/konto/sicherh
 
 async function Security({ searchParams }: Pick<PageProps<'/konto/sicherheit'>, 'searchParams'>) {
   const [{ user }, params] = await Promise.all([requireUser('/konto/sicherheit'), searchParams]);
-  // Vorerst nur für das Team (Moderation, Administration); andere Konten sehen die Seite nicht
-  if (!isStaff(user)) notFound();
+  const supabase = await createSupabaseServerClient();
+  // Eine laufende E-Mail-Änderung kennt nur Supabase Auth (new_email, bis beide Links geöffnet sind)
+  const { data: authUser } = await supabase.auth.getUser();
+  const pendingEmail = authUser.user?.new_email && authUser.user.new_email.toLowerCase() !== user.email.toLowerCase() ? authUser.user.new_email : null;
+
+  return (
+    <div className="max-w-3xl space-y-6">
+      <FlashMessage hinweis={typeof params.hinweis === 'string' ? params.hinweis : undefined} />
+      {params.bestaetigt ? (
+        pendingEmail ? (
+          <Alert tone="success">Danke, dieser Link ist bestätigt. Öffne jetzt noch den Link in der E-Mail an die andere Adresse – erst dann gilt die neue Adresse.</Alert>
+        ) : (
+          <Alert tone="success">Deine neue E-Mail-Adresse ist bestätigt. Ab jetzt meldest du dich mit {user.email} an.</Alert>
+        )
+      ) : null}
+
+      <Card className="space-y-4 p-5 sm:p-7">
+        <h2 className="font-sans text-lg font-semibold tracking-normal">Passwort ändern</h2>
+        <ChangePasswordForm />
+      </Card>
+
+      <Card className="space-y-4 p-5 sm:p-7">
+        <h2 className="font-sans text-lg font-semibold tracking-normal">E-Mail-Adresse ändern</h2>
+        <ChangeEmailForm currentEmail={user.email} pendingEmail={pendingEmail} />
+      </Card>
+
+      {/* Zwei-Faktor-Anmeldung vorerst nur für das Team (Moderation, Administration) */}
+      {isStaff(user) ? <TwoFactor user={user} grund={typeof params.grund === 'string' ? params.grund : undefined} /> : null}
+    </div>
+  );
+}
+
+async function TwoFactor({ user, grund }: { user: MeResponse; grund: string | undefined }) {
   const supabase = await createSupabaseServerClient();
   const [{ data: factors }, assurance] = await Promise.all([supabase.auth.mfa.listFactors(), getAssurance()]);
   const verified = factors?.totp ?? [];
   const required = Boolean(user.security?.mfaRequired);
 
   return (
-    <div className="max-w-3xl space-y-6">
-      <FlashMessage hinweis={typeof params.hinweis === 'string' ? params.hinweis : undefined} />
-      {params.grund === 'pflicht' && !verified.length ? (
+    <>
+      {grund === 'pflicht' && !verified.length ? (
         <Alert tone="warning">Für den Admin-Bereich ist die Zwei-Faktor-Anmeldung Pflicht. Richte sie jetzt ein – danach geht es weiter.</Alert>
       ) : null}
 
@@ -84,6 +114,6 @@ async function Security({ searchParams }: Pick<PageProps<'/konto/sicherheit'>, '
           <EnrollForm />
         </Card>
       ) : null}
-    </div>
+    </>
   );
 }

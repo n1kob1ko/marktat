@@ -4,6 +4,15 @@ const MESSAGES: Record<string, { tone: 'success' | 'danger' | 'warning'; text: s
   veroeffentlicht: { tone: 'success', text: 'Deine Anzeige ist jetzt online.' },
   '2fa-aktiv': { tone: 'success', text: 'Die Zwei-Faktor-Anmeldung ist aktiv. Ab der nächsten Anmeldung fragen wir nach dem Code.' },
   '2fa-entfernt': { tone: 'success', text: 'Das Gerät wurde entfernt.' },
+  'passwort-geaendert': { tone: 'success', text: 'Dein Passwort ist geändert. Zur Sicherheit haben wir dir eine E-Mail dazu geschickt.' },
+  'passwort-geaendert-abgemeldet': {
+    tone: 'success',
+    text: 'Dein Passwort ist geändert und alle anderen Geräte sind abgemeldet. Zur Sicherheit haben wir dir eine E-Mail dazu geschickt.',
+  },
+  'email-angefordert': {
+    tone: 'success',
+    text: 'Fast geschafft: Wir haben je einen Bestätigungslink an deine bisherige und an deine neue E-Mail-Adresse geschickt. Erst wenn du beide geöffnet hast, gilt die neue Adresse.',
+  },
   '2fa-zurueckgesetzt': { tone: 'success', text: 'Die Zwei-Faktor-Anmeldung ist zurückgesetzt. Die Person meldet sich mit Passwort an und richtet sie neu ein.' },
   entwurf: { tone: 'success', text: 'Dein Entwurf wurde gespeichert.' },
   gespeichert: { tone: 'success', text: 'Deine Änderungen wurden gespeichert.' },

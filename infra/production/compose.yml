@@ -150,8 +150,10 @@ services:
       GOTRUE_SMTP_SENDER_NAME: Markterl
       GOTRUE_MAILER_TEMPLATES_CONFIRMATION: http://caddy:8080/confirmation.html
       GOTRUE_MAILER_TEMPLATES_RECOVERY: http://caddy:8080/recovery.html
+      GOTRUE_MAILER_TEMPLATES_EMAIL_CHANGE: http://caddy:8080/email-change.html
       GOTRUE_MAILER_SUBJECTS_CONFIRMATION: Bitte bestätige deine E-Mail-Adresse
       GOTRUE_MAILER_SUBJECTS_RECOVERY: Passwort zurücksetzen
+      GOTRUE_MAILER_SUBJECTS_EMAIL_CHANGE: Neue E-Mail-Adresse bestätigen
       # Schutz vor Missbrauch (je Stunde bzw. je 5 Minuten und IP); bei Bedarf in der .env anpassen
       GOTRUE_RATE_LIMIT_EMAIL_SENT: ${AUTH_RATE_LIMIT_EMAIL_SENT:-60}
       GOTRUE_RATE_LIMIT_TOKEN_REFRESH: '150'

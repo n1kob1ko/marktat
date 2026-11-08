@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
 import { BadgeCheck, BarChart3, CalendarDays, Flag, Images, MapPin, MessageCircle, Pencil, ShieldCheck, Sparkles, Store, UserRound } from 'lucide-react';
-import { Alert, Badge, buttonClasses, Card, Container, Skeleton } from '@marktat/ui';
+import { Alert, Badge, buttonClasses, Card, cn, Container, Skeleton } from '@marktat/ui';
 import {
   categoryAttributeSchema,
   describeListingAttributes,
@@ -167,9 +167,15 @@ async function ListingContent({
         <aside className="space-y-4">
           <Card className="scroll-mt-20 p-5" id="kontakt">
             <div className="flex items-center gap-3">
-              {seller.accountType === 'BUSINESS' && seller.avatarUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element -- Logo ist serverseitig verkleinert (WebP)
-                <img src={seller.avatarUrl} alt="" width={48} height={48} className="size-12 shrink-0 rounded-full border border-line bg-surface object-contain" />
+              {seller.avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element -- Profilbild bzw. Logo ist serverseitig verkleinert (WebP)
+                <img
+                  src={seller.avatarUrl}
+                  alt=""
+                  width={48}
+                  height={48}
+                  className={cn('size-12 shrink-0 rounded-full border border-line bg-surface', seller.accountType === 'BUSINESS' ? 'object-contain' : 'object-cover')}
+                />
               ) : (
                 <span className="flex size-12 items-center justify-center rounded-full bg-brand-50 text-brand-700">
                   {seller.accountType === 'BUSINESS' ? <Store className="size-6" aria-hidden="true" /> : <UserRound className="size-6" aria-hidden="true" />}

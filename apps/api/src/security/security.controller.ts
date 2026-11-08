@@ -2,13 +2,14 @@ import { Body, Controller, Get, HttpCode, Param, Post, Req } from '@nestjs/commo
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import type { Request } from 'express';
-import { mfaEventSchema, type MfaEventInput } from '@marktat/shared';
+import { mfaEventSchema, securityEventSchema, type MfaEventInput, type SecurityEventInput } from '@marktat/shared';
 import { CurrentUser, Roles } from '../auth/decorators.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import { StepUp } from '../auth/mfa.guard.js';
 import { openApiSchema } from '../common/openapi.js';
 import { ZodValidationPipe } from '../common/zod-validation.pipe.js';
 import { MfaService } from './mfa.service.js';
+import { SecurityEventsService } from './security-events.service.js';
 
 const LIMIT = { default: { limit: 10, ttl: 60_000 } };
 
@@ -16,7 +17,10 @@ const LIMIT = { default: { limit: 10, ttl: 60_000 } };
 @ApiBearerAuth()
 @Controller()
 export class SecurityController {
-  constructor(private readonly mfa: MfaService) {}
+  constructor(
+    private readonly mfa: MfaService,
+    private readonly events: SecurityEventsService,
+  ) {}
 
   // Bewusst ohne @Roles: Teammitglieder ohne 2FA müssen die Einrichtung erreichen (sonst Henne-Ei-Problem).
   @Post('me/mfa/events')
@@ -26,6 +30,15 @@ export class SecurityController {
   @ApiBody({ schema: openApiSchema(mfaEventSchema) })
   event(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(mfaEventSchema)) body: MfaEventInput, @Req() req: Request) {
     return this.mfa.recordChange(user, body.event, req.ip);
+  }
+
+  @Post('me/security/events')
+  @HttpCode(200)
+  @Throttle(LIMIT)
+  @ApiOperation({ summary: 'Passwort- bzw. E-Mail-Änderung protokollieren (ausgeführt über Supabase Auth); Passwort: Warn-E-Mail' })
+  @ApiBody({ schema: openApiSchema(securityEventSchema) })
+  securityEvent(@CurrentUser() user: AuthUser, @Body(new ZodValidationPipe(securityEventSchema)) body: SecurityEventInput, @Req() req: Request) {
+    return this.events.record(user, body.event, req.ip);
   }
 
   @Get('admin/users/:id/mfa')
