@@ -6,7 +6,7 @@ import { initialFormState } from '@/lib/form-state';
 import { SubmitButton } from '@/components/submit-button';
 import { updateNotificationsAction } from './actions';
 
-export function NotificationSettingsForm({ messages, searches, email }: { messages: boolean; searches: boolean; email: string }) {
+export function NotificationSettingsForm({ messages, searches, listings, email }: { messages: boolean; searches: boolean; listings: boolean; email: string }) {
   const [state, action] = useActionState(updateNotificationsAction, initialFormState);
   return (
     <form action={action} className="space-y-5">
@@ -33,6 +33,17 @@ export function NotificationSettingsForm({ messages, searches, email }: { messag
             <span className="font-semibold text-ink-900">Neue Treffer für gespeicherte Suchen und Preisalarme</span>
             <br />
             Gilt für alle Suchen, bei denen die Glocke eingeschaltet ist, und für Deals mit Preisalarm. Wir fassen Neues in einer E-Mail zusammen.
+          </>
+        }
+      />
+      <Checkbox
+        name="notifyListingsByEmail"
+        defaultChecked={listings}
+        label={
+          <>
+            <span className="font-semibold text-ink-900">Ablauf meiner Anzeigen</span>
+            <br />
+            Eine Erinnerung fünf Tage bevor eine Anzeige abläuft und ein Hinweis, wenn sie abgelaufen ist – jeweils mit einem Klick zum Verlängern.
           </>
         }
       />

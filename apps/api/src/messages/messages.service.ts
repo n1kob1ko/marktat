@@ -33,6 +33,7 @@ import { RatingsService } from '../ratings/ratings.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
 import { ReportsService } from '../moderation/reports.service.js';
 import { isPubliclyVisible } from '../search/search-document.js';
+import { effectiveStatus } from '../listings/listings.mapper.js';
 import { serviceProfileImageUrl } from '../services/service-images.js';
 import { isProjectPublic, isServiceProfilePublic, publicProjectWhere, publicServiceProfileWhere } from '../services/visibility.js';
 
@@ -588,6 +589,7 @@ export class MessagesService implements OnModuleInit {
         priceType: row.listing.priceType,
         priceCents: row.listing.priceCents === null ? null : Number(row.listing.priceCents),
         available,
+        status: effectiveStatus(row.listing),
       };
       subject = { kind: 'listing', id: listing.id, title: listing.title, imageUrl: listing.imageUrl, available, href: `/anzeige/${listing.id}` };
     } else if (row.project) {

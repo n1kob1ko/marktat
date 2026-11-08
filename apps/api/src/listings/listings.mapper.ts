@@ -14,6 +14,7 @@ import type { Prisma } from '../generated/prisma/client.js';
 import { toLocationSummary, locationInclude } from '../geo/geo.service.js';
 import { toPublicSeller } from '../users/users.mapper.js';
 import type { ImageUrls } from '../images/image-urls.js';
+import { soldPublicSince } from './visibility.js';
 
 export const listingInclude = {
   category: { select: { id: true, name: true, slug: true, path: true } },
@@ -47,9 +48,20 @@ export function effectiveStatus(listing: { status: ListingStatus; expiresAt: Dat
   return listing.status;
 }
 
-/** Öffentlich sichtbare Inserate bekommen unsignierte Bild-URLs, alle anderen signierte (nur für Eigentümer). */
+/** Kürzlich als verkauft markiert: die Seite bleibt mit „Verkauft“-Hinweis erreichbar (publiclyReachableWhere) */
+export function isRecentlySold(listing: { status: ListingStatus; soldAt: Date | null }, now = new Date()) {
+  return listing.status === 'SOLD' && listing.soldAt !== null && listing.soldAt > soldPublicSince(now);
+}
+
+/** Öffentlich erreichbar: aktiv (und nicht abgelaufen) oder kürzlich verkauft – bei aktivem Anbieterkonto */
+export function isPubliclyReachable(listing: Pick<ListingWithRelations, 'status' | 'expiresAt' | 'soldAt' | 'seller'>, now = new Date()) {
+  const sellerActive = listing.seller.status === 'ACTIVE' && listing.seller.deletedAt === null;
+  return sellerActive && (effectiveStatus(listing, now) === 'ACTIVE' || isRecentlySold(listing, now));
+}
+
+/** Öffentlich erreichbare Inserate bekommen unsignierte Bild-URLs, alle anderen signierte (nur für Eigentümer). */
 function needsSignedUrls(listing: ListingWithRelations) {
-  return effectiveStatus(listing) !== 'ACTIVE' || listing.seller.status !== 'ACTIVE' || listing.seller.deletedAt !== null;
+  return !isPubliclyReachable(listing);
 }
 
 export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls): ListingSummary {
@@ -62,6 +74,7 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
     priceType: listing.priceType,
     priceCents: listing.priceCents === null ? null : Number(listing.priceCents),
     status: effectiveStatus(listing),
+    reserved: listing.reservedAt !== null,
     vertical: listing.vertical,
     category: listing.category ?? { id: '', name: 'Ohne Kategorie', slug: '', path: '' },
     location: listing.location ? toLocationSummary(listing.location) : null,
@@ -71,6 +84,7 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
     priceSuffix: priceSuffix(schema, listing.attributes),
     salary: schema.price === 'none' ? formatSalary(carryOverAttributes(schema, listing.attributes), true) : null,
     publishedAt: listing.publishedAt?.toISOString() ?? null,
+    expiresAt: listing.expiresAt?.toISOString() ?? null,
     createdAt: listing.createdAt.toISOString(),
     ...promotionState(listing),
   };
@@ -111,7 +125,7 @@ export function toListingDetail(
     images: listing.images.map((image, index) => urls.toDto(image, index, signed)),
     condition: listing.condition,
     attributes: (listing.attributes ?? {}) as ListingAttributes,
-    expiresAt: listing.expiresAt?.toISOString() ?? null,
+    soldAt: listing.soldAt?.toISOString() ?? null,
     updatedAt: listing.updatedAt.toISOString(),
     seller: toPublicSeller(listing.seller),
     isOwner: viewerId === listing.sellerId,

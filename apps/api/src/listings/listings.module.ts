@@ -5,10 +5,11 @@ import { ModerationModule } from '../moderation/moderation.module.js';
 import { BillingModule } from '../billing/billing.module.js';
 import { ListingsController } from './listings.controller.js';
 import { ListingsService } from './listings.service.js';
+import { ListingRemindersService } from './listing-reminders.service.js';
 
 @Module({
   imports: [CategoriesModule, ImagesModule, ModerationModule, BillingModule],
   controllers: [ListingsController],
-  providers: [ListingsService],
+  providers: [ListingsService, ListingRemindersService],
 })
 export class ListingsModule {}

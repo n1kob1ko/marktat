@@ -13,6 +13,7 @@ import { ConfirmDeleteButton } from '@/components/confirm-delete-button';
 import { SubmitButton } from '@/components/submit-button';
 import { getPublicBilling, newIdempotencyKey } from '@/lib/billing';
 import { bookPromotionAction, listingStatusAction } from './actions';
+import { expiresSoon } from '@/lib/listing-lifecycle';
 
 export const metadata: Metadata = { title: 'Meine Anzeigen', robots: { index: false } };
 
@@ -60,8 +61,9 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
             <li key={listing.id}>
               <Card className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
                 <div className="min-w-0 space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <ListingStatusBadge status={listing.status} />
+                    {listing.reserved && listing.status === 'ACTIVE' ? <Badge tone="warning">Reserviert</Badge> : null}
                     <span className="text-xs text-ink-500">
                       {listing.publishedAt ? `Online seit ${formatDate(listing.publishedAt)}` : `Erstellt am ${formatDate(listing.createdAt)}`}
                     </span>
@@ -92,17 +94,28 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
                   <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
                     <Pencil className="size-4" aria-hidden="true" /> Bearbeiten
                   </Link>
-                  <form action={listingStatusAction} className="flex gap-2">
+                  <form action={listingStatusAction} className="flex flex-wrap gap-2 sm:justify-end">
                     <input type="hidden" name="id" value={listing.id} />
+                    {expiresSoon(listing) ? (
+                      <button name="action" value="publish" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>Verlängern</button>
+                    ) : null}
                     {listing.status === 'ACTIVE' ? (
-                      <button name="action" value="pause" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Pausieren</button>
+                      <>
+                        <button name="action" value={listing.reserved ? 'unreserve' : 'reserve'} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+                          {listing.reserved ? 'Reservierung aufheben' : 'Reservieren'}
+                        </button>
+                        <button name="action" value="pause" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Pausieren</button>
+                      </>
+                    ) : null}
+                    {listing.status === 'ACTIVE' || listing.status === 'PAUSED' ? (
+                      <button name="action" value="sold" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Verkauft</button>
                     ) : null}
                     {listing.status === 'PAUSED' ? (
                       <button name="action" value="resume" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>Fortsetzen</button>
                     ) : null}
-                    {listing.status === 'DRAFT' || listing.status === 'EXPIRED' ? (
+                    {listing.status === 'DRAFT' || listing.status === 'EXPIRED' || listing.status === 'SOLD' ? (
                       <button name="action" value="publish" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>
-                        {listing.status === 'DRAFT' ? 'Veröffentlichen' : 'Verlängern'}
+                        {listing.status === 'DRAFT' ? 'Veröffentlichen' : listing.status === 'SOLD' ? 'Erneut veröffentlichen' : 'Verlängern'}
                       </button>
                     ) : null}
                     <ConfirmDeleteButton />

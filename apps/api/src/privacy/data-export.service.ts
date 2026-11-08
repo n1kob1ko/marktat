@@ -120,7 +120,7 @@ export class DataExportService {
         createdAt: profile.createdAt,
         lastSeenAt: profile.lastSeenAt,
       },
-      settings: { notifyMessagesByEmail: profile.notifyMessagesByEmail, notifySearchesByEmail: profile.notifySearchesByEmail },
+      settings: { notifyMessagesByEmail: profile.notifyMessagesByEmail, notifySearchesByEmail: profile.notifySearchesByEmail, notifyListingsByEmail: profile.notifyListingsByEmail },
       listings: listings.map((l) => ({
         id: l.id,
         title: l.title,

@@ -29,7 +29,8 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
           </div>
         )}
         <div className="absolute top-3 left-3 flex max-w-[calc(100%-4rem)] flex-wrap gap-1.5">
-          {listing.publishedAt ? <NewBadge publishedAt={listing.publishedAt} /> : null}
+          <AvailabilityBadge listing={listing} />
+          {listing.publishedAt && listing.status === 'ACTIVE' ? <NewBadge publishedAt={listing.publishedAt} /> : null}
           <PromotionBadges listing={listing} />
         </div>
         {!isJob ? (
@@ -75,6 +76,25 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
       </div>
     </article>
   );
+}
+
+/** „Verkauft“ bzw. „Reserviert“ – vom Anbieter gesetzt; reservierte Anzeigen bleiben anfragbar */
+export function AvailabilityBadge({ listing, className }: { listing: Pick<ListingSummary, 'status' | 'reserved'>; className?: string }) {
+  if (listing.status === 'SOLD') {
+    return (
+      <Badge tone="neutral" className={cn('bg-ink-900 text-white shadow-sm', className)}>
+        Verkauft
+      </Badge>
+    );
+  }
+  if (listing.reserved) {
+    return (
+      <Badge tone="warning" className={cn('shadow-sm', className)} title="Vom Anbieter reserviert – Anfragen sind weiterhin möglich">
+        Reserviert
+      </Badge>
+    );
+  }
+  return null;
 }
 
 /**

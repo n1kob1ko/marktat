@@ -6,7 +6,8 @@ import { PRODUCT_CODES, type BookingResult, type ProductCode } from '@marktat/sh
 import { api, ApiError } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 
-type ListingAction = 'publish' | 'pause' | 'resume' | 'resubmit' | 'delete';
+type ListingAction = 'publish' | 'pause' | 'resume' | 'resubmit' | 'delete' | 'sold' | 'reserve' | 'unreserve';
+const ACTIONS: ListingAction[] = ['publish', 'pause', 'resume', 'resubmit', 'delete', 'sold', 'reserve', 'unreserve'];
 
 const ID_PATTERN = /^[a-z0-9]{20,40}$/;
 
@@ -15,7 +16,7 @@ export async function listingStatusAction(formData: FormData) {
   const id = String(formData.get('id') ?? '');
   const action = String(formData.get('action') ?? '') as ListingAction;
   const returnTo = formData.get('returnTo') === 'detail' ? `/anzeige/${id}` : '/konto/anzeigen';
-  if (!ID_PATTERN.test(id) || !['publish', 'pause', 'resume', 'resubmit', 'delete'].includes(action)) {
+  if (!ID_PATTERN.test(id) || !ACTIONS.includes(action)) {
     redirect('/konto/anzeigen?fehler=aktion');
   }
   const { token } = await requireUser('/konto/anzeigen');
@@ -27,7 +28,7 @@ export async function listingStatusAction(formData: FormData) {
       message = 'geloescht';
     } else {
       await api(`/listings/${id}/${action}`, { method: 'POST', token });
-      message = { publish: 'veroeffentlicht', pause: 'pausiert', resume: 'fortgesetzt', resubmit: 'eingereicht' }[action];
+      message = { publish: 'veroeffentlicht', pause: 'pausiert', resume: 'fortgesetzt', resubmit: 'eingereicht', sold: 'verkauft', reserve: 'reserviert', unreserve: 'freigegeben' }[action];
     }
   } catch (error) {
     // Veröffentlichen kostet etwas (nur im kostenpflichtigen Betrieb): Buchung über die Leistungsseite

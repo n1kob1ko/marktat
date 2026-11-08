@@ -39,7 +39,7 @@ async function Notifications({ searchParams }: Pick<PageProps<'/konto/benachrich
       <Card className="p-5 sm:p-7">
         <h2 className="font-sans text-lg font-semibold tracking-normal">E-Mail-Benachrichtigungen</h2>
         <div className="mt-4">
-          <NotificationSettingsForm messages={user.notifyMessagesByEmail} searches={user.notifySearchesByEmail} email={user.email} />
+          <NotificationSettingsForm messages={user.notifyMessagesByEmail} searches={user.notifySearchesByEmail} listings={user.notifyListingsByEmail} email={user.email} />
         </div>
       </Card>
       <Card className="p-5 sm:p-7">

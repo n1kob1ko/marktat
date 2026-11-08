@@ -28,6 +28,7 @@ export function toMe(user: User, suspension: MeResponse['suspension'] = null): M
     logoUrl: logoUrl(user),
     notifyMessagesByEmail: user.notifyMessagesByEmail,
     notifySearchesByEmail: user.notifySearchesByEmail,
+    notifyListingsByEmail: user.notifyListingsByEmail,
     status: user.status,
     suspension: user.status === 'SUSPENDED' ? suspension : null,
     createdAt: user.createdAt.toISOString(),

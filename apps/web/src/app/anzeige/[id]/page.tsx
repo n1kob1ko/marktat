@@ -20,6 +20,7 @@ import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { FlashMessage } from '@/components/flash-message';
 import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
+import { AvailabilityBadge } from '@/components/listing-card';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ShareButton } from '@/components/share-button';
 import { RatingSummaryLink } from '@/components/ratings/rating-stars';
@@ -32,6 +33,7 @@ import { MobileContactBar } from '@/components/listing/mobile-contact-bar';
 import { JsonLd } from '@/components/json-ld';
 import { serverEnv } from '@/lib/env';
 import { DEFAULT_SHARE_IMAGE, listingJsonLd, metaDescription } from '@/lib/seo';
+import { expiresSoon, SOLD_PUBLIC_DAYS } from '@/lib/listing-lifecycle';
 
 export async function generateMetadata({ params }: PageProps<'/anzeige/[id]'>): Promise<Metadata> {
   const [{ id }, token] = await Promise.all([params, getAccessToken()]);
@@ -91,6 +93,11 @@ async function ListingContent({
       <JsonLd data={listingJsonLd(listing, serverEnv.webUrl)} />
       <FlashMessage hinweis={hinweis} fehler={fehler} />
       {listing.isOwner ? <OwnerBar listing={listing} /> : <ViewBeacon listingId={listing.id} />}
+      {listing.status === 'SOLD' && !listing.isOwner ? (
+        <Alert tone="info" title="Diese Anzeige ist verkauft.">
+          Der Artikel ist nicht mehr zu haben{listing.soldAt ? ` (verkauft am ${formatDate(listing.soldAt)})` : ''}. Weiter unten findest du ähnliche Anzeigen.
+        </Alert>
+      ) : null}
       {staff ? (
         <Link href={`/admin/inserate/${listing.id}`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
           <ShieldCheck className="size-4" aria-hidden="true" /> Moderieren
@@ -112,6 +119,7 @@ async function ListingContent({
           <Card className="p-5 sm:p-7">
             <div className="flex items-start justify-between gap-3">
               <div className="flex flex-wrap items-center gap-2 pt-2">
+                <AvailabilityBadge listing={listing} />
                 {listing.isBusiness ? <Badge tone="brand">Gewerblicher Anbieter</Badge> : <Badge>Privat</Badge>}
                 {listing.top ? <Badge tone="accent">Top-Anzeige</Badge> : listing.highlighted ? <Badge tone="accent">Hervorgehoben</Badge> : null}
                 {listing.sponsored ? <Badge title="Bezahlte Platzierung">Gesponsert</Badge> : null}
@@ -119,7 +127,7 @@ async function ListingContent({
               </div>
               <div className="flex shrink-0 gap-2">
                 {listing.status === 'ACTIVE' ? <ShareButton url={`${serverEnv.webUrl}/anzeige/${listing.id}`} title={listing.title} /> : null}
-                {listing.isOwner ? null : (
+                {listing.isOwner || listing.status === 'SOLD' ? null : (
                   <FavoriteButton listingId={listing.id} title={listing.title} initial={token ? listing.isFavorite : false} variant="detail" returnTo={`/anzeige/${listing.id}`} />
                 )}
               </div>
@@ -191,14 +199,14 @@ async function ListingContent({
             </div>
           </Card>
           {listing.mapPoint && listing.location ? <AustriaMap point={listing.mapPoint} location={listing.location} /> : null}
-          {listing.isOwner ? null : (
+          {listing.isOwner || listing.status === 'SOLD' ? null : (
             <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
               <Flag className="size-4" aria-hidden="true" /> Anzeige melden
             </Link>
           )}
         </aside>
       </div>
-      {listing.status === 'ACTIVE' ? (
+      {listing.status === 'ACTIVE' || listing.status === 'SOLD' ? (
         <Suspense fallback={<RelatedListingsSkeleton />}>
           <RelatedListings listing={listing} />
         </Suspense>
@@ -237,9 +245,26 @@ function ContactArea({ listing, signedIn }: { listing: ListingDetail; signedIn: 
       </Link>
     );
   }
+  if (listing.status === 'SOLD') {
+    return (
+      <p className="mt-5 rounded-xl bg-canvas px-4 py-3 text-center text-sm text-ink-600">
+        Verkauft – Anfragen sind nicht mehr möglich.
+        {listing.conversationId ? (
+          <>
+            {' '}
+            <Link href={`/nachrichten/${listing.conversationId}`} className="font-semibold text-brand-700 hover:underline">Zur Unterhaltung</Link>
+          </>
+        ) : null}
+      </p>
+    );
+  }
+  const reservedHint = listing.reserved ? (
+    <p className="mt-3 rounded-xl bg-warning-50 px-3 py-2 text-center text-xs text-warning-700">Reserviert – falls es nicht klappt, kannst du trotzdem anfragen.</p>
+  ) : null;
   if (listing.conversationId) {
     return (
       <>
+        {reservedHint}
         <Link href={`/nachrichten/${listing.conversationId}`} className={buttonClasses({ size: 'lg', className: 'mt-5 w-full' })}>
           <MessageCircle className="size-5" aria-hidden="true" /> Zur Unterhaltung
         </Link>
@@ -250,6 +275,7 @@ function ContactArea({ listing, signedIn }: { listing: ListingDetail; signedIn: 
   if (!signedIn) {
     return (
       <>
+        {reservedHint}
         <Link
           href={`/anmelden?weiter=${encodeURIComponent(`/anzeige/${listing.id}`)}&hinweis=nachricht`}
           className={buttonClasses({ size: 'lg', className: 'mt-5 w-full' })}
@@ -260,7 +286,12 @@ function ContactArea({ listing, signedIn }: { listing: ListingDetail; signedIn: 
       </>
     );
   }
-  return <ContactForm listingId={listing.id} sellerName={sellerName} />;
+  return (
+    <>
+      {reservedHint}
+      <ContactForm listingId={listing.id} sellerName={sellerName} />
+    </>
+  );
 }
 
 /** Kategorieabhängige Angaben (Kilometerstand, Wohnfläche, Gehalt …) als übersichtliche Liste. */
@@ -335,12 +366,15 @@ function ModerationNotice({ listing }: { listing: ListingDetail }) {
 }
 
 function OwnerActions({ listing }: { listing: ListingDetail }) {
+  const expiringSoon = expiresSoon(listing);
   return (
     <div className="flex flex-col gap-3 rounded-[var(--radius-card)] border border-brand-200 bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-center gap-2 text-sm text-brand-900">
+      <div className="flex flex-wrap items-center gap-2 text-sm text-brand-900">
         <span className="font-semibold">Deine Anzeige</span>
         <ListingStatusBadge status={listing.status} />
+        {listing.reserved && listing.status === 'ACTIVE' ? <Badge tone="warning">Reserviert</Badge> : null}
         {listing.expiresAt && listing.status === 'ACTIVE' ? <span>· läuft bis {formatDate(listing.expiresAt)}</span> : null}
+        {listing.status === 'SOLD' ? <span>· für andere noch {SOLD_PUBLIC_DAYS} Tage als „Verkauft“ sichtbar</span> : null}
       </div>
       <div className="flex flex-wrap gap-2">
         <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
@@ -355,16 +389,26 @@ function OwnerActions({ listing }: { listing: ListingDetail }) {
         <Link href={`/konto/anzeigen/${listing.id}/leistungen`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
           <Sparkles className="size-4" aria-hidden="true" /> Leistungen
         </Link>
-        <form action={listingStatusAction}>
+        <form action={listingStatusAction} className="flex flex-wrap gap-2">
           <input type="hidden" name="id" value={listing.id} />
           <input type="hidden" name="returnTo" value="detail" />
           {listing.status === 'ACTIVE' ? (
-            <button name="action" value="pause" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Pausieren</button>
+            <>
+              {expiringSoon ? <button name="action" value="publish" className={buttonClasses({ size: 'sm' })}>Verlängern</button> : null}
+              <button name="action" value={listing.reserved ? 'unreserve' : 'reserve'} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+                {listing.reserved ? 'Reservierung aufheben' : 'Reservieren'}
+              </button>
+              <button name="action" value="sold" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Als verkauft markieren</button>
+              <button name="action" value="pause" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Pausieren</button>
+            </>
           ) : listing.status === 'PAUSED' ? (
-            <button name="action" value="resume" className={buttonClasses({ size: 'sm' })}>Fortsetzen</button>
-          ) : listing.status === 'DRAFT' || listing.status === 'EXPIRED' ? (
+            <>
+              <button name="action" value="resume" className={buttonClasses({ size: 'sm' })}>Fortsetzen</button>
+              <button name="action" value="sold" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Als verkauft markieren</button>
+            </>
+          ) : listing.status === 'DRAFT' || listing.status === 'EXPIRED' || listing.status === 'SOLD' ? (
             <button name="action" value="publish" className={buttonClasses({ size: 'sm' })}>
-              {listing.status === 'DRAFT' ? 'Veröffentlichen' : 'Verlängern'}
+              {listing.status === 'DRAFT' ? 'Veröffentlichen' : listing.status === 'SOLD' ? 'Erneut veröffentlichen' : 'Verlängern'}
             </button>
           ) : null}
         </form>

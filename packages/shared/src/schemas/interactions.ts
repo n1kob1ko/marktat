@@ -71,7 +71,7 @@ export const updateSavedSearchSchema = z
 export type UpdateSavedSearchInput = z.infer<typeof updateSavedSearchSchema>;
 
 export const notificationSettingsSchema = z
-  .object({ notifyMessagesByEmail: z.boolean().optional(), notifySearchesByEmail: z.boolean().optional() })
+  .object({ notifyMessagesByEmail: z.boolean().optional(), notifySearchesByEmail: z.boolean().optional(), notifyListingsByEmail: z.boolean().optional() })
   .strict();
 export type NotificationSettingsInput = z.infer<typeof notificationSettingsSchema>;
 

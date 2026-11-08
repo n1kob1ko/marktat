@@ -2,7 +2,8 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { randomUUID } from 'node:crypto';
 import request from 'supertest';
 import type { PrismaService } from '../src/prisma/prisma.service.js';
-import { createTestApp, flushSearch, resetData, tokenFor } from './helpers.js';
+import { createTestApp, flushSearch, mailsTo, mailText, resetData, signIn, tokenFor } from './helpers.js';
+import { ListingRemindersService } from '../src/listings/listing-reminders.service.js';
 
 describe('Inserate', () => {
   let app: NestExpressApplication;
@@ -170,6 +171,90 @@ describe('Inserate', () => {
     const row = await prisma.listing.findUniqueOrThrow({ where: { id: listing.id } });
     expect(row.status).toBe('DELETED');
     expect(row.deletedAt).not.toBeNull();
+  });
+
+  it('reserviert ein Inserat (bleibt suchbar) und markiert es als verkauft (Seite bleibt erreichbar, Suche nicht)', async () => {
+    const seller = await tokenFor();
+    const stranger = await tokenFor();
+    const { body: listing } = await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201);
+
+    // Reservieren: Kennzeichnung in Suche und auf der Seite, Fremde dürfen nicht
+    await request(server()).post(`/v1/listings/${listing.id}/reserve`).set(stranger.auth).expect(404);
+    const reserved = await request(server()).post(`/v1/listings/${listing.id}/reserve`).set(seller.auth).expect(200);
+    expect(reserved.body.reserved).toBe(true);
+    expect(reserved.body.status).toBe('ACTIVE');
+    await flushSearch();
+    const results = await request(server()).get('/v1/listings').expect(200);
+    expect(results.body.items.find((item: { id: string }) => item.id === listing.id)?.reserved).toBe(true);
+    const pub = await request(server()).get(`/v1/listings/${listing.id}`).expect(200);
+    expect(pub.body.reserved).toBe(true);
+    const unreserved = await request(server()).post(`/v1/listings/${listing.id}/unreserve`).set(seller.auth).expect(200);
+    expect(unreserved.body.reserved).toBe(false);
+
+    // Verkauft: raus aus der Suche, Seite öffentlich mit Status SOLD, keine Merkliste mehr
+    await request(server()).post(`/v1/listings/${listing.id}/sold`).set(stranger.auth).expect(404);
+    const sold = await request(server()).post(`/v1/listings/${listing.id}/sold`).set(seller.auth).expect(200);
+    expect(sold.body.status).toBe('SOLD');
+    expect(sold.body.soldAt).not.toBeNull();
+    await flushSearch();
+    expect((await request(server()).get('/v1/listings').expect(200)).body.total).toBe(0);
+    const soldPage = await request(server()).get(`/v1/listings/${listing.id}`).expect(200);
+    expect(soldPage.body.status).toBe('SOLD');
+    expect(soldPage.body.images).toEqual([]);
+    await request(server()).get(`/v1/listings/${listing.id}/related`).expect(200);
+    // Verkauft lässt sich nicht reservieren oder pausieren; nach 30 Tagen ist die Seite weg
+    await request(server()).post(`/v1/listings/${listing.id}/reserve`).set(seller.auth).expect(409);
+    await request(server()).post(`/v1/listings/${listing.id}/pause`).set(seller.auth).expect(409);
+    await prisma.listing.update({ where: { id: listing.id }, data: { soldAt: new Date(Date.now() - 31 * 86_400_000) } });
+    await request(server()).get(`/v1/listings/${listing.id}`).expect(404);
+    const mine = await request(server()).get('/v1/listings/mine').set(seller.auth).expect(200);
+    expect(mine.body[0].status).toBe('SOLD');
+
+    // Erneut veröffentlichen: wieder aktiv, Markierungen weg
+    const relisted = await request(server()).post(`/v1/listings/${listing.id}/publish`).set(seller.auth).expect(200);
+    expect(relisted.body.status).toBe('ACTIVE');
+    expect(relisted.body.soldAt).toBeNull();
+    expect(relisted.body.reserved).toBe(false);
+  });
+
+  it('erinnert per E-Mail vor dem Ablauf und meldet den Ablauf – je einmal und nur mit Einstellung', async () => {
+    const seller = await signIn(app, { metadata: { display_name: 'Erika Erinnert' } });
+    const quiet = await signIn(app);
+    await request(server()).patch('/v1/me/notifications').set(quiet.auth).send({ notifyListingsByEmail: false }).expect(200);
+    const soon = (await request(server()).post('/v1/listings').set(seller.auth).send(complete()).expect(201)).body;
+    const later = (await request(server()).post('/v1/listings').set(seller.auth).send({ ...complete(), title: 'Citybike später' }).expect(201)).body;
+    const quietOne = (await request(server()).post('/v1/listings').set(quiet.auth).send(complete()).expect(201)).body;
+    const day = 86_400_000;
+    const now = new Date();
+    await prisma.listing.update({ where: { id: soon.id }, data: { expiresAt: new Date(now.getTime() + 2 * day) } });
+    await prisma.listing.update({ where: { id: quietOne.id }, data: { expiresAt: new Date(now.getTime() + 2 * day) } });
+
+    const reminders = app.get(ListingRemindersService);
+    expect(await reminders.run(now)).toEqual({ reminded: 1, expired: 0 });
+    const mails = await mailsTo(seller.email);
+    expect(mails).toHaveLength(1);
+    expect(mails[0]!.Subject).toMatch(/läuft am .* ab$/);
+    const text = await mailText(mails[0]!.ID);
+    expect(text).toContain(soon.title);
+    expect(text).not.toContain(later.title);
+    expect(text).toContain('/konto/anzeigen');
+    expect(await mailsTo(quiet.email)).toHaveLength(0);
+    // Zweiter Lauf: keine zweite Erinnerung
+    expect(await reminders.run(now)).toEqual({ reminded: 0, expired: 0 });
+
+    // Abgelaufen: ein Hinweis, danach Ruhe; Verlängern setzt beides zurück
+    await prisma.listing.update({ where: { id: soon.id }, data: { expiresAt: new Date(now.getTime() - 1000) } });
+    expect(await reminders.run(now)).toEqual({ reminded: 0, expired: 1 });
+    expect(await reminders.run(now)).toEqual({ reminded: 0, expired: 0 });
+    const all = await mailsTo(seller.email);
+    expect(all.map((m) => m.Subject).sort()).toEqual(expect.arrayContaining([expect.stringMatching(/ist abgelaufen$/)]));
+    await request(server()).post(`/v1/listings/${soon.id}/publish`).set(seller.auth).expect(200);
+    const row = await prisma.listing.findUniqueOrThrow({ where: { id: soon.id } });
+    expect(row.expiryReminderAt).toBeNull();
+    expect(row.expiredNoticeAt).toBeNull();
+    // Lange abgelaufene Anzeigen (vor Einführung) bekommen keinen nachträglichen Hinweis
+    await prisma.listing.update({ where: { id: later.id }, data: { expiresAt: new Date(now.getTime() - 10 * day) } });
+    expect(await reminders.run(now)).toEqual({ reminded: 0, expired: 0 });
   });
 
   it('blendet abgelaufene Inserate aus und erlaubt Verlängerung', async () => {

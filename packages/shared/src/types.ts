@@ -85,6 +85,8 @@ export interface MeResponse {
   notifyMessagesByEmail: boolean;
   /** E-Mail bei neuen Treffern gespeicherter Suchen (je Suche einzeln aktivierbar) */
   notifySearchesByEmail: boolean;
+  /** E-Mail vor dem Ablauf und nach dem Ablauf eigener Anzeigen */
+  notifyListingsByEmail: boolean;
   /** SUSPENDED: nur Konto-Status, Entscheidungen, Einspruch, Datenexport und Löschung sind erreichbar */
   status: UserStatus;
   /** Aktuelle Sperre mit Begründung (nur bei status = SUSPENDED) */
@@ -146,6 +148,8 @@ export interface ListingSummary {
   priceType: PriceType | null;
   priceCents: number | null;
   status: ListingStatus;
+  /** Vom Anbieter als reserviert markiert (bleibt sichtbar und anfragbar) */
+  reserved: boolean;
   vertical: Vertical;
   category: { id: string; name: string; slug: string; path: string };
   location: LocationSummary | null;
@@ -161,6 +165,8 @@ export interface ListingSummary {
   /** Nur bei Suchen mit Ort: Luftlinie zum gewählten Ort in km */
   distanceKm?: number | null;
   publishedAt: string | null;
+  /** Ende der Laufzeit (null bei Entwürfen); „Meine Anzeigen“ bietet kurz davor „Verlängern“ an */
+  expiresAt: string | null;
   createdAt: string;
   /** Zusatzleistungen (Phase 7): nur solange sie gelten */
   highlighted: boolean;
@@ -201,7 +207,8 @@ export interface ListingDetail extends ListingSummary {
   condition: ItemCondition | null;
   /** Gespeicherte Zusatzangaben; Anzeige über `describeListingAttributes` */
   attributes: ListingAttributes;
-  expiresAt: string | null;
+  /** Zeitpunkt der Verkauft-Markierung (Status SOLD) */
+  soldAt: string | null;
   updatedAt: string;
   seller: PublicSeller;
   isOwner: boolean;
@@ -300,6 +307,8 @@ export interface ConversationSummary {
     priceCents: number | null;
     /** false = nicht mehr öffentlich (pausiert, abgelaufen, gelöscht) */
     available: boolean;
+    /** Aktueller Status, z. B. SOLD für den Hinweis „verkauft“ im Chat */
+    status: ListingStatus;
   } | null;
   lastMessage: { body: string; mine: boolean; createdAt: string } | null;
   lastMessageAt: string;

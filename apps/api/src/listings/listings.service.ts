@@ -37,10 +37,11 @@ import { ImageUrls } from '../images/image-urls.js';
 import { SearchIndexService } from '../search/search-index.service.js';
 import { ModerationService } from '../moderation/moderation.service.js';
 import { BookingsService } from '../billing/bookings.service.js';
-import { publiclyVisibleWhere } from './visibility.js';
+import { publiclyReachableWhere, publiclyVisibleWhere } from './visibility.js';
 import type { AuthUser } from '../auth/auth.types.js';
 import {
   effectiveStatus,
+  isPubliclyReachable,
   listingInclude,
   toListingDetail,
   toListingSummary,
@@ -58,8 +59,11 @@ function expiryFrom(date: Date, durationDays: number) {
   return new Date(date.getTime() + durationDays * DAY_MS);
 }
 
-/** Status, aus denen ein Inserat veröffentlicht bzw. verlängert werden kann */
-const PUBLISHABLE: ListingStatus[] = ['DRAFT', 'EXPIRED', 'ACTIVE'];
+/** Status, aus denen ein Inserat veröffentlicht, verlängert bzw. (nach „Verkauft“) erneut eingestellt werden kann */
+const PUBLISHABLE: ListingStatus[] = ['DRAFT', 'EXPIRED', 'ACTIVE', 'SOLD'];
+
+/** Beim Veröffentlichen/Verlängern: Verkauft- und Reserviert-Markierung weg, Ablauf-E-Mails dürfen erneut kommen */
+const RELIST_RESET = { soldAt: null, reservedAt: null, expiryReminderAt: null, expiredNoticeAt: null } as const;
 
 @Injectable()
 export class ListingsService implements OnModuleInit {
@@ -86,8 +90,8 @@ export class ListingsService implements OnModuleInit {
         const expiresAt = expiryFrom(now, durationDays);
         const current = await tx.listing.findUniqueOrThrow({ where: { id: listingId } });
         await tx.listing.updateMany({
-          where: { id: listingId, status: { in: ['DRAFT', 'EXPIRED', 'ACTIVE'] } },
-          data: { status: 'ACTIVE', publishedAt: current.publishedAt ?? now, expiresAt },
+          where: { id: listingId, status: { in: PUBLISHABLE } },
+          data: { status: 'ACTIVE', publishedAt: current.publishedAt ?? now, expiresAt, ...RELIST_RESET },
         });
         return expiresAt;
       },
@@ -249,6 +253,7 @@ export class ListingsService implements OnModuleInit {
           status: 'ACTIVE',
           publishedAt: status === 'DRAFT' || !current.publishedAt ? now : current.publishedAt,
           expiresAt,
+          ...RELIST_RESET,
         },
       });
       if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
@@ -256,7 +261,7 @@ export class ListingsService implements OnModuleInit {
     });
     const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
     this.audit.log({
-      action: status === 'DRAFT' ? 'listing.published' : 'listing.renewed',
+      action: status === 'DRAFT' ? 'listing.published' : status === 'SOLD' ? 'listing.relisted' : 'listing.renewed',
       actorId: user.id,
       entityType: 'listing',
       entityId: id,
@@ -283,6 +288,33 @@ export class ListingsService implements OnModuleInit {
       throw new ConflictException('Das Inserat ist abgelaufen. Bitte verlängere es.');
     }
     return this.setStatus(user, id, 'PAUSED', 'ACTIVE', 'listing.resumed', ip);
+  }
+
+  /**
+   * Als verkauft markieren: raus aus der Suche, die Seite bleibt eine Zeit lang mit „Verkauft“-Hinweis erreichbar
+   * (SOLD_PUBLIC_DAYS). Über „Veröffentlichen“ lässt sich die Anzeige erneut einstellen.
+   */
+  async markSold(user: AuthUser, id: string, ip?: string) {
+    const current = await this.requireOwned(user, id);
+    const status = effectiveStatus(current);
+    if (status !== 'ACTIVE' && status !== 'PAUSED') {
+      throw new ConflictException('Nur aktive oder pausierte Inserate können als verkauft markiert werden.');
+    }
+    return this.setStatus(user, id, current.status, 'SOLD', 'listing.sold', ip, { soldAt: new Date(), reservedAt: null });
+  }
+
+  /** Reserviert-Markierung setzen oder aufheben; die Anzeige bleibt sichtbar und anfragbar. */
+  async setReserved(user: AuthUser, id: string, reserved: boolean, ip?: string) {
+    const current = await this.requireOwned(user, id);
+    if (effectiveStatus(current) !== 'ACTIVE') {
+      throw new ConflictException('Nur aktive Inserate können reserviert werden.');
+    }
+    if (Boolean(current.reservedAt) === reserved) return toListingDetail(await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude }), this.urls, user.id);
+    await this.prisma.listing.update({ where: { id }, data: { reservedAt: reserved ? new Date() : null } });
+    const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
+    this.audit.log({ action: reserved ? 'listing.reserved' : 'listing.unreserved', actorId: user.id, entityType: 'listing', entityId: id, ip });
+    this.searchIndex.sync(id);
+    return toListingDetail(updated, this.urls, user.id);
   }
 
   async remove(user: AuthUser, id: string, ip?: string) {
@@ -366,9 +398,9 @@ export class ListingsService implements OnModuleInit {
     if (!listing || listing.status === 'DELETED') throw new NotFoundException('Dieses Inserat gibt es nicht.');
     const isOwner = viewer?.id === listing.sellerId;
     const isStaff = viewer?.role === 'ADMIN' || viewer?.role === 'MODERATOR';
-    // Inserate gesperrter oder gelöschter Konten sind wie in der Suche nicht öffentlich
-    const sellerActive = listing.seller.status === 'ACTIVE' && !listing.seller.deletedAt;
-    if ((effectiveStatus(listing) !== 'ACTIVE' || !sellerActive) && !isOwner && !isStaff) {
+    // Inserate gesperrter oder gelöschter Konten sind wie in der Suche nicht öffentlich; kürzlich verkaufte
+    // bleiben als „Verkauft“-Seite erreichbar
+    if (!isPubliclyReachable(listing) && !isOwner && !isStaff) {
       throw new NotFoundException('Dieses Inserat ist nicht mehr verfügbar.');
     }
     const state = await this.viewerState(listing.id, viewer);
@@ -383,7 +415,7 @@ export class ListingsService implements OnModuleInit {
   async related(id: string): Promise<RelatedListings> {
     const empty: RelatedListings = { similar: [], fromSeller: [], sellerTotal: 0 };
     const listing = await this.prisma.listing.findFirst({
-      where: { id, ...publiclyVisibleWhere() },
+      where: { id, ...publiclyReachableWhere() },
       select: { id: true, sellerId: true, category: { select: { id: true, path: true } }, location: { select: { latitude: true, longitude: true } } },
     });
     if (!listing) return empty;
@@ -476,10 +508,11 @@ export class ListingsService implements OnModuleInit {
     id: string,
     from: ListingStatus,
     status: ListingStatus,
-    action: 'listing.paused' | 'listing.resumed',
+    action: 'listing.paused' | 'listing.resumed' | 'listing.sold',
     ip?: string,
+    extra: Prisma.ListingUpdateManyMutationInput = {},
   ) {
-    const changed = await this.prisma.listing.updateMany({ where: { id, status: from }, data: { status } });
+    const changed = await this.prisma.listing.updateMany({ where: { id, status: from }, data: { status, ...extra } });
     if (changed.count === 0) throw new ConflictException('Der Status des Inserats hat sich inzwischen geändert. Bitte lade die Seite neu.');
     const updated = await this.prisma.listing.findUniqueOrThrow({ where: { id }, include: listingInclude });
     this.audit.log({ action, actorId: user.id, entityType: 'listing', entityId: id, ip });
