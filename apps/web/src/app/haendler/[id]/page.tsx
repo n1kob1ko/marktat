@@ -138,7 +138,7 @@ async function Dealer({ params, searchParams }: PageProps<'/haendler/[id]'>) {
         </h2>
         {dealer.listings.items.length ? (
           <>
-            <ul className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+            <ul className="stagger mt-4 grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
               {dealer.listings.items.map((listing) => (
                 <li key={listing.id} className="flex">
                   <ListingCard listing={listing} />

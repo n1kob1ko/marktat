@@ -105,6 +105,9 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
     lastConfirmedId.current = [...messages].reverse().find((m) => !m.localId)?.id ?? null;
   }, [messages]);
 
+  // Nachrichten, die gerade erst hereingekommen sind – nur sie erscheinen mit Bewegung (nicht der geladene Verlauf)
+  const [freshIds, setFreshIds] = useState<ReadonlySet<string>>(() => new Set());
+
   const append = useCallback((incoming: ChatMessage[]) => {
     setMessages((current) => {
       const known = new Set(current.map((m) => m.id));
@@ -122,7 +125,10 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
       if (event.type === 'message' && event.message.conversationId === id) {
         if (!stickToBottom.current && !event.message.mine) setShowJump(true);
         append([event.message]);
-        if (!event.message.mine) markRead();
+        if (!event.message.mine) {
+          setFreshIds((current) => new Set(current).add(event.message.id));
+          markRead();
+        }
       } else if (event.type === 'read' && event.conversationId === id && !event.byMe) {
         setMessages((current) => current.map((m) => (m.mine && !m.readAt && !m.localId ? { ...m, readAt: event.readAt } : m)));
       } else if (event.type === 'ready' && lastConfirmedId.current) {
@@ -307,7 +313,7 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
                       </span>
                     </li>
                   ) : null}
-                  <MessageBubble message={message} grouped={Boolean(grouped)} showReceipt={message === lastOwnConfirmed} onRetry={retry} />
+                  <MessageBubble message={message} grouped={Boolean(grouped)} fresh={Boolean(message.localId) || freshIds.has(message.id)} showReceipt={message === lastOwnConfirmed} onRetry={retry} />
                 </Fragment>
               );
             })}
@@ -317,7 +323,7 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
           <button
             type="button"
             onClick={() => scrollToBottom('smooth')}
-            className="absolute bottom-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-lg hover:bg-brand-800"
+            className="enter-pop press absolute bottom-3 left-1/2 inline-flex origin-bottom -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3.5 py-2 text-sm font-semibold text-white shadow-lg hover:bg-brand-800"
           >
             <ArrowDown className="size-4" aria-hidden="true" /> Neue Nachricht
           </button>
@@ -338,11 +344,14 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
 function MessageBubble({
   message,
   grouped,
+  fresh,
   showReceipt,
   onRetry,
 }: {
   message: LocalMessage;
   grouped: boolean;
+  /** Gerade gesendet oder eingetroffen: wächst aus der Ecke, aus der sie kommt */
+  fresh: boolean;
   showReceipt: boolean;
   onRetry: (message: LocalMessage) => void;
 }) {
@@ -352,7 +361,8 @@ function MessageBubble({
       <div
         className={cn(
           'max-w-[85%] rounded-2xl px-3.5 py-2 text-[0.9375rem] leading-relaxed break-words whitespace-pre-wrap sm:max-w-[70%]',
-          mine ? 'rounded-br-md bg-primary text-white' : 'rounded-bl-md bg-surface text-ink-900 ring-1 ring-line',
+          mine ? 'origin-bottom-right rounded-br-md bg-primary text-white' : 'origin-bottom-left rounded-bl-md bg-surface text-ink-900 ring-1 ring-line',
+          fresh && 'enter-pop',
           message.status === 'sending' && 'opacity-70',
           message.status === 'failed' && 'bg-danger-50 text-danger-700 ring-1 ring-danger-600/30',
         )}

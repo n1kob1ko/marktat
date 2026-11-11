@@ -128,7 +128,7 @@ async function ProjectResults({ searchParams }: { searchParams: Promise<Params> 
                 key={chip.id}
                 href={chip.removeHref}
                 scroll={false}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-100"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 press hover:border-brand-400 hover:bg-brand-100"
                 aria-label={`Filter entfernen: ${chip.label}`}
               >
                 {chip.label}
@@ -147,7 +147,7 @@ async function ProjectResults({ searchParams }: { searchParams: Promise<Params> 
             <EmptyState query={query} />
           ) : (
             <>
-              <ul aria-label="Projektaufträge" className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+              <ul aria-label="Projektaufträge" className="stagger grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {result.items.map((project) => (
                   <li key={project.id} className="flex">
                     <ProjectCard project={project} />
@@ -163,7 +163,7 @@ async function ProjectResults({ searchParams }: { searchParams: Promise<Params> 
           <p className="font-semibold text-ink-900">Lieber selbst Anbieter:innen suchen?</p>
           <p className="mt-0.5 text-sm text-ink-600">Profile von Freelancern, Handwerksbetrieben und Dienstleistern durchsuchen und direkt anschreiben.</p>
           <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
-            Zu den Anbieterprofilen <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+            Zu den Anbieterprofilen <ArrowRight className="size-4 transition-transform ease-out group-hover:translate-x-0.5" aria-hidden="true" />
           </span>
         </Link>
 
@@ -185,7 +185,7 @@ function ProjectFilters({ query }: { query: ProjectSearchQuery }) {
   const active = hasActiveProjectFilters(query);
   return (
     <>
-      <details className="group rounded-[var(--radius-card)] border border-line bg-surface lg:hidden">
+      <details className="reveal group rounded-[var(--radius-card)] border border-line bg-surface lg:hidden">
         <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between px-4 py-2.5 font-semibold text-ink-900">
           Filter{active ? ' (aktiv)' : ''}
           <span className="text-sm font-normal text-brand-700 group-open:hidden">anzeigen</span>

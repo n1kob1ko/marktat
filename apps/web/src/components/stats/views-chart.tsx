@@ -39,7 +39,7 @@ export function ViewsChart({ days }: { days: { day: string; views: number }[] })
         <span>{days[0] ? label(days[0].day) : ''}</span>
         <span>{days.at(-1) ? label(days.at(-1)!.day) : ''}</span>
       </div>
-      <details className="mt-3 text-sm">
+      <details className="reveal mt-3 text-sm">
         <summary className="cursor-pointer font-semibold text-brand-700">Als Tabelle anzeigen</summary>
         <table className="mt-2 w-full max-w-sm text-left">
           <caption className="sr-only">Aufrufe pro Tag</caption>

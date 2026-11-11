@@ -15,7 +15,7 @@ export function ServiceCard({ profile, className }: { profile: ServiceProfileSum
   return (
     <article
       className={cn(
-        'group relative flex w-full flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)] sm:p-5',
+        'group relative flex w-full flex-col gap-3 rounded-[var(--radius-card)] border border-line bg-surface p-4 shadow-[var(--shadow-card)] press-soft hover:shadow-[var(--shadow-card-hover)] sm:p-5',
         className,
       )}
       data-testid="service-card"

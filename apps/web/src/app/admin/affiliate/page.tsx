@@ -197,7 +197,7 @@ function ProgramItem({
       {program.sourceCategories?.length ? <SourceCategories rows={program.sourceCategories} categories={categories} /> : null}
 
       {isAdmin ? (
-        <details className="rounded-md border border-line bg-canvas p-3">
+        <details className="reveal rounded-md border border-line bg-canvas p-3">
           <summary className="cursor-pointer font-semibold text-ink-800">Freigabe bearbeiten</summary>
           <AffiliateProgramForm program={program} categories={categories} />
         </details>
@@ -209,7 +209,7 @@ function ProgramItem({
 /** Wie die Kategorien des Feeds auf Markterl zugeordnet werden (häufigste zuerst) */
 function SourceCategories({ rows, categories }: { rows: AffiliateSourceCategory[]; categories: DealCategoryView[] }) {
   return (
-    <details className="rounded-md border border-line bg-canvas p-3">
+    <details className="reveal rounded-md border border-line bg-canvas p-3">
       <summary className="cursor-pointer font-semibold text-ink-800">Kategorien aus dem Feed ({rows.length} häufigste)</summary>
       <div className="mt-2 overflow-x-auto">
         <table className="w-full text-left text-xs">

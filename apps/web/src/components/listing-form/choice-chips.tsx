@@ -36,7 +36,7 @@ export function ChoiceChips<T extends string>({
           <label
             key={option.value || 'none'}
             className={cn(
-              'flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-center text-sm font-semibold transition-colors has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
+              'flex min-h-11 cursor-pointer items-center justify-center rounded-xl border px-3 py-2 text-center text-sm font-semibold press has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
               value === option.value ? 'border-brand-600 bg-brand-50 text-brand-800' : 'border-line-strong text-ink-700 hover:border-ink-400',
             )}
           >

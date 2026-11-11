@@ -43,7 +43,7 @@ export function CategoryPhotoTile({
           alt=""
           fill
           sizes={sizes}
-          className="object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transition-none"
+          className="object-cover transition-transform duration-300 ease-out group-hover:scale-105 motion-reduce:transition-none"
         />
       ) : (
         <span className="absolute inset-0 grid place-items-center pb-8 text-white/90">{icon}</span>

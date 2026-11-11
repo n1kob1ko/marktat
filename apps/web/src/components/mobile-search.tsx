@@ -3,7 +3,8 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Search, X } from 'lucide-react';
-import { buttonClasses, cn } from '@marktat/ui';
+import { Swap, buttonClasses, cn } from '@marktat/ui';
+import { usePresence } from '@/lib/motion';
 
 /** Platzhalter beim Vorrendern (usePathname ist erst zur Laufzeit bekannt): dieselbe Lupe, noch ohne Funktion */
 export function MobileSearchFallback() {
@@ -27,6 +28,7 @@ export function MobileSearch({ className }: { className?: string }) {
   const [openAt, setOpenAt] = useState<string | null>(null);
   const open = openAt === pathname;
   const setOpen = (next: boolean) => setOpenAt(next ? pathname : null);
+  const panel = usePresence(open);
 
   useEffect(() => {
     if (!open) return;
@@ -48,14 +50,17 @@ export function MobileSearch({ className }: { className?: string }) {
         title="Suchen"
         className={buttonClasses({ variant: 'ghost', size: 'sm', className: cn('w-10 px-0 md:hidden', open && 'bg-ink-900/5', className) })}
       >
-        {open ? <X className="size-5" aria-hidden="true" /> : <Search className="size-5" aria-hidden="true" />}
+        <Swap active={open} on={<X className="size-5" aria-hidden="true" />} off={<Search className="size-5" aria-hidden="true" />} />
       </button>
-      {open ? (
+      {panel.present ? (
         <form
           id={id}
           action="/suche"
           role="search"
-          className="absolute inset-x-0 top-full z-40 flex gap-2 border-b border-line bg-surface px-4 py-3 shadow-[var(--shadow-card)] md:hidden"
+          data-state={panel.state}
+          // Beim Ausblenden nicht mehr bedienbar (Fokus und Vorlesesoftware überspringen das Feld)
+          inert={!open}
+          className="drop absolute inset-x-0 top-full z-40 flex gap-2 border-b border-line bg-surface px-4 py-3 shadow-[var(--shadow-card)] md:hidden"
         >
           <label htmlFor={`${id}-q`} className="sr-only">
             Anzeigen durchsuchen

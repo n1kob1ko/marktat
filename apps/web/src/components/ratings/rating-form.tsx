@@ -60,7 +60,7 @@ export function RatingForm({
                 </span>
                 <Star
                   className={cn(
-                    'size-9 transition-colors',
+                    'size-9 press',
                     value <= shown
                       ? 'fill-accent-500 text-accent-500'
                       : 'fill-transparent text-line-strong',

@@ -168,7 +168,7 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
                 key={chip.id}
                 href={chip.removeHref}
                 scroll={false}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-100"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 press hover:border-brand-400 hover:bg-brand-100"
                 aria-label={`Filter entfernen: ${chip.label}`}
               >
                 {chip.label}
@@ -193,7 +193,7 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
           ) : (
             <>
               {result.topAds.length ? <TopAds items={result.topAds} /> : null}
-              <ul aria-label="Suchergebnisse" className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+              <ul aria-label="Suchergebnisse" className="stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
                 {result.items.map((listing) => (
                   <li key={listing.id} className="flex">
                     <ListingCard listing={listing} />
@@ -220,7 +220,7 @@ function TopAds({ items }: { items: SearchResult['topAds'] }) {
           {paid ? 'Passend zu deiner Suche, abwechselnd angezeigt. Bezahlte Platzierungen sind gekennzeichnet.' : 'Passend zu deiner Suche, abwechselnd angezeigt – während der Einführungsphase kostenlos.'}
         </p>
       </div>
-      <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+      <ul className="stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
         {items.map((listing) => (
           <li key={listing.id} className="flex">
             <ListingCard listing={listing} />

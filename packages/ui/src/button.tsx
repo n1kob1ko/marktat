@@ -5,7 +5,7 @@ export type ButtonVariant = 'primary' | 'accent' | 'secondary' | 'outline' | 'gh
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const base =
-  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition-colors ' +
+  'inline-flex items-center justify-center gap-2 rounded-xl font-semibold press ' +
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500 ' +
   'disabled:cursor-not-allowed disabled:opacity-60 select-none whitespace-nowrap';
 

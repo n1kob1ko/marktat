@@ -111,7 +111,7 @@ async function MyServiceProfileView({ searchParams }: Pick<PageProps<'/konto/die
               </p>
             </div>
             {profile.portfolio.map((item) => (
-              <details key={item.id} id={`portfolio-${item.id}`} className="rounded-xl border border-line p-4" open={params.eintrag === item.id}>
+              <details key={item.id} id={`portfolio-${item.id}`} className="reveal rounded-xl border border-line p-4" open={params.eintrag === item.id}>
                 <summary className="flex cursor-pointer flex-wrap items-center gap-2 font-semibold text-ink-900">
                   {item.title}
                   {item.hidden ? <Badge tone="warning">Vom Team ausgeblendet</Badge> : null}

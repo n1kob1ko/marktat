@@ -149,7 +149,7 @@ async function System() {
                         {e.errorName}: {e.message}
                       </p>
                       {e.stack ? (
-                        <details className="mt-1">
+                        <details className="reveal mt-1">
                           <summary className="cursor-pointer text-xs font-semibold text-brand-700">Stacktrace</summary>
                           <pre tabIndex={0} className="mt-1 overflow-x-auto text-xs whitespace-pre text-ink-600">{e.stack}</pre>
                         </details>

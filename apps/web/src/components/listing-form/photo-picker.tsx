@@ -171,7 +171,7 @@ export function PhotoPicker({ ai, onPhotosChange, onSuggestion, onUndo }: PhotoP
         ) : null}
       </div>
       {ai && aiMenu && !photos.length ? (
-        <div id="ki-fotos" className="mt-3 rounded-xl border border-accent-500/40 bg-surface p-4">
+        <div id="ki-fotos" className="enter mt-3 rounded-xl border border-accent-500/40 bg-surface p-4">
           <p className="text-sm font-semibold text-ink-900">Foto vom Artikel machen oder auswählen, dann „Mit KI ausfüllen“ tippen.</p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Button variant="accent" size="sm" onClick={() => cameraRef.current?.click()}>

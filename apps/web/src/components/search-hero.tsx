@@ -40,7 +40,7 @@ export function SearchHero() {
         </select>
         <button
           type="submit"
-          className="h-13 rounded-xl bg-accent-500 px-7 text-base font-semibold text-on-accent transition-colors hover:bg-accent-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+          className="h-13 rounded-xl bg-accent-500 px-7 text-base font-semibold text-on-accent press hover:bg-accent-600 hover:text-white focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
         >
           Suchen
         </button>
@@ -51,7 +51,7 @@ export function SearchHero() {
           <a
             key={term}
             href={`/suche?q=${encodeURIComponent(term)}`}
-            className="rounded-full border border-white/20 px-3 py-1 text-white/90 transition-colors hover:border-white/50 hover:bg-white/10"
+            className="rounded-full border border-white/20 px-3 py-1 text-white/90 press hover:border-white/50 hover:bg-white/10"
           >
             {term}
           </a>

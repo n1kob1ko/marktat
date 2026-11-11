@@ -58,7 +58,7 @@ function ShopLink({
       scroll={false}
       aria-current={active ? 'true' : undefined}
       className={cn(
-        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap transition-colors',
+        'inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium whitespace-nowrap press',
         active
           ? 'border-primary bg-primary text-white'
           : 'border-line bg-surface text-ink-800 hover:border-brand-300 hover:bg-brand-50',

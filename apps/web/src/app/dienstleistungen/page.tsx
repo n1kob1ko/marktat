@@ -151,7 +151,7 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
                 key={chip.id}
                 href={chip.removeHref}
                 scroll={false}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 transition-colors hover:border-brand-400 hover:bg-brand-100"
+                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 press hover:border-brand-400 hover:bg-brand-100"
                 aria-label={`Filter entfernen: ${chip.label}`}
               >
                 {chip.label}
@@ -175,7 +175,7 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
             <EmptyState query={query} />
           ) : (
             <>
-              <ul aria-label="Anbieterprofile" className="grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+              <ul aria-label="Anbieterprofile" className="stagger grid gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
                 {result.items.map((profile) => (
                   <li key={profile.id} className="flex min-w-0">
                     <ServiceCard profile={profile} />
@@ -192,21 +192,21 @@ async function ServiceResults({ searchParams }: { searchParams: Promise<Params> 
             <p className="font-semibold text-ink-900">Projektaufträge</p>
             <p className="mt-0.5 text-sm text-ink-600">Konkrete Vorhaben, für die jemand Unterstützung sucht – oder beschreibe selbst deinen Auftrag.</p>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
-              Zu den Aufträgen <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              Zu den Aufträgen <ArrowRight className="size-4 transition-transform ease-out group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
           </Link>
           <Link href={`/suche?kategorie=${related ?? 'marktplatz/dienstleistungen'}`} className="group rounded-xl border border-line bg-surface p-4 hover:border-brand-300">
             <p className="font-semibold text-ink-900">Inserate zu Dienstleistungen</p>
             <p className="mt-0.5 text-sm text-ink-600">Einzelne Angebote als Kleinanzeige im Marktplatz{related === 'jobs/freelance' ? ' bzw. unter Jobs › Freelance' : ''}.</p>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
-              Zu den Inseraten <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              Zu den Inseraten <ArrowRight className="size-4 transition-transform ease-out group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
           </Link>
           <Link href="/konto/dienstleistungen" className="group rounded-xl border border-line bg-surface p-4 hover:border-brand-300">
             <p className="font-semibold text-ink-900">Selbst Dienstleistungen anbieten</p>
             <p className="mt-0.5 text-sm text-ink-600">Mit deinem bestehenden Markterl-Konto ein Anbieterprofil anlegen – kostenlos.</p>
             <span className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700">
-              Profil anlegen <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
+              Profil anlegen <ArrowRight className="size-4 transition-transform ease-out group-hover:translate-x-0.5" aria-hidden="true" />
             </span>
           </Link>
         </div>

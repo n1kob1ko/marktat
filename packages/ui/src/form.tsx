@@ -13,7 +13,7 @@ import { cn } from './cn';
 
 const control =
   'block w-full rounded-xl border border-line-strong bg-surface px-3.5 text-[0.9375rem] text-ink-900 ' +
-  'placeholder:text-ink-400 transition-colors hover:border-ink-400 ' +
+  'placeholder:text-ink-400 transition-[color,background-color,border-color,box-shadow] hover:border-ink-400 ' +
   'focus:border-brand-500 focus:outline-none focus:ring-3 focus:ring-brand-500/20 ' +
   'disabled:cursor-not-allowed disabled:bg-canvas disabled:text-ink-500 ' +
   'aria-invalid:border-danger-600 aria-invalid:focus:ring-danger-600/20';
@@ -95,7 +95,7 @@ export function Field({ label, children, hint, error, required, className }: Fie
         </p>
       ) : null}
       {errorText ? (
-        <p id={errorId} className="text-sm font-medium text-danger-600">
+        <p id={errorId} className="enter text-sm font-medium text-danger-600 [--rise:0.25rem]">
           {errorText}
         </p>
       ) : null}

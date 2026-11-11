@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition, type DragEvent } from 'react';
 import { ArrowLeft, ArrowRight, ImagePlus, Star, Trash2, TriangleAlert } from 'lucide-react';
+import { useFlip } from '@/lib/motion';
 import { Button, cn, Spinner } from '@marktat/ui';
 import {
   IMAGE_ACCEPT,
@@ -185,6 +186,10 @@ export function ImageManager({
     });
   }
 
+  // Bilder gleiten nach dem Umsortieren an ihren neuen Platz (im Bogen aneinander vorbei) statt zu springen
+  const listRef = useRef<HTMLUListElement>(null);
+  useFlip(listRef, images.map((image) => image.id).join(','));
+
   const move = (index: number, direction: -1 | 1) => {
     const order = images.map((image) => image.id);
     const [moved] = order.splice(index, 1);
@@ -267,11 +272,12 @@ export function ImageManager({
         </p>
       ) : (
         <ul
+          ref={listRef}
           aria-label="Bilder der Anzeige"
           className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4"
         >
           {images.map((image, index) => (
-            <li key={image.id} className="overflow-hidden rounded-xl border border-line bg-surface">
+            <li key={image.id} data-flip-id={image.id} className="overflow-hidden rounded-xl border border-line bg-surface">
               <div className="relative aspect-[4/3] bg-canvas">
                 {/* eslint-disable-next-line @next/next/no-img-element -- bereits serverseitig optimiertes WebP */}
                 <img
@@ -280,7 +286,7 @@ export function ImageManager({
                   className="size-full object-cover"
                 />
                 {index === 0 ? (
-                  <span className="absolute top-2 left-2 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">
+                  <span className="enter-pop absolute top-2 left-2 inline-flex origin-left items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-semibold text-white">
                     <Star className="size-3" aria-hidden="true" /> Hauptbild
                   </span>
                 ) : null}

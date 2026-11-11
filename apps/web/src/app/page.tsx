@@ -174,7 +174,7 @@ async function AreaTilesWithCounts() {
 
 function AreaTiles({ counts }: { counts: Record<string, number> }) {
   return (
-    <ul className="grid grid-cols-3 gap-1 sm:grid-cols-6">
+    <ul className="stagger grid grid-cols-3 gap-1 sm:grid-cols-6">
       {VERTICAL_TILES.map((tile) => {
         const count = counts[tile.slug];
         return (
@@ -183,7 +183,7 @@ function AreaTiles({ counts }: { counts: Record<string, number> }) {
               href={tile.href}
               className="group flex w-full flex-col items-center gap-2 rounded-xl px-1 py-3 text-center transition-colors hover:bg-canvas sm:py-4"
             >
-              <span className={`flex size-12 items-center justify-center rounded-2xl transition-transform group-hover:-translate-y-0.5 ${tile.tone}`}>
+              <span className={`flex size-12 items-center justify-center rounded-2xl transition-transform ease-out group-hover:-translate-y-0.5 ${tile.tone}`}>
                 <tile.icon className="size-6" aria-hidden="true" />
               </span>
               <span className="text-sm leading-tight font-semibold text-ink-900">{tile.title}</span>
@@ -315,7 +315,7 @@ async function LatestListings() {
   }
   return (
     // Am Handy nur die ersten sechs, sonst nimmt diese Reihe allein drei Bildschirmhöhen ein
-    <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 max-sm:[&>li:nth-child(n+7)]:hidden">
+    <ul className="stagger grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5 max-sm:[&>li:nth-child(n+7)]:hidden">
       {listings.map((listing) => (
         <li key={listing.id} className="flex">
           <ListingCard listing={listing} />
@@ -344,7 +344,7 @@ async function LatestDeals() {
     );
   }
   return (
-    <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
+    <ul className="stagger grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4">
       {deals.map((deal) => (
         <li key={deal.id} className="flex">
           <DealCard deal={deal} />
