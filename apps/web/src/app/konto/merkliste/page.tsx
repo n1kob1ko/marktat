@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { FlashMessage } from '@/components/flash-message';
 import { ListingCard } from '@/components/listing-card';
+import { SlidingIndicator } from '@/components/sliding-indicator';
 import { SubmitButton } from '@/components/submit-button';
 import { DealCard } from '@/components/deals/deal-card';
 import { ServiceCard } from '@/components/services/service-card';
@@ -42,15 +43,16 @@ async function Favorites({ searchParams }: Pick<PageProps<'/konto/merkliste'>, '
   return (
     <div className="space-y-5">
       <FlashMessage hinweis={hinweis} fehler={fehler} />
-      <nav aria-label="Merkliste" className="flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-xl border border-line bg-surface p-1">
+      <nav aria-label="Merkliste" className="group/nav relative isolate flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain rounded-xl border border-line bg-surface p-1">
+        <SlidingIndicator id="merkliste" watch={tab} className="-z-10 rounded-lg bg-primary" />
         {TABS.map((t) => (
           <Link
             key={t.art}
             href={t.art === 'anzeigen' ? '/konto/merkliste' : `/konto/merkliste?art=${t.art}`}
             aria-current={t.art === tab ? 'page' : undefined}
             className={cn(
-              'flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold whitespace-nowrap transition-colors',
-              t.art === tab ? 'bg-primary text-white' : 'text-ink-700 hover:bg-ink-900/5',
+              'flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold whitespace-nowrap press',
+              t.art === tab ? 'bg-primary text-white group-data-[indicator]/nav:bg-transparent' : 'text-ink-700 hover:bg-ink-900/5',
             )}
           >
             {t.label}
@@ -88,7 +90,7 @@ async function ListingFavorites({ token, page }: { token: string; page: number }
       ) : null}
 
       {available.length ? (
-        <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <ul className="stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {available.map((item) => (
             <li key={item.listing.id} className="flex">
               <ListingCard listing={item.listing} favorite />
@@ -210,7 +212,7 @@ async function DealFavorites({ token, page }: { token: string; page: number }) {
         <EmptyTab title="Noch keine Deals gemerkt" text="Tippe bei einem Angebot auf „Merken“, um es hier wiederzufinden. Abgelaufene Angebote bleiben ausgegraut stehen, bis du sie entfernst." href="/deals" cta="Deals entdecken" />
       ) : null}
       {available.length ? (
-        <ul className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
+        <ul className="stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {available.map((item) => (
             <li key={item.deal.id} className="flex flex-col gap-1">
               <DealCard deal={item.deal} className="flex-1" />
@@ -258,7 +260,7 @@ async function ServiceFavorites({ token, page }: { token: string; page: number }
         <EmptyTab title="Noch keine Anbieter gemerkt" text="Tippe in einem Anbieterprofil auf „Merken“, um es hier wiederzufinden." href="/dienstleistungen" cta="Dienstleistungen entdecken" />
       ) : null}
       {available.length ? (
-        <ul className="grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <ul className="stagger grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {available.map((item) => (
             <li key={item.profile.id} className="flex flex-col gap-1">
               <ServiceCard profile={item.profile} className="flex-1" />

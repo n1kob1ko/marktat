@@ -35,7 +35,7 @@ export function RegisterForm() {
             <label
               key={option.value}
               className={cn(
-                'flex cursor-pointer flex-col gap-1 rounded-xl border p-3.5 transition-colors has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
+                'flex cursor-pointer flex-col gap-1 rounded-xl border p-3.5 press has-focus-visible:ring-3 has-focus-visible:ring-brand-500/30',
                 accountType === option.value ? 'border-brand-600 bg-brand-50' : 'border-line-strong hover:border-ink-400',
               )}
             >

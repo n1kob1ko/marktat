@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Heart } from 'lucide-react';
-import { cn } from '@marktat/ui';
+import { Swap, cn } from '@marktat/ui';
 import { setItemFavoriteAction, type FavoriteKind } from './actions';
 
 interface ItemFavoriteButtonProps {
@@ -20,11 +20,14 @@ export function ItemFavoriteButton({ kind, id, title, initial, className }: Item
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Das Herz pulsiert einmal, wenn gerade gemerkt wurde (nicht beim Laden einer schon gemerkten Anzeige)
+  const [confirmed, setConfirmed] = useState(false);
   const label = active ? `„${title}“ von der Merkliste entfernen` : `„${title}“ merken`;
 
   function toggle() {
     const next = !active;
     setError(null);
+    setConfirmed(next);
     setActive(next);
     startTransition(async () => {
       const result = await setItemFavoriteAction(kind, id, next).catch(() => ({
@@ -57,12 +60,16 @@ export function ItemFavoriteButton({ kind, id, title, initial, className }: Item
         aria-busy={pending || undefined}
         data-favorite={active ? 'ja' : 'nein'}
         className={cn(
-          'inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold transition-colors hover:border-ink-400 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold hover:border-ink-400 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
           active ? 'text-danger-600' : 'text-ink-700 hover:text-danger-600',
         )}
       >
-        <Heart className={cn('size-5', active && 'fill-current')} aria-hidden="true" />
-        <span>{active ? 'Gemerkt' : 'Merken'}</span>
+        <Swap
+          active={active}
+          on={<Heart className={cn('size-5 fill-current', confirmed && 'confirm')} onAnimationEnd={() => setConfirmed(false)} aria-hidden="true" />}
+          off={<Heart className="size-5" aria-hidden="true" />}
+        />
+        <Swap kind="text" active={active} on="Gemerkt" off="Merken" />
       </button>
       <span role="status" className="sr-only">
         {error ?? ''}

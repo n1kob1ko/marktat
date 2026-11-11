@@ -57,7 +57,7 @@ export function ConversationList({ initial, activeId, query }: ConversationListP
   useRealtime(onEvent);
 
   return (
-    <ul className="divide-y divide-line" aria-label="Unterhaltungen">
+    <ul className="stagger divide-y divide-line [--rise:0.25rem]" aria-label="Unterhaltungen">
       {items.map((item) => (
         <li key={item.id}>
           <ConversationItem item={item} active={item.id === activeId} href={`/nachrichten/${item.id}${query ? `?${query}` : ''}`} />

@@ -6,6 +6,7 @@ import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { ChevronLeft, Loader2, Search, SlidersHorizontal, X } from 'lucide-react';
 import { Input, Select, buttonClasses, cn } from '@marktat/ui';
+import { MOTION, usePresence } from '@/lib/motion';
 import {
   CONDITION_PARAMS,
   ITEM_CONDITIONS,
@@ -96,6 +97,8 @@ export function SearchFilters({
   const closeRef = useRef<HTMLButtonElement>(null);
   const desktop = useIsDesktop();
   const [open, setOpen] = useState(false);
+  const leaving = usePresence(open, MOTION.sheetExit);
+  const closing = !open && leaving.present;
   const [pending, startTransition] = useTransition();
 
   const [hasLocation, setHasLocation] = useState(Boolean(query.locationId || query.postalCode));
@@ -179,10 +182,11 @@ export function SearchFilters({
         role={open && !desktop ? 'dialog' : undefined}
         aria-modal={open && !desktop ? true : undefined}
         aria-label="Filter"
-        className={cn(
-          open ? 'fixed inset-0 z-50 flex flex-col bg-surface' : 'hidden',
-          'lg:static lg:z-auto lg:block lg:bg-transparent',
-        )}
+        data-open={open}
+        // Während des Ausblendens nicht mehr bedienbar und für Vorlesesoftware schon weg
+        inert={closing}
+        aria-hidden={closing || undefined}
+        className={cn('sheet max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:flex-col max-lg:bg-surface lg:block', open ? 'max-lg:flex' : 'max-lg:hidden')}
       >
         <div className="flex items-center justify-between border-b border-line px-4 py-3 lg:hidden">
           <h2 className="font-sans text-lg font-semibold tracking-normal">Filter</h2>
@@ -190,7 +194,7 @@ export function SearchFilters({
             ref={closeRef}
             type="button"
             onClick={() => setOpen(false)}
-            className="flex size-10 items-center justify-center rounded-xl text-ink-600 hover:bg-canvas"
+            className="press flex size-10 items-center justify-center rounded-xl text-ink-600 hover:bg-canvas"
             aria-label="Filter schließen"
           >
             <X className="size-5" aria-hidden="true" />

@@ -14,7 +14,7 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
   return (
     <article
       className={cn(
-        'group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]',
+        'group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border bg-surface shadow-[var(--shadow-card)] press-soft hover:shadow-[var(--shadow-card-hover)]',
         // Hervorhebung: dezent – farbiger Rahmen und leicht getönter Textbereich, Inhalt bleibt unverändert
         listing.highlighted ? 'border-accent-300 ring-1 ring-accent-300' : 'border-line',
       )}

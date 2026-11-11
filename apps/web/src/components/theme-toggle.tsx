@@ -1,8 +1,9 @@
 'use client';
 
-import { useSyncExternalStore } from 'react';
+import { useRef, useSyncExternalStore } from 'react';
 import { Moon, Sun } from 'lucide-react';
-import { buttonClasses, cn } from '@marktat/ui';
+import { Swap, buttonClasses, cn } from '@marktat/ui';
+import { EASE_OUT, prefersReducedMotion } from '@/lib/motion';
 
 export const THEME_STORAGE_KEY = 'markterl-theme';
 
@@ -45,17 +46,40 @@ export function ThemeToggle({ className, withLabel = false }: { className?: stri
   // Auf dem Server unbekannt: zuerst „hell“ annehmen, nach dem Laden stimmt das Symbol
   const theme = useSyncExternalStore(subscribe, currentTheme, () => 'light' as Theme);
   const dark = theme === 'dark';
+  const button = useRef<HTMLButtonElement>(null);
 
   function toggle() {
     const next: Theme = dark ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', next);
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, next);
-    } catch {}
+    const root = document.documentElement;
+    const apply = () => {
+      root.setAttribute('data-theme', next);
+      try {
+        localStorage.setItem(THEME_STORAGE_KEY, next);
+      } catch {}
+    };
+    const rect = button.current?.getBoundingClientRect();
+    if (!rect || typeof document.startViewTransition !== 'function' || prefersReducedMotion()) return apply();
+
+    // Die neue Ansicht wird kreisförmig vom Umschalter aus aufgedeckt, statt schlagartig umzuspringen
+    const x = rect.left + rect.width / 2;
+    const y = rect.top + rect.height / 2;
+    const radius = Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y));
+    root.setAttribute('data-theme-switch', '');
+    const transition = document.startViewTransition(apply);
+    transition.ready
+      .then(() =>
+        root.animate(
+          { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
+          { duration: 420, easing: EASE_OUT, pseudoElement: '::view-transition-new(root)' },
+        ),
+      )
+      .catch(() => undefined);
+    void transition.finished.finally(() => root.removeAttribute('data-theme-switch')).catch(() => undefined);
   }
 
   return (
     <button
+      ref={button}
       type="button"
       onClick={toggle}
       aria-pressed={dark}
@@ -63,7 +87,7 @@ export function ThemeToggle({ className, withLabel = false }: { className?: stri
       title={dark ? 'Hell anzeigen' : 'Dunkel anzeigen'}
       className={buttonClasses({ variant: 'ghost', size: 'sm', className: cn(withLabel ? '-ml-3' : 'w-10 px-0', className) })}
     >
-      {dark ? <Sun className="size-5" aria-hidden="true" /> : <Moon className="size-5" aria-hidden="true" />}
+      <Swap active={dark} on={<Sun className="size-5" aria-hidden="true" />} off={<Moon className="size-5" aria-hidden="true" />} />
       {withLabel ? 'Dunkelmodus' : null}
     </button>
   );

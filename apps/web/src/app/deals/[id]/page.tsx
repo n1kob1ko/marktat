@@ -211,7 +211,7 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
                 {deal.affiliate ? 'Preise laut Produktfeed, wie Markterl sie abgerufen hat' : 'Preise, die der Händler hier eingetragen hat'} – keine Marktpreise und keine Schätzung.
               </p>
               <PriceHistoryChart points={deal.priceHistory} />
-              <details className="mt-3 text-sm">
+              <details className="reveal mt-3 text-sm">
                 <summary className="cursor-pointer font-semibold text-brand-700">Alle erfassten Preise</summary>
                 <table className="mt-2 w-full text-left text-sm">
                   <thead className="text-xs text-ink-500">

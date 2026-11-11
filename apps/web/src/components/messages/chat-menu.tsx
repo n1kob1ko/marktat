@@ -2,12 +2,14 @@
 
 import Link from 'next/link';
 import { useActionState, useEffect, useId, useRef, useState } from 'react';
-import { Ban, ExternalLink, Flag, MoreVertical, X } from 'lucide-react';
+import { Ban, ExternalLink, Flag, MoreVertical } from 'lucide-react';
 import { CONVERSATION_REPORT_REASONS, REPORT_REASON_LABELS, type ConversationDetail } from '@marktat/shared';
 import { Alert, Button, Textarea, buttonClasses } from '@marktat/ui';
 import { initialFormState } from '@/lib/form-state';
 import { blockUserAction, reportUserAction } from '@/app/nachrichten/actions';
+import { ModalDialog, closeDialog } from '@/components/modal-dialog';
 import { SubmitButton } from '@/components/submit-button';
+import { usePresence } from '@/lib/motion';
 
 const itemClasses =
   'flex w-full items-center gap-2.5 rounded-lg px-3 py-2.5 text-left text-sm font-medium text-ink-800 hover:bg-ink-900/5 focus-visible:bg-ink-900/5 focus-visible:outline-none';
@@ -20,6 +22,7 @@ export function ChatMenu({ conversation }: { conversation: ConversationDetail })
   const root = useRef<HTMLDivElement>(null);
   const menuId = useId();
   const { partner } = conversation;
+  const menu = usePresence(open);
 
   useEffect(() => {
     if (!open) return;
@@ -45,12 +48,12 @@ export function ChatMenu({ conversation }: { conversation: ConversationDetail })
         aria-expanded={open}
         aria-controls={menuId}
         aria-label="Weitere Aktionen"
-        className="flex size-10 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5"
+        className="press flex size-10 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5"
       >
         <MoreVertical className="size-5" aria-hidden="true" />
       </button>
-      {open ? (
-        <div id={menuId} className="absolute top-11 right-0 z-30 w-64 rounded-xl border border-line bg-surface p-1.5 shadow-lg">
+      {menu.present ? (
+        <div id={menuId} data-state={menu.state} className="pop stagger settle absolute top-11 right-0 z-30 w-64 origin-top-right rounded-xl border border-line bg-surface p-1.5 shadow-lg">
           <Link href={conversation.subject.href} className={itemClasses} onClick={() => setOpen(false)}>
             <ExternalLink className="size-4 text-ink-500" aria-hidden="true" /> {{ listing: 'Anzeige ansehen', service: 'Anbieterprofil ansehen', project: 'Projektauftrag ansehen' }[conversation.subject.kind]}
           </Link>
@@ -101,45 +104,20 @@ export function ChatMenu({ conversation }: { conversation: ConversationDetail })
 }
 
 function ReportDialog({ conversation, onClose }: { conversation: ConversationDetail; onClose: () => void }) {
-  const dialog = useRef<HTMLDialogElement>(null);
   const [state, action] = useActionState(reportUserAction, initialFormState);
-  const titleId = useId();
-
-  useEffect(() => {
-    const el = dialog.current;
-    el?.showModal();
-    return () => el?.close();
-  }, []);
 
   return (
-    <dialog
-      ref={dialog}
-      // Nur echtes Schließen zählt (StrictMode öffnet den Dialog im Entwicklungsmodus zweimal)
-      onClose={() => {
-        if (!dialog.current?.open) onClose();
-      }}
-      aria-labelledby={titleId}
-      className="m-auto w-[min(32rem,calc(100vw-2rem))] rounded-[var(--radius-card)] border border-line bg-surface p-0 text-ink-900 shadow-xl backdrop:bg-black/50"
-    >
-      <div className="flex items-center justify-between border-b border-line px-5 py-3.5">
-        <h2 id={titleId} className="font-sans text-lg font-semibold tracking-normal">
-          {conversation.partner.displayName} melden
-        </h2>
-        <button type="button" onClick={() => dialog.current?.close()} className="flex size-9 items-center justify-center rounded-lg hover:bg-ink-900/5" aria-label="Schließen">
-          <X className="size-5" aria-hidden="true" />
-        </button>
-      </div>
+    <ModalDialog title={`${conversation.partner.displayName} melden`} onClose={onClose} className="w-[min(32rem,calc(100vw-2rem))]">
       {state.status === 'success' ? (
-        <div className="space-y-4 p-5">
+        <div className="stagger settle space-y-4 p-5">
           <Alert tone="success">{state.message}</Alert>
           <p className="text-sm text-ink-600">Wenn du keine weiteren Nachrichten möchtest, kannst du die Person zusätzlich blockieren.</p>
-          <button type="button" onClick={() => dialog.current?.close()} className={buttonClasses({ className: 'w-full' })}>
+          <button type="button" onClick={closeDialog} className={buttonClasses({ className: 'w-full' })}>
             Fertig
           </button>
         </div>
       ) : (
-        <form action={action} className="space-y-4 p-5">
-          <input type="hidden" name="conversationId" value={conversation.id} />
+        <form action={action} className="stagger settle space-y-4 p-5">
           {state.status === 'error' && state.message ? <Alert tone="danger">{state.message}</Alert> : null}
           <fieldset>
             <legend className="text-sm font-semibold text-ink-900">Was ist passiert?</legend>
@@ -162,13 +140,14 @@ function ReportDialog({ conversation, onClose }: { conversation: ConversationDet
           </div>
           <p className="text-xs text-ink-500">Unser Team prüft die Meldung und sieht dafür bei Bedarf die Nachrichten bis zu diesem Zeitpunkt ein. Du erfährst per Mitteilung, wie wir entschieden haben.</p>
           <div className="flex justify-end gap-2">
-            <Button variant="ghost" onClick={() => dialog.current?.close()}>
+            <Button variant="ghost" onClick={closeDialog}>
               Abbrechen
             </Button>
             <SubmitButton variant="danger">Meldung senden</SubmitButton>
           </div>
+          <input type="hidden" name="conversationId" value={conversation.id} />
         </form>
       )}
-    </dialog>
+    </ModalDialog>
   );
 }

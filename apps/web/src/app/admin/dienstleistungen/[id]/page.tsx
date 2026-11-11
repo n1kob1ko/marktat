@@ -215,7 +215,7 @@ async function AdminService({ params, searchParams }: Pick<PageProps<'/admin/die
                       </div>
                     </div>
                     {own ? null : (
-                      <details>
+                      <details className="reveal">
                         <summary className="cursor-pointer text-sm font-semibold text-brand-700">{item.hidden ? 'Wieder zeigen …' : 'Eintrag ausblenden …'}</summary>
                         <div className="mt-3">
                           <DecisionForm target="portfolioItem" id={item.id} hidden={{ profileId: profile.id }} options={[item.hidden ? PORTFOLIO_RESTORE : PORTFOLIO_HIDE]} />

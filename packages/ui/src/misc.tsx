@@ -47,6 +47,14 @@ const alertTones: Record<AlertTone, string> = {
   danger: 'border-danger-600/20 bg-danger-50 text-danger-700',
 };
 
+/** Rückmeldungen erscheinen sanft; ein Erfolg bestätigt sich mit einem einmaligen Ring. Reine Hinweise stehen still. */
+const alertMotion: Record<AlertTone, string | undefined> = {
+  info: undefined,
+  success: 'confirm-ring',
+  warning: 'enter',
+  danger: 'enter',
+};
+
 /** Hinweisbox. Fehler und Erfolgsmeldungen werden Screenreadern sofort vorgelesen. */
 export function Alert({
   tone = 'info',
@@ -62,7 +70,7 @@ export function Alert({
   return (
     <div
       role={tone === 'danger' ? 'alert' : 'status'}
-      className={cn('rounded-xl border px-4 py-3 text-sm leading-relaxed', alertTones[tone], className)}
+      className={cn('rounded-xl border px-4 py-3 text-sm leading-relaxed', alertTones[tone], alertMotion[tone], className)}
     >
       {title ? <p className="font-semibold">{title}</p> : null}
       {children ? <div className={title ? 'mt-1' : undefined}>{children}</div> : null}

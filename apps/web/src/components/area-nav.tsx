@@ -5,6 +5,7 @@ import { usePathname, useSearchParams } from 'next/navigation';
 import { Briefcase, Car, House, Percent, ShoppingBag, Wrench, type LucideIcon } from 'lucide-react';
 import { Container, cn } from '@marktat/ui';
 import { VERTICAL_LABELS, VERTICAL_SLUGS } from '@marktat/shared';
+import { SlidingIndicator } from './sliding-indicator';
 
 interface Area {
   id: string;
@@ -49,7 +50,9 @@ export function AreaNavList({ active }: { active: string | null }) {
   return (
     <nav aria-label="Bereiche" className="border-b border-line bg-surface">
       <Container className="px-0 sm:px-6">
-        <ul className="flex h-11 items-stretch gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+        <ul className="group/nav relative flex h-11 items-stretch gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 [scrollbar-width:none] sm:px-0 [&::-webkit-scrollbar]:hidden">
+          {/* Der Strich unter dem aktiven Bereich wandert beim Wechsel mit */}
+          <SlidingIndicator as="li" watch={active} className="border-b-2 border-brand-700" />
           {AREAS.map((area) => {
             const current = area.id === active;
             return (
@@ -58,8 +61,8 @@ export function AreaNavList({ active }: { active: string | null }) {
                   href={area.href}
                   aria-current={current ? 'page' : undefined}
                   className={cn(
-                    'flex items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold whitespace-nowrap sm:px-3',
-                    current ? 'border-brand-700 text-brand-800' : 'border-transparent text-ink-600 hover:border-line-strong hover:text-ink-900',
+                    'flex items-center gap-1.5 border-b-2 px-2.5 text-sm font-semibold whitespace-nowrap transition-colors sm:px-3',
+                    current ? 'border-brand-700 text-brand-800 group-data-[indicator]/nav:border-transparent' : 'border-transparent text-ink-600 hover:border-line-strong hover:text-ink-900',
                   )}
                 >
                   <area.icon className="size-4 shrink-0" aria-hidden="true" />

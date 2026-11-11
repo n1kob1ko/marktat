@@ -1,0 +1,322 @@
+/*
+ * Bewegung im Markterl-Designsystem – eine Stelle für Kurven, Dauern und Bausteine.
+ *
+ * Grundsätze (docs/design-bewegung.md):
+ *  - Erscheinen: ease-out. Bewegung von A nach B auf dem Bildschirm: ease-in-out. Kein Nachfedern.
+ *  - Menüs und Popover 180 ms, starten bei 95 % Größe und wachsen aus dem Auslöser heraus.
+ *  - Verschwinden ist 20 % kürzer als Erscheinen und läuft zum Auslöser zurück.
+ *  - Bewegt werden nur transform/opacity (bzw. scale/translate), damit nichts neu umbrochen wird.
+ *  - prefers-reduced-motion: alles ohne Bewegung (siehe globals.css).
+ */
+@theme {
+  /* Kräftigere Kurven als die CSS-Standardwerte; gelten auch für die Tailwind-Klassen ease-out / ease-in-out */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  /* Schneller drehender Ladekreis wirkt, als ginge es schneller */
+  --animate-spin: spin 0.75s linear infinite;
+}
+
+:root {
+  --motion-press: 140ms;
+  --motion-pop: 180ms;
+  --motion-pop-exit: 144ms;
+  --motion-modal: 220ms;
+  --motion-modal-exit: 176ms;
+  --motion-sheet: 260ms;
+  --motion-sheet-exit: 208ms;
+  --motion-move: 240ms;
+  --motion-stagger: 30ms;
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    translate: 0 var(--rise, 0.5rem);
+  }
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    scale: 0.95;
+  }
+}
+
+/* Bestätigung: einmal kurz größer und zurück – ohne Überschwingen */
+@keyframes confirm-pulse {
+  40% {
+    scale: 1.18;
+  }
+}
+
+@keyframes confirm-ring {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, currentColor 35%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 0.625rem transparent;
+  }
+}
+
+@layer components {
+  /* Drücken: 97 % Größe als sofortige Rückmeldung. Ersetzt transition-colors am selben Element. */
+  .press,
+  .press-soft {
+    transition:
+      color 150ms ease,
+      background-color 150ms ease,
+      border-color 150ms ease,
+      fill 150ms ease,
+      stroke 150ms ease,
+      box-shadow 150ms ease,
+      opacity 150ms ease,
+      scale var(--motion-press) var(--ease-out);
+  }
+
+  .press:active:not(:disabled, [aria-disabled='true']) {
+    scale: 0.97;
+  }
+
+  /* Große Flächen (Karten): gleiche Rückmeldung, aber kleinerer Weg */
+  /* Nicht, wenn gerade ein Knopf in der Karte gedrückt wird (z. B. das Herz) */
+  .press-soft:active:not(:has(button:active)) {
+    scale: 0.985;
+  }
+
+  /*
+   * Popover und Menüs: wachsen aus dem Auslöser (origin-* am Element setzen) und laufen dorthin zurück.
+   * Verschwinden über data-state="closed" (usePresence hält das Element so lange im Baum).
+   */
+  .pop {
+    transition-property: opacity, scale;
+    transition-duration: var(--motion-pop);
+    transition-timing-function: var(--ease-out);
+
+    @starting-style {
+      opacity: 0;
+      scale: 0.95;
+    }
+  }
+
+  .pop[data-state='closed'] {
+    opacity: 0;
+    scale: 0.95;
+    pointer-events: none;
+    transition-duration: var(--motion-pop-exit);
+  }
+
+  /* Leiste, die unter einer Kante hervorkommt (Suche am Handy): wird über eine Maske aufgedeckt */
+  .drop {
+    clip-path: inset(0 0 -2rem 0);
+    transition-property: opacity, clip-path;
+    transition-duration: var(--motion-pop);
+    transition-timing-function: var(--ease-out);
+
+    @starting-style {
+      opacity: 0;
+      clip-path: inset(0 0 100% 0);
+    }
+  }
+
+  .drop[data-state='closed'] {
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+    pointer-events: none;
+    transition-duration: var(--motion-pop-exit);
+  }
+
+  /* Dialoge (<dialog>): bleiben in der Mitte, 95 % → 100 %; der Hintergrund blendet mit */
+  dialog.modal {
+    opacity: 0;
+    scale: 0.95;
+    transition-property: opacity, scale, overlay, display;
+    transition-duration: var(--motion-modal-exit);
+    transition-timing-function: var(--ease-out);
+    transition-behavior: allow-discrete;
+  }
+
+  dialog.modal[open] {
+    opacity: 1;
+    scale: 1;
+    transition-duration: var(--motion-modal);
+
+    @starting-style {
+      opacity: 0;
+      scale: 0.95;
+    }
+  }
+
+  dialog.modal::backdrop {
+    background-color: transparent;
+    transition-property: background-color, overlay, display;
+    transition-duration: var(--motion-modal-exit);
+    transition-timing-function: var(--ease-out);
+    transition-behavior: allow-discrete;
+  }
+
+  dialog.modal[open]::backdrop {
+    background-color: rgb(0 0 0 / 0.5);
+    transition-duration: var(--motion-modal);
+
+    @starting-style {
+      background-color: transparent;
+    }
+  }
+
+  /* Bildschirmfüllendes Menü am Handy (Filter): blendet ein und rückt ein Stück nach oben */
+  @media (width < 64rem) {
+    .sheet {
+      opacity: 0;
+      translate: 0 1.5rem;
+      transition-property: opacity, translate, display;
+      transition-duration: var(--motion-sheet-exit);
+      transition-timing-function: var(--ease-out);
+      transition-behavior: allow-discrete;
+    }
+
+    .sheet[data-open='true'] {
+      opacity: 1;
+      translate: none;
+      transition-duration: var(--motion-sheet);
+
+      @starting-style {
+        opacity: 0;
+        translate: 0 1.5rem;
+      }
+    }
+  }
+
+  /* Einzelnes Element erscheint */
+  .enter {
+    animation: rise-in var(--motion-move) var(--ease-out) backwards;
+  }
+
+  .enter-pop {
+    animation: pop-in var(--motion-pop) var(--ease-out) backwards;
+  }
+
+  /*
+   * Zeilen einer Liste erscheinen nacheinander (30 ms Abstand, höchstens zwölf Stufen).
+   * --stagger-base verschiebt den Start, damit Details erst nach ihrem Behälter zur Ruhe kommen.
+   */
+  .stagger > * {
+    animation: rise-in 300ms var(--ease-out) backwards;
+    animation-delay: calc(var(--stagger-base, 0ms) + var(--motion-stagger) * var(--stagger-index, 0));
+  }
+
+  .stagger > :nth-child(2) { --stagger-index: 1; }
+  .stagger > :nth-child(3) { --stagger-index: 2; }
+  .stagger > :nth-child(4) { --stagger-index: 3; }
+  .stagger > :nth-child(5) { --stagger-index: 4; }
+  .stagger > :nth-child(6) { --stagger-index: 5; }
+  .stagger > :nth-child(7) { --stagger-index: 6; }
+  .stagger > :nth-child(8) { --stagger-index: 7; }
+  .stagger > :nth-child(9) { --stagger-index: 8; }
+  .stagger > :nth-child(10) { --stagger-index: 9; }
+  .stagger > :nth-child(11) { --stagger-index: 10; }
+  .stagger > :nth-child(12) { --stagger-index: 11; }
+  .stagger > :nth-child(n + 13) { --stagger-index: 12; }
+
+  /* Inhalt eines Dialogs oder Menüs: kürzerer Weg, startet kurz nach dem Behälter */
+  .settle {
+    --rise: 0.25rem;
+    --stagger-base: 40ms;
+  }
+
+  /* Bestätigung eines Erfolgs */
+  .confirm {
+    animation: confirm-pulse 360ms var(--ease-in-out);
+  }
+
+  .confirm-ring {
+    animation:
+      rise-in var(--motion-move) var(--ease-out) backwards,
+      confirm-ring 700ms var(--ease-out) 120ms;
+  }
+
+  /*
+   * Zwei Zustände übereinander (Symbol oder Beschriftung): Alt und Neu überblenden gleichzeitig,
+   * ein wenig Unschärfe verbindet beide. Die Breite bleibt die des längeren Zustands.
+   */
+  .swap {
+    display: inline-grid;
+    place-items: center;
+  }
+
+  .swap > * {
+    grid-area: 1 / 1;
+    transition:
+      opacity 180ms ease,
+      scale 180ms var(--ease-out),
+      filter 180ms ease,
+      visibility 0s;
+  }
+
+  .swap > [data-swap='off'] {
+    opacity: 0;
+    scale: 0.6;
+    filter: blur(4px);
+    visibility: hidden;
+    transition:
+      opacity 180ms ease,
+      scale 180ms var(--ease-out),
+      filter 180ms ease,
+      visibility 0s 180ms;
+  }
+
+  .swap[data-kind='text'] > [data-swap='off'] {
+    scale: 1;
+    filter: blur(2px);
+  }
+
+  /* Mitwandernde Markierung des aktiven Eintrags (Navigation, Reiter) */
+  .indicator {
+    position: absolute;
+    top: 0;
+    left: 0;
+    pointer-events: none;
+  }
+
+  /* Wischbare Bildleiste: folgt dem Finger ohne Verzögerung, rastet erst nach dem Loslassen ein */
+  .swipe-track {
+    transition: translate var(--motion-move) var(--ease-out);
+  }
+
+  .swipe-track[data-move='jump'] {
+    transition-timing-function: var(--ease-in-out);
+    transition-duration: 320ms;
+  }
+
+  .swipe-track[data-dragging='true'] {
+    transition: none;
+  }
+}
+
+/* Aufklappbare Bereiche (<details class="reveal">): Höhe wächst, der Inhalt wird aufgedeckt */
+@supports (interpolate-size: allow-keywords) {
+  details.reveal {
+    interpolate-size: allow-keywords;
+  }
+
+  details.reveal::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    opacity: 0;
+    transition:
+      block-size var(--motion-move) var(--ease-in-out),
+      opacity var(--motion-move) ease,
+      content-visibility var(--motion-move) allow-discrete;
+  }
+
+  details.reveal[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+}
+
+/* Wechsel Hell/Dunkel: die neue Ansicht wird kreisförmig vom Umschalter aus aufgedeckt (theme-toggle.tsx) */
+html[data-theme-switch]::view-transition-old(root),
+html[data-theme-switch]::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}

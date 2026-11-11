@@ -7,7 +7,7 @@ export function Pagination({ page, totalPages, hrefFor }: { page: number; totalP
   if (totalPages <= 1) return null;
   const pages = new Set([1, totalPages, page - 1, page, page + 1].filter((p) => p >= 1 && p <= totalPages));
   const sorted = [...pages].sort((a, b) => a - b);
-  const item = 'flex h-10 min-w-10 items-center justify-center rounded-xl px-3 text-sm font-semibold transition-colors';
+  const item = 'flex h-10 min-w-10 items-center justify-center rounded-xl px-3 text-sm font-semibold press';
   return (
     <nav aria-label="Seiten" className="mt-8 flex flex-wrap items-center justify-center gap-1.5">
       {page > 1 ? (

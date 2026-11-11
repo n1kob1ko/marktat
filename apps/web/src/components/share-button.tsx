@@ -2,7 +2,8 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { Check, Link2, Mail, MessageCircle, Share2 } from 'lucide-react';
-import { cn } from '@marktat/ui';
+import { Swap, cn } from '@marktat/ui';
+import { usePresence } from '@/lib/motion';
 
 interface ShareButtonProps {
   /** Vollständige Adresse der Seite, z. B. https://markterl.at/anzeige/abc */
@@ -26,6 +27,7 @@ export function ShareButton({
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuId = useId();
+  const menu = usePresence(open);
   const root = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -79,17 +81,18 @@ export function ShareButton({
         onClick={share}
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold text-ink-700 transition-colors hover:border-ink-400 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        className="press inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] font-semibold text-ink-700 hover:border-ink-400 hover:bg-canvas focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
       >
         <Share2 className="size-5" aria-hidden="true" />
         <span>Teilen</span>
       </button>
-      {open ? (
+      {menu.present ? (
         <div
           id={menuId}
           role="group"
           aria-label="Teilen über"
-          className="absolute right-0 z-30 mt-2 w-60 rounded-xl border border-line bg-surface p-1.5 shadow-lg"
+          data-state={menu.state}
+          className="pop stagger settle absolute right-0 z-30 mt-2 w-60 origin-top-right rounded-xl border border-line bg-surface p-1.5 shadow-lg"
         >
           <a
             className={item}
@@ -111,12 +114,12 @@ export function ShareButton({
             <Mail className="size-5 text-ink-500" aria-hidden="true" /> E-Mail
           </a>
           <button type="button" className={item} onClick={copy}>
-            {copied ? (
-              <Check className="size-5 text-brand-700" aria-hidden="true" />
-            ) : (
-              <Link2 className="size-5 text-ink-500" aria-hidden="true" />
-            )}
-            {copied ? 'Link kopiert' : 'Link kopieren'}
+            <Swap
+              active={copied}
+              on={<Check className={cn('size-5 text-brand-700', copied && 'confirm')} aria-hidden="true" />}
+              off={<Link2 className="size-5 text-ink-500" aria-hidden="true" />}
+            />
+            <Swap kind="text" active={copied} on="Link kopiert" off="Link kopieren" className="justify-items-start" />
           </button>
           <span role="status" className="sr-only">
             {copied ? 'Link kopiert' : ''}

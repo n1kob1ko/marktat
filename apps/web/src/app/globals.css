@@ -1,5 +1,6 @@
 @import 'tailwindcss';
 @import '@marktat/ui/theme.css';
+@import '@marktat/ui/motion.css';
 
 /* Komponenten aus dem Designsystem-Paket für Tailwind sichtbar machen */
 @source '../../../../packages/ui/src';
@@ -42,7 +43,9 @@
     *::before,
     *::after {
       animation-duration: 0.01ms !important;
+      animation-delay: 0s !important;
       transition-duration: 0.01ms !important;
+      transition-delay: 0s !important;
     }
   }
 }

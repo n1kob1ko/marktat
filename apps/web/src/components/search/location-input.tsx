@@ -140,7 +140,7 @@ export function LocationInput({
           id={listId}
           role="listbox"
           aria-label="Vorschläge"
-          className="absolute inset-x-0 top-full z-30 mt-1 max-h-72 overflow-auto rounded-xl border border-line bg-surface py-1 shadow-[var(--shadow-card-hover)]"
+          className="pop absolute inset-x-0 top-full z-30 mt-1 max-h-72 origin-top overflow-auto rounded-xl border border-line bg-surface py-1 shadow-[var(--shadow-card-hover)]"
         >
           {status === 'error' ? (
             <li className="px-3.5 py-2.5 text-sm text-ink-500">Orte konnten nicht geladen werden.</li>

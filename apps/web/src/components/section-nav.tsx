@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { ChevronDown, type LucideIcon } from 'lucide-react';
 import { cn } from '@marktat/ui';
+import { SlidingIndicator } from './sliding-indicator';
 
 export type SectionNavItem = {
   href: string;
@@ -38,7 +39,7 @@ export function SectionNav({
   return (
     <nav aria-label={label}>
       {/* Handy und Tablet: aufklappbar. key setzt den Zustand nach jedem Seitenwechsel zurück (Menü wieder zu). */}
-      <details key={activeHref ?? ''} className="group rounded-xl border border-line bg-surface shadow-[var(--shadow-card)] lg:hidden">
+      <details key={activeHref ?? ''} className="reveal group rounded-xl border border-line bg-surface shadow-[var(--shadow-card)] lg:hidden">
         <summary className="flex cursor-pointer list-none items-center gap-3 px-4 py-3 text-sm font-semibold text-ink-900 [&::-webkit-details-marker]:hidden">
           {ActiveIcon ? <ActiveIcon className="size-[1.125rem] shrink-0 text-brand-700" aria-hidden="true" /> : null}
           <span className="min-w-0 flex-1 truncate">{active?.label ?? label}</span>
@@ -49,7 +50,7 @@ export function SectionNav({
             </>
           ) : null}
           <span className="text-xs font-medium text-ink-500">Bereich wechseln</span>
-          <ChevronDown className="size-4 shrink-0 text-ink-500 transition-transform group-open:rotate-180" aria-hidden="true" />
+          <ChevronDown className="size-4 shrink-0 text-ink-500 transition-transform duration-200 ease-in-out group-open:rotate-180" aria-hidden="true" />
         </summary>
         <div className="grid gap-x-4 gap-y-4 border-t border-line px-2 py-3 sm:grid-cols-2">
           {groups.map((group) => (
@@ -59,7 +60,9 @@ export function SectionNav({
       </details>
 
       {/* Desktop: Seitenleiste; bleibt auf ausreichend hohen Bildschirmen beim Scrollen stehen (unter der Kopfzeile) */}
-      <div className="hidden space-y-5 lg:block [@media(min-height:50rem)]:sticky [@media(min-height:50rem)]:top-32">
+      <div className="group/nav relative isolate hidden space-y-5 lg:block [@media(min-height:50rem)]:sticky [@media(min-height:50rem)]:top-32">
+        {/* Die Hinterlegung des aktiven Eintrags wandert beim Wechsel mit */}
+        <SlidingIndicator watch={activeHref} axis="y" className="-z-10 !mt-0 rounded-lg bg-brand-50" />
         {groups.map((group) => (
           <NavGroup key={group.label} group={group} activeHref={activeHref} />
         ))}
@@ -83,7 +86,7 @@ function NavGroup({ group, activeHref }: { group: SectionNavGroup; activeHref: s
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
                   'flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors',
-                  isActive ? 'bg-brand-50 font-semibold text-brand-800' : 'font-medium text-ink-700 hover:bg-ink-900/5 hover:text-ink-950',
+                  isActive ? 'bg-brand-50 font-semibold text-brand-800 group-data-[indicator]/nav:bg-transparent' : 'font-medium text-ink-700 hover:bg-ink-900/5 hover:text-ink-950',
                 )}
               >
                 <Icon className={cn('size-[1.125rem] shrink-0', isActive ? 'text-brand-700' : 'text-ink-400')} aria-hidden="true" />

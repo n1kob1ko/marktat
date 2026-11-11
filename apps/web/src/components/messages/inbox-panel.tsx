@@ -3,6 +3,7 @@ import { Inbox, Search } from 'lucide-react';
 import type { ConversationSummary, Paginated } from '@marktat/shared';
 import { buttonClasses, cn } from '@marktat/ui';
 import { api } from '@/lib/api';
+import { SlidingIndicator } from '@/components/sliding-indicator';
 import { ConversationList } from './conversation-list';
 
 export const INBOX_FILTERS = [
@@ -68,7 +69,8 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
             className="h-10 w-full rounded-xl border border-line-strong bg-canvas pr-3 pl-9 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
           />
         </form>
-        <nav aria-label="Unterhaltungen filtern" className="-mx-1 flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+        <nav aria-label="Unterhaltungen filtern" className="group/nav relative isolate -mx-1 flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
+          <SlidingIndicator id="postfach-filter" watch={params.filter} className="-z-10 rounded-full bg-primary" />
           {INBOX_FILTERS.map((f) => {
             const query = inboxQuery({ filter: f.value, q: params.q });
             const current = params.filter === f.value;
@@ -78,8 +80,8 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
                 href={`${base}${query ? `?${query}` : ''}`}
                 aria-current={current ? 'page' : undefined}
                 className={cn(
-                  'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors',
-                  current ? 'bg-primary text-white' : 'text-ink-600 hover:bg-ink-900/5 hover:text-ink-900',
+                  'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold press',
+                  current ? 'bg-primary text-white group-data-[indicator]/nav:bg-transparent' : 'text-ink-600 hover:bg-ink-900/5 hover:text-ink-900',
                 )}
               >
                 {f.label}

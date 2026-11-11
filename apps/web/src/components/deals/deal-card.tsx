@@ -16,7 +16,7 @@ export function DealCard({ deal, className }: { deal: DealSummary; className?: s
   return (
     <article
       className={cn(
-        'group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] transition-shadow hover:shadow-[var(--shadow-card-hover)]',
+        'group relative flex w-full flex-col overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface shadow-[var(--shadow-card)] press-soft hover:shadow-[var(--shadow-card-hover)]',
         className,
       )}
     >

@@ -116,7 +116,13 @@ jobs:
       - name: Suchindex aus den Demodaten aufbauen
         run: pnpm --filter @marktat/api search:reindex
       - name: Playwright-Browser installieren
-        run: pnpm --filter @marktat/web exec playwright install --with-deps chromium
+        # Mit --with-deps kommen Systempakete (auf dem Runner nur noch Schriften) von den Ubuntu-Spiegelservern.
+        # Sind die nicht erreichbar, wird nach 4 Minuten nur der Browser geladen: Die Bibliotheken für Chromium
+        # bringt das Runner-Image mit, die Seite liefert ihre Schriften selbst. Fehlt doch etwas, startet der
+        # Browser nicht und die Tests schlagen sichtbar fehl.
+        run: |
+          timeout 240 pnpm --filter @marktat/web exec playwright install --with-deps chromium \
+            || pnpm --filter @marktat/web exec playwright install chromium
       - name: API und Web starten
         # Partnerangebote gegen den Awin-Testserver aus e2e/fake-awin.ts (startet affiliate.spec.ts) – keine echten Schlüssel
         env:

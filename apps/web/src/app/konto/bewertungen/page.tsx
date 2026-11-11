@@ -69,7 +69,7 @@ async function Ratings({ searchParams }: Pick<PageProps<'/konto/bewertungen'>, '
                   </>
                 }
               >
-                <details className="group rounded-xl border border-line px-3.5 py-2.5 open:pb-3.5">
+                <details className="reveal group rounded-xl border border-line px-3.5 py-2.5 open:pb-3.5">
                   <summary className="cursor-pointer text-sm font-semibold text-brand-700">
                     {item.reply ? 'Antwort ändern' : 'Öffentlich antworten'}
                   </summary>

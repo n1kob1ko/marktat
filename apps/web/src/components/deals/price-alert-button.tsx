@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Bell, BellRing } from 'lucide-react';
-import { cn } from '@marktat/ui';
+import { Swap, cn } from '@marktat/ui';
 import { setDealPriceAlertAction } from '@/components/favorites/actions';
 
 /** Preisalarm auf der Detailseite: E-Mail, sobald der Deal günstiger wird. Optimistisch wie „Merken“. */
@@ -12,11 +12,14 @@ export function PriceAlertButton({ id, initial, className }: { id: string; initi
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Kurzes Aufleuchten der Glocke, wenn der Alarm gerade eingeschaltet wurde
+  const [confirmed, setConfirmed] = useState(false);
 
   function toggle() {
     const next = !active;
     setError(null);
     setActive(next);
+    setConfirmed(next);
     startTransition(async () => {
       const result = await setDealPriceAlertAction(id, next).catch(() => ({
         ok: false as const,
@@ -38,7 +41,6 @@ export function PriceAlertButton({ id, initial, className }: { id: string; initi
     });
   }
 
-  const Icon = active ? BellRing : Bell;
   return (
     <div className={className}>
       <button
@@ -48,12 +50,16 @@ export function PriceAlertButton({ id, initial, className }: { id: string; initi
         aria-busy={pending || undefined}
         data-price-alert={active ? 'ja' : 'nein'}
         className={cn(
-          'inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-[0.9375rem] font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'press inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-[0.9375rem] font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
           active ? 'border-brand-300 bg-brand-50 text-brand-800 hover:bg-brand-100' : 'border-line-strong bg-surface text-ink-700 hover:border-ink-400 hover:bg-canvas',
         )}
       >
-        <Icon className="size-5" aria-hidden="true" />
-        <span>{active ? 'Preisalarm aktiv' : 'Preisalarm'}</span>
+        <Swap
+          active={active}
+          on={<BellRing className={cn('size-5', confirmed && 'confirm')} onAnimationEnd={() => setConfirmed(false)} aria-hidden="true" />}
+          off={<Bell className="size-5" aria-hidden="true" />}
+        />
+        <Swap kind="text" active={active} on="Preisalarm aktiv" off="Preisalarm" />
       </button>
       <p className="mt-1.5 text-xs text-ink-500">
         {active ? 'Wir schicken dir eine E-Mail, sobald der Preis sinkt.' : 'E-Mail, sobald dieser Deal günstiger wird.'}

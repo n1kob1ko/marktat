@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { Heart } from 'lucide-react';
-import { cn } from '@marktat/ui';
+import { Swap, cn } from '@marktat/ui';
 import { setFavoriteAction } from './actions';
 import { setFavoriteState, useFavoriteState } from './favorite-store';
 
@@ -24,6 +24,8 @@ export function FavoriteButton({ listingId, title, initial, returnTo, variant = 
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  // Das Herz pulsiert einmal, wenn gerade gemerkt wurde (nicht beim Laden einer schon gemerkten Anzeige)
+  const [confirmed, setConfirmed] = useState(false);
 
   if (state === 'own') return null;
   const active = state === 'yes';
@@ -32,6 +34,7 @@ export function FavoriteButton({ listingId, title, initial, returnTo, variant = 
   function toggle() {
     const next = !active;
     setError(null);
+    setConfirmed(next);
     setFavoriteState(listingId, next ? 'yes' : 'no');
     startTransition(async () => {
       const result = await setFavoriteAction(listingId, next).catch(() => ({
@@ -61,7 +64,7 @@ export function FavoriteButton({ listingId, title, initial, returnTo, variant = 
         aria-busy={pending || undefined}
         data-favorite={active ? 'ja' : 'nein'}
         className={cn(
-          'relative z-10 inline-flex items-center justify-center gap-2 font-semibold transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'press relative z-10 inline-flex items-center justify-center gap-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
           variant === 'card'
             ? 'size-10 rounded-full bg-surface/95 shadow-sm ring-1 ring-ink-900/10 backdrop-blur hover:bg-surface'
             : 'h-11 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] hover:border-ink-400 hover:bg-canvas',
@@ -69,8 +72,12 @@ export function FavoriteButton({ listingId, title, initial, returnTo, variant = 
           className,
         )}
       >
-        <Heart className={cn('size-5', active && 'fill-current')} aria-hidden="true" />
-        {variant === 'detail' ? <span>{active ? 'Gemerkt' : 'Merken'}</span> : null}
+        <Swap
+          active={active}
+          on={<Heart className={cn('size-5 fill-current', confirmed && 'confirm')} onAnimationEnd={() => setConfirmed(false)} aria-hidden="true" />}
+          off={<Heart className="size-5" aria-hidden="true" />}
+        />
+        {variant === 'detail' ? <Swap kind="text" active={active} on="Gemerkt" off="Merken" /> : null}
       </button>
       <span role="status" className="sr-only">
         {error ?? ''}
