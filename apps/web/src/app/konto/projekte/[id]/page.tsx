@@ -38,7 +38,7 @@ async function ManageProject({ params, searchParams }: Pick<PageProps<'/konto/pr
     <div className="space-y-6">
       <FlashMessage hinweis={hinweis} />
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/konto/projekte" className="hover:text-brand-700 hover:underline">Projektaufträge</Link>
+        <Link href="/konto/projekte" className="tap relative inline-block hover:text-brand-700 hover:underline">Projektaufträge</Link>
       </nav>
 
       <div className="flex flex-wrap items-start justify-between gap-3">

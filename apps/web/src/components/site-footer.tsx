@@ -62,7 +62,7 @@ function FooterColumn({ title, children }: { title: string; children: React.Reac
 function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
     <li>
-      <Link href={href} className="text-sm text-ink-600 hover:text-brand-700 hover:underline">
+      <Link href={href} className="relative inline-block text-sm text-ink-600 tap hover:text-brand-700 hover:underline">
         {children}
       </Link>
     </li>

@@ -7,6 +7,7 @@ import { VERTICAL_SLUGS } from '@marktat/shared';
 import { SearchHero } from '@/components/search-hero';
 import { TopoPattern } from '@/components/topo-pattern';
 import { ListingCard } from '@/components/listing-card';
+import { CardGridSkeleton } from '@/components/skeletons';
 import { CategoryIcon } from '@/components/category-icon';
 import { CATEGORY_PHOTOS } from '@/content/category-photos';
 import { CategoryPhotoTile } from '@/components/category-photo-tile';
@@ -60,12 +61,12 @@ export default function HomePage() {
         <SectionHeading
           title="Neu eingestellt"
           action={
-            <Link href="/suche" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+            <Link href="/suche" className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
               Alle Anzeigen <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           }
         />
-        <Suspense fallback={<GridSkeleton count={10} className="h-64" />}>
+        <Suspense fallback={<CardGridSkeleton count={10} className="sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 max-sm:[&>*:nth-child(n+7)]:hidden" />}>
           <LatestListings />
         </Suspense>
       </Container>
@@ -80,7 +81,7 @@ export default function HomePage() {
           action={
             <Link
               href={`/suche?bereich=${VERTICAL_SLUGS.MARKETPLACE}&preis_bis=0`}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+              className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
             >
               <Gift className="size-4" aria-hidden="true" /> Zu verschenken
             </Link>
@@ -95,7 +96,7 @@ export default function HomePage() {
         <SectionHeading
           title="Aktuelle Deals & Angebote"
           action={
-            <Link href="/deals" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+            <Link href="/deals" className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
               Alle Deals <ArrowRight className="size-4" aria-hidden="true" />
             </Link>
           }

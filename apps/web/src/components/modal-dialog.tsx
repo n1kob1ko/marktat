@@ -56,7 +56,7 @@ export function ModalDialog({
         <h2 id={titleId} className="font-sans text-lg font-semibold tracking-normal">
           {title}
         </h2>
-        <button type="button" onClick={closeDialog} className="press flex size-9 items-center justify-center rounded-lg hover:bg-ink-900/5" aria-label="Schließen">
+        <button type="button" onClick={closeDialog} className="press tap relative flex size-9 items-center justify-center rounded-lg hover:bg-ink-900/5" aria-label="Schließen">
           <X className="size-5" aria-hidden="true" />
         </button>
       </div>

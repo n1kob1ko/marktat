@@ -153,6 +153,7 @@ export class ListingImagesService {
         detectedType: processed.detectedType,
         width: processed.width,
         height: processed.height,
+        placeholder: processed.placeholder,
         storedBytes: processed.variants.reduce((sum, v) => sum + v.body.length, 0),
         sortOrder: readyCount,
         processedAt: new Date(),

@@ -1,8 +1,8 @@
-import Link from 'next/link';
 import { ImageIcon, MapPin } from 'lucide-react';
 import { Badge, cn } from '@marktat/ui';
 import type { ListingSummary } from '@marktat/shared';
 import { FavoriteButton } from './favorites/favorite-button';
+import { CardPhoto, ListingCardLink } from './listing-card-link';
 import { PriceTag } from './price-tag';
 import { RelativeDate } from './relative-date';
 import { NewBadge } from './new-badge';
@@ -21,8 +21,7 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
     >
       <div className="relative aspect-[4/3] bg-canvas">
         {listing.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Vorschaubild ist serverseitig optimiert (WebP 480 × 360)
-          <img src={listing.imageUrl} alt="" width={480} height={360} className="size-full object-cover" loading="lazy" decoding="async" />
+          <CardPhoto src={listing.imageUrl} placeholder={listing.imagePlaceholder} />
         ) : (
           <div className="flex size-full items-center justify-center bg-[repeating-linear-gradient(135deg,transparent,transparent_12px,rgb(18_23_21/0.025)_12px,rgb(18_23_21/0.025)_24px)]">
             <ImageIcon className="size-8 text-ink-300" aria-hidden="true" />
@@ -45,13 +44,11 @@ export function ListingCard({ listing, favorite, showFavorite = true }: { listin
       </div>
       <div className={cn('flex flex-1 flex-col gap-1.5 p-3.5 sm:p-4', listing.highlighted && 'bg-accent-50/50')}>
         <h3 className="line-clamp-2 font-sans text-[0.9375rem] leading-snug font-semibold tracking-normal text-ink-900">
-          <Link href={`/anzeige/${listing.id}`} className="after:absolute after:inset-0 focus-visible:outline-none">
-            {listing.title}
-          </Link>
+          <ListingCardLink href={`/anzeige/${listing.id}`}>{listing.title}</ListingCardLink>
         </h3>
         {listing.facts.length ? <p className="line-clamp-1 text-xs text-ink-600">{listing.facts.join(' · ')}</p> : null}
         {isJob ? <PriceTag priceType={listing.priceType} priceCents={listing.priceCents} salary={listing.salary} className="text-base" /> : null}
-        <div className="mt-auto flex flex-col gap-0.5 pt-1.5 text-xs text-ink-500 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+        <div className="mt-auto flex flex-col gap-0.5 pt-1.5 text-xs text-ink-500 tabular-nums sm:flex-row sm:items-center sm:justify-between sm:gap-2">
           {listing.location ? (
             <span className="flex min-w-0 items-center gap-1">
               <MapPin className="size-3.5 shrink-0" aria-hidden="true" />

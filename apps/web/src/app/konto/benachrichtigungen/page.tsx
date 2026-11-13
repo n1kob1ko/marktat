@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
-import { Card, Skeleton } from '@marktat/ui';
+import { Card } from '@marktat/ui';
 import { formatDate } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
@@ -8,6 +8,7 @@ import { FlashMessage } from '@/components/flash-message';
 import { SubmitButton } from '@/components/submit-button';
 import { blockUserAction } from '@/app/nachrichten/actions';
 import { NotificationSettingsForm } from './settings-form';
+import { FormSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Benachrichtigungen', robots: { index: false } };
 
@@ -19,7 +20,14 @@ interface BlockedUser {
 
 export default function NotificationsPage({ searchParams }: PageProps<'/konto/benachrichtigungen'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="grid gap-6 lg:grid-cols-2">
+          <FormSkeleton fields={3} />
+          <FormSkeleton fields={2} />
+        </div>
+      }
+    >
       <Notifications searchParams={searchParams} />
     </Suspense>
   );

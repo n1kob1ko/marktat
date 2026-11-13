@@ -32,7 +32,7 @@ export function PriceTag({
 }) {
   if (salary !== undefined) {
     return (
-      <p className={cn('font-display font-bold text-brand-800', className)}>
+      <p className={cn('font-display font-bold text-brand-800 tabular-nums', className)}>
         <span className="sr-only">Gehalt: </span>
         {salary ?? 'Gehalt nach Vereinbarung'}
       </p>
@@ -40,7 +40,7 @@ export function PriceTag({
   }
   const hasAmount = (priceType === 'FIXED' || priceType === 'NEGOTIABLE') && priceCents !== null;
   return (
-    <p className={cn('flex flex-wrap items-baseline gap-x-2 font-display font-bold text-brand-800', className)}>
+    <p className={cn('flex flex-wrap items-baseline gap-x-2 font-display font-bold text-brand-800 tabular-nums', className)}>
       <span>{priceLabel(priceType, priceCents)}</span>
       {hasAmount && suffix ? <span className="font-sans text-sm font-semibold text-ink-600">{suffix}</span> : null}
       {priceType === 'NEGOTIABLE' ? <span className="font-sans text-xs font-semibold text-ink-500">VB</span> : null}

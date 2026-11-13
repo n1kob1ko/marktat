@@ -210,15 +210,15 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
       ref={root}
       className={cn(
         'flex min-h-0 flex-1 flex-col bg-canvas lg:bg-canvas/40',
-        'max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-50 max-lg:h-dvh max-lg:overscroll-none',
+        'max-lg:safe-x max-lg:fixed max-lg:inset-x-0 max-lg:top-0 max-lg:z-50 max-lg:h-dvh max-lg:overscroll-none',
         // Falls der sichtbare Bereich kurz hinterherhinkt: darunter Fläche statt durchscheinender Seite
         'max-lg:after:absolute max-lg:after:inset-x-0 max-lg:after:top-full max-lg:after:h-screen max-lg:after:bg-surface',
       )}
       data-testid="chat-view"
     >
       {/* Kopf: Person und Anzeige */}
-      <header className="flex items-center gap-3 border-b border-line bg-surface px-3 py-2.5 sm:px-4">
-        <Link href={backHref} className="-ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5 lg:hidden" aria-label="Zurück zu allen Nachrichten">
+      <header className="flex items-center gap-3 border-b border-line bg-surface px-3 py-2.5 max-lg:pt-[max(0.625rem,env(safe-area-inset-top))] sm:px-4">
+        <Link href={backHref} className="relative -ml-1 flex size-10 shrink-0 items-center justify-center rounded-xl text-ink-700 tap hover:bg-ink-900/5 lg:hidden" aria-label="Zurück zu allen Nachrichten">
           <ArrowLeft className="size-5" aria-hidden="true" />
         </Link>
         <Link href={subject.href} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl hover:opacity-90">
@@ -246,7 +246,7 @@ export function ChatView({ conversation, initial, backHref, notice }: ChatViewPr
         {conversation.rating.canRate || conversation.rating.myStars ? (
           <Link
             href={`/bewerten/${conversation.id}`}
-            className="flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-ink-700 hover:bg-ink-900/5"
+            className="relative flex h-10 shrink-0 items-center gap-1.5 rounded-xl px-2.5 text-sm font-semibold text-ink-700 tap hover:bg-ink-900/5"
             aria-label={conversation.rating.myStars ? `Deine Bewertung: ${conversation.rating.myStars} von 5 Sternen – ändern` : `${partner.displayName} bewerten`}
           >
             <Star className={cn('size-5', conversation.rating.myStars ? 'fill-accent-500 text-accent-500' : 'text-ink-500')} aria-hidden="true" />

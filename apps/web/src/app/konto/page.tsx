@@ -8,12 +8,23 @@ import { isStaff, requireUser } from '@/lib/auth';
 import { changeAccountTypeAction } from './actions';
 import { ProfileForm } from './profile-form';
 import { LogoUpload } from './logo-upload';
+import { FormSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Mein Konto', robots: { index: false } };
 
 export default function AccountPage({ searchParams }: PageProps<'/konto'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
+          <div className="space-y-4">
+            <FormSkeleton fields={4} />
+            <FormSkeleton fields={1} />
+          </div>
+          <Skeleton className="h-56" />
+        </div>
+      }
+    >
       <AccountContent searchParams={searchParams} />
     </Suspense>
   );

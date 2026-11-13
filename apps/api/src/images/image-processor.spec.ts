@@ -1,5 +1,5 @@
 import sharp from 'sharp';
-import { InvalidImageError, processImage } from './image-processor.js';
+import { imagePlaceholder, InvalidImageError, processImage } from './image-processor.js';
 
 /** Testbild mit Kamera-Metadaten inkl. GPS-Position und Ausrichtung „90° gedreht“. */
 async function jpegWithExif(width = 800, height = 600) {
@@ -47,6 +47,21 @@ describe('processImage', () => {
     }
     const thumb = result.variants.find((v) => v.name === 'thumb')!;
     expect([thumb.width, thumb.height]).toEqual([480, 360]);
+  });
+
+  it('liefert einen winzigen Platzhalter als Data-URI mit', async () => {
+    const result = await processImage(await solid('png'));
+    expect(result.placeholder).toMatch(/^data:image\/webp;base64,[A-Za-z0-9+/=]+$/);
+    // Steht in jeder Trefferliste im HTML – darf nur wenige hundert Zeichen haben
+    expect(result.placeholder.length).toBeLessThan(600);
+    const meta = await sharp(Buffer.from(result.placeholder.split(',')[1]!, 'base64')).metadata();
+    expect([meta.format, meta.width, meta.height]).toEqual(['webp', 16, 12]);
+  });
+
+  it('erzeugt den Platzhalter auch nachträglich aus einem Vorschaubild', async () => {
+    const thumb = await solid('webp', 480, 360);
+    expect(await imagePlaceholder(thumb)).toMatch(/^data:image\/webp;base64,/);
+    await expect(imagePlaceholder(Buffer.from('kein Bild'))).rejects.toThrow();
   });
 
   it('verkleinert große Bilder auf höchstens 1600 px und vergrößert kleine nicht', async () => {

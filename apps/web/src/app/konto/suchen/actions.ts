@@ -79,6 +79,21 @@ export async function updateSavedSearchAction(formData: FormData) {
   redirect(`/konto/suchen?hinweis=${hinweis}`);
 }
 
+/** Löschen nach Ablauf des „Rückgängig“-Hinweises (components/undo-remove.tsx) – ohne Weiterleitung */
+export async function deleteSavedSearchQuietly(id: string): Promise<{ ok: true } | { ok: false; message: string }> {
+  const token = await getAccessToken();
+  if (!token || !ID_PATTERN.test(id)) return { ok: false, message: 'Die Suche konnte nicht gelöscht werden. Bitte melde dich erneut an.' };
+  try {
+    await api(`/me/searches/${id}`, { method: 'DELETE', token });
+  } catch (error) {
+    // Schon gelöscht (z. B. in einem anderen Fenster) zählt als erledigt
+    if (!(error instanceof ApiError && error.status === 404)) return { ok: false, message: 'Die Suche konnte nicht gelöscht werden. Bitte versuche es erneut.' };
+  }
+  revalidatePath('/konto/suchen');
+  return { ok: true };
+}
+
+/** Löschen ohne JavaScript (Formular) */
 export async function deleteSavedSearchAction(formData: FormData) {
   const id = String(formData.get('id') ?? '');
   const { token } = await requireUser('/konto/suchen');

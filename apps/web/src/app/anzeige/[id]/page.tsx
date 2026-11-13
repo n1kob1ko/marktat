@@ -20,6 +20,7 @@ import { ListingStatusBadge } from '@/components/listing-status-badge';
 import { FlashMessage } from '@/components/flash-message';
 import { listingStatusAction } from '@/app/konto/anzeigen/actions';
 import { ListingGallery } from '@/components/listing-gallery';
+import { DetailPhotoSlot } from '@/components/listing/detail-photo-slot';
 import { AvailabilityBadge } from '@/components/listing-card';
 import { FavoriteButton } from '@/components/favorites/favorite-button';
 import { ShareButton } from '@/components/share-button';
@@ -105,9 +106,9 @@ async function ListingContent({
       ) : null}
 
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/" className="hover:text-brand-700 hover:underline">Startseite</Link>
+        <Link href="/" className="tap relative inline-block hover:text-brand-700 hover:underline">Startseite</Link>
         <span aria-hidden="true"> / </span>
-        <Link href={`/suche?kategorie=${listing.category.path}`} className="hover:text-brand-700 hover:underline">
+        <Link href={`/suche?kategorie=${listing.category.path}`} className="tap relative inline-block hover:text-brand-700 hover:underline">
           {listing.category.name}
         </Link>
       </nav>
@@ -193,7 +194,7 @@ async function ListingContent({
               </p>
             ) : null}
             {seller.accountType === 'BUSINESS' ? (
-              <Link href={`/haendler/${seller.id}`} className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+              <Link href={`/haendler/${seller.id}`} className="mt-2 relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
                 <Store className="size-4" aria-hidden="true" /> Händlerprofil und alle Anzeigen
               </Link>
             ) : (
@@ -206,7 +207,7 @@ async function ListingContent({
           </Card>
           {listing.mapPoint && listing.location ? <AustriaMap point={listing.mapPoint} location={listing.location} /> : null}
           {listing.isOwner || listing.status === 'SOLD' ? null : (
-            <Link href={`/melden?anzeige=${listing.id}`} className="flex items-center justify-center gap-1.5 text-sm text-ink-500 hover:text-danger-600 hover:underline">
+            <Link href={`/melden?anzeige=${listing.id}`} className="relative flex items-center justify-center gap-1.5 text-sm text-ink-500 tap hover:text-danger-600 hover:underline">
               <Flag className="size-4" aria-hidden="true" /> Anzeige melden
             </Link>
           )}
@@ -425,12 +426,16 @@ function OwnerActions({ listing }: { listing: ListingDetail }) {
 
 function DetailSkeleton() {
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-      <div className="space-y-6">
-        <Skeleton className="aspect-[16/10]" />
+    <div className="space-y-6">
+      {/* Zeile der Brotkrümel – damit die Galerie beim Laden nicht nach unten springt */}
+      <Skeleton className="h-5 w-56 max-w-full" />
+      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
+        <div className="space-y-6">
+          <DetailPhotoSlot />
+          <Skeleton className="h-64" />
+        </div>
         <Skeleton className="h-64" />
       </div>
-      <Skeleton className="h-64" />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 import { ShieldCheck, ShieldAlert } from 'lucide-react';
-import { Alert, Card, Skeleton } from '@marktat/ui';
+import { Alert, Card } from '@marktat/ui';
 import { formatDate, type MeResponse } from '@marktat/shared';
 import { isStaff, requireUser } from '@/lib/auth';
 import { getAssurance } from '@/lib/mfa';
@@ -9,6 +9,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { FlashMessage } from '@/components/flash-message';
 import { ChangeEmailForm, ChangePasswordForm } from './account-forms';
 import { EnrollForm, RemoveFactorForm } from './mfa-forms';
+import { FormSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Sicherheit', robots: { index: false } };
 
@@ -16,7 +17,14 @@ const MAX_FACTORS = 3;
 
 export default function SecurityPage({ searchParams }: PageProps<'/konto/sicherheit'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="max-w-3xl space-y-6">
+          <FormSkeleton fields={2} />
+          <FormSkeleton fields={2} />
+        </div>
+      }
+    >
       <Security searchParams={searchParams} />
     </Suspense>
   );

@@ -39,7 +39,7 @@ export function AffiliatePromotions({ promotions }: { promotions: AffiliatePromo
               href={promotion.url}
               target="_blank"
               rel="sponsored nofollow noopener noreferrer"
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+              className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
             >
               Zur Aktion bei {promotion.advertiserName}
               <ExternalLink className="size-3.5" aria-hidden="true" />

@@ -8,6 +8,7 @@ import { SiteHeader } from '@/components/site-header';
 import { SiteFooter } from '@/components/site-footer';
 import { AreaNav, AreaNavList } from '@/components/area-nav';
 import { THEME_INIT_SCRIPT } from '@/components/theme-toggle';
+import { Toaster } from '@/components/toaster';
 
 export const metadata: Metadata = {
   metadataBase: new URL(serverEnv.webUrl),
@@ -33,6 +34,8 @@ export const viewport: Viewport = {
   ],
   width: 'device-width',
   initialScale: 1,
+  // Die Seite darf bis unter Notch und Home-Leiste reichen; die Abstände dazu setzen wir selbst (safe-area-inset)
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: LayoutProps<'/'>) {
@@ -57,6 +60,7 @@ export default function RootLayout({ children }: LayoutProps<'/'>) {
           {children}
         </main>
         <SiteFooter />
+        <Toaster />
       </body>
     </html>
   );

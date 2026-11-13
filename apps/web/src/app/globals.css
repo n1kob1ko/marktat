@@ -1,6 +1,7 @@
 @import 'tailwindcss';
 @import '@marktat/ui/theme.css';
 @import '@marktat/ui/motion.css';
+@import '@marktat/ui/ux.css';
 
 /* Komponenten aus dem Designsystem-Paket für Tailwind sichtbar machen */
 @source '../../../../packages/ui/src';
@@ -20,6 +21,9 @@
     color: var(--color-ink-900);
     font-family: var(--font-sans);
     font-feature-settings: 'cv11', 'ss01';
+    /* Querformat am Handy: Inhalt neben Notch und runden Ecken halten (viewport-fit=cover im Layout) */
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
   }
 
   h1,

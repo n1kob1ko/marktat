@@ -323,6 +323,8 @@ model ListingImage {
   height       Int?
   /// Gesamtgröße der gespeicherten Varianten in Byte
   storedBytes  Int?        @map("stored_bytes")
+  /// Winziges, unscharfes Vorschaubild als Daten-URL (WebP, 16 × 12 px) – Platzhalter, bis das Foto geladen ist
+  placeholder  String?
   sortOrder    Int         @default(0) @map("sort_order")
   createdAt    DateTime    @default(now()) @map("created_at")
   updatedAt    DateTime    @updatedAt @map("updated_at")

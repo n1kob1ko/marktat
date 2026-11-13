@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
+import { useEffect, useRef, useState, ViewTransition, type KeyboardEvent, type PointerEvent } from 'react';
 import { ChevronLeft, ChevronRight, ImageIcon } from 'lucide-react';
 import { cn } from '@marktat/ui';
 import type { ListingImage } from '@marktat/shared';
 import { rubberBand, swipeTarget } from '@/lib/motion';
+import { freshPhoto, PHOTO_TRANSITION_NAME, placeholderBox } from '@/lib/photo-transition';
 
 interface Drag {
   pointerId: number;
@@ -28,6 +29,10 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
   const [move, setMove] = useState<'snap' | 'jump'>('snap');
   // Geladen wird nur, was gebraucht wird: das gezeigte Bild und seine Nachbarn (damit beim Wischen nichts leer ist)
   const [seen, setSeen] = useState<ReadonlySet<number>>(() => new Set([0]));
+  // Bis ein Bild geladen ist, liegt seine verschwommene Miniatur dahinter – danach wird sie nicht mehr gebraucht
+  const [loaded, setLoaded] = useState<ReadonlySet<number>>(() => new Set());
+  // Von einer Karte gekommen: Das Vorschaubild liegt schon im Browser-Cache und überbrückt, bis das große Bild da ist
+  const [fromCard] = useState(() => typeof window !== 'undefined' && freshPhoto() !== null);
   const viewport = useRef<HTMLDivElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const thumbs = useRef<HTMLUListElement>(null);
@@ -42,6 +47,34 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
       for (const i of [center - 1, center, center + 1]) if (i >= 0 && i < count) next.add(i);
       return next.size === current.size ? current : next;
     });
+
+  const markLoaded = (i: number) => setLoaded((current) => (current.has(i) ? current : new Set(current).add(i)));
+
+  /**
+   * Miniatur hinter einem Bild, solange es lädt. Beim ersten Bild nach einem Klick auf eine Karte ist es deren
+   * (schon geladenes) Vorschaubild – es bleibt liegen, denn dorthin gleitet das Foto der Karte (View Transition).
+   */
+  function backdrop(image: ListingImage, i: number) {
+    const landing = i === 0 && fromCard;
+    if (loaded.has(i) && !landing) return null;
+    const layers = [landing ? image.thumbUrl : null, image.placeholder].filter(Boolean);
+    if (!layers.length) return null;
+    const box = placeholderBox(image.width, image.height);
+    const layer = (
+      <span
+        aria-hidden="true"
+        data-testid={landing ? 'gallery-landing' : undefined}
+        className="absolute top-1/2 left-1/2 -translate-1/2 bg-cover bg-center"
+        style={{ width: `${box.width}%`, height: `${box.height}%`, backgroundImage: layers.map((url) => `url(${url})`).join(', ') }}
+      />
+    );
+    if (!landing) return layer;
+    return (
+      <ViewTransition name={PHOTO_TRANSITION_NAME} share="photo-morph" default="none">
+        {layer}
+      </ViewTransition>
+    );
+  }
 
   function go(target: number, kind: 'snap' | 'jump') {
     const next = Math.min(Math.max(target, 0), count - 1);
@@ -159,7 +192,12 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
       >
         <div ref={track} data-testid="gallery-track" data-move={move} className="swipe-track flex h-full" style={{ translate: `${-index * 100}%` }}>
           {images.map((image, i) => (
-            <div key={image.id} aria-hidden={i === index ? undefined : true} className="flex h-full w-full shrink-0 items-center justify-center">
+            <div
+              key={image.id}
+              aria-hidden={i === index ? undefined : true}
+              className="relative flex h-full w-full shrink-0 items-center justify-center"
+            >
+              {backdrop(image, i)}
               {seen.has(i) ? (
                 // eslint-disable-next-line @next/next/no-img-element -- serverseitig optimiertes WebP (max. 1600 px)
                 <img
@@ -168,7 +206,12 @@ export function ListingGallery({ images, title }: { images: ListingImage[]; titl
                   width={image.width || undefined}
                   height={image.height || undefined}
                   draggable={false}
-                  className="max-h-full max-w-full object-contain"
+                  onLoad={() => markLoaded(i)}
+                  // Schon vor dem Hydrieren fertig geladen: dann kommt kein onLoad mehr
+                  ref={(el) => {
+                    if (el?.complete && el.naturalWidth > 0) markLoaded(i);
+                  }}
+                  className="relative max-h-full max-w-full object-contain"
                   fetchPriority={i === 0 ? 'high' : 'low'}
                 />
               ) : null}

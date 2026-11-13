@@ -106,6 +106,10 @@ describe('Inseratsbilder', () => {
       `http://localhost:4000/v1/images/${ticket.imageId}/large`,
     );
     expect(detail.body.imageUrl).toBe(`http://localhost:4000/v1/images/${ticket.imageId}/thumb`);
+    // Winzige Vorschau für die Zeit, bis das Foto geladen ist – am Bild und an der Karte dieselbe
+    expect(done.body.placeholder).toMatch(/^data:image\/webp;base64,/);
+    expect(detail.body.images[0].placeholder).toBe(done.body.placeholder);
+    expect(detail.body.imagePlaceholder).toBe(done.body.placeholder);
     await flushSearch();
     const list = await request(server()).get('/v1/listings').expect(200);
     expect(list.body.items[0].imageUrl).toBe(detail.body.imageUrl);

@@ -64,7 +64,7 @@ export function FavoriteButton({ listingId, title, initial, returnTo, variant = 
         aria-busy={pending || undefined}
         data-favorite={active ? 'ja' : 'nein'}
         className={cn(
-          'press relative z-10 inline-flex items-center justify-center gap-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
+          'press tap relative z-10 inline-flex items-center justify-center gap-2 font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500',
           variant === 'card'
             ? 'size-10 rounded-full bg-surface/95 shadow-sm ring-1 ring-ink-900/10 backdrop-blur hover:bg-surface'
             : 'h-11 rounded-xl border border-line-strong bg-surface px-4 text-[0.9375rem] hover:border-ink-400 hover:bg-canvas',

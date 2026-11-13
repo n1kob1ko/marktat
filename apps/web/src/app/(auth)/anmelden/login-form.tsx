@@ -21,7 +21,7 @@ export function LoginForm({ next }: { next?: string }) {
         <Input name="password" type="password" autoComplete="current-password" />
       </Field>
       <div className="flex justify-end">
-        <Link href="/passwort-vergessen" className="text-sm font-medium text-brand-700 hover:underline">
+        <Link href="/passwort-vergessen" className="relative text-sm font-medium text-brand-700 tap hover:underline">
           Passwort vergessen?
         </Link>
       </div>

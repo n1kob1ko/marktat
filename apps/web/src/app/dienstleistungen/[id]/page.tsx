@@ -70,11 +70,11 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
       {profile.isOwner || staff ? <OwnerBar profile={profile} staff={staff} /> : null}
 
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/dienstleistungen" className="hover:text-brand-700 hover:underline">Dienstleistungen</Link>
+        <Link href="/dienstleistungen" className="tap relative inline-block hover:text-brand-700 hover:underline">Dienstleistungen</Link>
         {firstCategory ? (
           <>
             <span aria-hidden="true"> / </span>
-            <Link href={`/dienstleistungen?bereich=${firstCategory.groupSlug}`} className="hover:text-brand-700 hover:underline">{firstCategory.groupName}</Link>
+            <Link href={`/dienstleistungen?bereich=${firstCategory.groupSlug}`} className="tap relative inline-block hover:text-brand-700 hover:underline">{firstCategory.groupName}</Link>
           </>
         ) : null}
       </nav>
@@ -226,7 +226,7 @@ async function ProfileContent({ params, searchParams }: Pick<PageProps<'/dienstl
                       {item.category ? <p className="text-xs text-ink-500">{item.category.name}</p> : null}
                       {item.description ? <p className="text-sm whitespace-pre-line text-ink-700">{item.description}</p> : null}
                       {item.url ? (
-                        <a href={item.url} rel="nofollow noopener noreferrer ugc" target="_blank" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                        <a href={item.url} rel="nofollow noopener noreferrer ugc" target="_blank" className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
                           Ansehen <ExternalLink className="size-3.5" aria-hidden="true" />
                         </a>
                       ) : null}

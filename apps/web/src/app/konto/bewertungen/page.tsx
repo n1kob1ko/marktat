@@ -12,12 +12,20 @@ import { RatingSummaryLink } from '@/components/ratings/rating-stars';
 import { RatingEntry, RatingsTransparencyNote } from '@/components/ratings/rating-list';
 import { ReplyForm } from '@/components/ratings/rating-form';
 import { deleteReplyAction } from '@/app/bewerten/actions';
+import { RowsSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Bewertungen', robots: { index: false } };
 
 export default function MyRatingsPage({ searchParams }: PageProps<'/konto/bewertungen'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="max-w-3xl space-y-3">
+          <Skeleton className="h-7 w-32" />
+          <RowsSkeleton rows={3} actions={0} />
+        </div>
+      }
+    >
       <Ratings searchParams={searchParams} />
     </Suspense>
   );

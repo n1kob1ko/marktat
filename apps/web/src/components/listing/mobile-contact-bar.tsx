@@ -25,10 +25,11 @@ export function MobileContactBar({ href, label, children }: { href: string; labe
   return (
     <div
       data-testid="mobile-contact-bar"
+      data-bottom-bar
       aria-hidden="true"
       className={[
         'fixed inset-x-0 bottom-0 z-30 border-t border-line bg-surface/95 backdrop-blur transition-transform ease-out supports-[backdrop-filter]:bg-surface/85 lg:hidden',
-        'pb-[max(0.625rem,env(safe-area-inset-bottom))]',
+        'safe-x pb-[max(0.625rem,env(safe-area-inset-bottom))]',
         // Verschwinden 20 % kürzer als Erscheinen
         contactVisible ? 'pointer-events-none translate-y-full duration-200' : 'translate-y-0 duration-[250ms]',
       ].join(' ')}

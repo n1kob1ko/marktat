@@ -2,21 +2,22 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { Bell, BellOff, Pencil, Search } from 'lucide-react';
-import { Alert, buttonClasses, Card, Input, Skeleton } from '@marktat/ui';
+import { Alert, buttonClasses, Card, Input } from '@marktat/ui';
 import { formatDate, SAVED_SEARCH_KIND_LABELS, SAVED_SEARCH_PATHS, type SavedSearch } from '@marktat/shared';
 import { SAVED_SEARCH_NOTIFY_TEXT } from '@/lib/saved-searches';
 import { api } from '@/lib/api';
 import { requireUser } from '@/lib/auth';
 import { FlashMessage } from '@/components/flash-message';
-import { ConfirmDeleteButton } from '@/components/confirm-delete-button';
+import { UndoableItem, UndoRemoveButton } from '@/components/undo-remove';
 import { SubmitButton } from '@/components/submit-button';
-import { deleteSavedSearchAction, updateSavedSearchAction } from './actions';
+import { deleteSavedSearchAction, deleteSavedSearchQuietly, updateSavedSearchAction } from './actions';
+import { RowsSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Gespeicherte Suchen', robots: { index: false } };
 
 export default function SavedSearchesPage({ searchParams }: PageProps<'/konto/suchen'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense fallback={<RowsSkeleton rows={3} actions={3} />}>
       <SavedSearches searchParams={searchParams} />
     </Suspense>
   );
@@ -59,7 +60,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
           {searches.map((search) => {
             const href = `${SAVED_SEARCH_PATHS[search.kind]}?${new URLSearchParams(search.params)}`;
             return (
-              <li key={search.id}>
+              <UndoableItem key={search.id}>
                 <Card className="flex flex-col gap-4 p-4 sm:p-5 lg:flex-row lg:items-center lg:justify-between" data-testid="saved-search">
                   <div className="min-w-0 space-y-2">
                     {editing === search.id ? (
@@ -85,7 +86,7 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
                         </Link>
                         <Link
                           href={`/konto/suchen?bearbeiten=${search.id}`}
-                          className="rounded-md p-1 text-ink-500 hover:bg-ink-900/5 hover:text-ink-900"
+                          className="relative rounded-md p-1 text-ink-500 tap hover:bg-ink-900/5 hover:text-ink-900"
                           aria-label={`„${search.name}“ umbenennen`}
                           title="Umbenennen"
                         >
@@ -128,11 +129,20 @@ async function SavedSearches({ searchParams }: Pick<PageProps<'/konto/suchen'>, 
                     </form>
                     <form action={deleteSavedSearchAction}>
                       <input type="hidden" name="id" value={search.id} />
-                      <ConfirmDeleteButton />
+                      <UndoRemoveButton
+                        action={deleteSavedSearchQuietly.bind(null, search.id)}
+                        message={`Suche „${search.name}“ gelöscht.`}
+                        variant="ghost"
+                        size="sm"
+                        className="text-danger-600 hover:bg-danger-50 hover:text-danger-700"
+                        aria-label={`Suche „${search.name}“ löschen`}
+                      >
+                        Löschen
+                      </UndoRemoveButton>
                     </form>
                   </div>
                 </Card>
-              </li>
+              </UndoableItem>
             );
           })}
         </ul>

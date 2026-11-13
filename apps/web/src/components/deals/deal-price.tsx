@@ -17,7 +17,7 @@ export function DealPrice({
   const hasReference = deal.discountPercent !== null && deal.referencePriceCents !== null && deal.referencePriceType !== null;
   return (
     <div className={cn('space-y-0.5', className)}>
-      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <p className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 tabular-nums">
         <span className={cn('font-display font-bold text-ink-950', size === 'lg' ? 'text-3xl sm:text-4xl' : 'text-lg')}>{formatPriceCents(deal.priceCents)}</span>
         {hasReference ? (
           <span className={cn('text-ink-500', size === 'lg' ? 'text-base' : 'text-xs')}>
@@ -26,7 +26,7 @@ export function DealPrice({
           </span>
         ) : null}
       </p>
-      {deal.unitPriceText ? <p className="text-xs text-ink-500">{deal.unitPriceText}</p> : null}
+      {deal.unitPriceText ? <p className="text-xs text-ink-500 tabular-nums">{deal.unitPriceText}</p> : null}
     </div>
   );
 }

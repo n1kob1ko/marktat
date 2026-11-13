@@ -9,6 +9,7 @@ export interface StoredImage {
   width: number | null;
   height: number | null;
   sortOrder: number;
+  placeholder?: string | null;
 }
 
 /**
@@ -48,6 +49,7 @@ export class ImageUrls {
       thumbUrl: this.url(image.id, 'thumb', signed),
       width: image.width ?? 0,
       height: image.height ?? 0,
+      placeholder: image.placeholder || null,
       position,
     };
   }

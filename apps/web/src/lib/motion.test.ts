@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arcKeyframes, rubberBand, swipeTarget } from './motion';
+import { arcKeyframes, rubberBand, sheetDismisses, swipeTarget } from './motion';
 
 describe('rubberBand', () => {
   it('gibt immer weniger nach, je weiter gezogen wird, und nie mehr als der Finger', () => {
@@ -57,5 +57,25 @@ describe('arcKeyframes', () => {
 
   it('bewegt nichts, wenn der Platz gleich bleibt', () => {
     expect(arcKeyframes(0, 0).every((frame) => frame.translate === '0px 0px')).toBe(true);
+  });
+});
+
+describe('sheetDismisses', () => {
+  it('schließt ab einem Viertel der Höhe, höchstens aber nach 180 px', () => {
+    expect(sheetDismisses(130, 900, 500)).toBe(true);
+    expect(sheetDismisses(100, 900, 500)).toBe(false);
+    expect(sheetDismisses(190, 2000, 2000)).toBe(true);
+    expect(sheetDismisses(170, 2000, 2000)).toBe(false);
+  });
+
+  it('schließt bei einem schnellen Wisch auch nach kurzem Weg', () => {
+    expect(sheetDismisses(60, 80, 800)).toBe(true);
+    expect(sheetDismisses(60, 400, 800)).toBe(false);
+  });
+
+  it('bleibt bei Antippen, kleinem Ruck und Ziehen nach oben offen', () => {
+    expect(sheetDismisses(0, 50, 800)).toBe(false);
+    expect(sheetDismisses(20, 10, 800)).toBe(false);
+    expect(sheetDismisses(-200, 100, 800)).toBe(false);
   });
 });

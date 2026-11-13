@@ -184,6 +184,11 @@
         translate: 0 1.5rem;
       }
     }
+
+    /* Wegwischen (sheet-header.tsx): Solange der Finger hält, folgt das Menü ohne Übergang */
+    .sheet[data-dragging='true'] {
+      transition: none;
+    }
   }
 
   /* Einzelnes Element erscheint */

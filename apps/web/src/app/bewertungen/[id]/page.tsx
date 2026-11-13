@@ -104,7 +104,7 @@ async function Ratings({
           {user.accountType === 'BUSINESS' ? (
             <Link
               href={`/haendler/${user.id}`}
-              className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+              className="mt-4 relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
             >
               <Store className="size-4" aria-hidden="true" /> Händlerprofil und alle Anzeigen
             </Link>
