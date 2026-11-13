@@ -74,7 +74,7 @@ export function AustriaMap({
         href={`https://www.openstreetmap.org/#map=13/${lat}/${lon}`}
         target="_blank"
         rel="noopener noreferrer"
-        className="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+        className="mt-2 relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
       >
         In OpenStreetMap ansehen <ExternalLink className="size-3.5" aria-hidden="true" />
         <span className="sr-only">(öffnet in neuem Tab)</span>

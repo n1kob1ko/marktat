@@ -14,12 +14,23 @@ import { SubmitButton } from '@/components/submit-button';
 import { getPublicBilling, newIdempotencyKey } from '@/lib/billing';
 import { bookPromotionAction, listingStatusAction } from './actions';
 import { expiresSoon } from '@/lib/listing-lifecycle';
+import { RowsSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Meine Anzeigen', robots: { index: false } };
 
 export default function MyListingsPage({ searchParams }: PageProps<'/konto/anzeigen'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="space-y-6">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-9 w-36" />
+          </div>
+          <RowsSkeleton rows={4} actions={3} />
+        </div>
+      }
+    >
       <MyListings searchParams={searchParams} />
     </Suspense>
   );

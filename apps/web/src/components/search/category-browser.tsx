@@ -94,7 +94,7 @@ function EntryLink({ entry, href, count, photo }: { entry: BrowseEntry; href: st
     <Link
       href={href}
       className={cn(
-        'group flex w-full min-w-0 items-center gap-2.5 text-sm transition-colors',
+        'group relative flex w-full min-w-0 items-center gap-2.5 text-sm transition-colors tap',
         'rounded-full border border-line bg-surface px-3.5 py-2 hover:border-brand-300 hover:bg-brand-50',
         'sm:rounded-lg sm:border-transparent sm:bg-transparent sm:px-2.5',
       )}

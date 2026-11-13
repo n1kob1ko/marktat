@@ -1,0 +1,120 @@
+/*
+ * Bedienung im Markterl-Designsystem – Details, die man nicht sieht, aber spürt (docs/design-bedienung.md):
+ *  - Tippflächen sind am Handy mindestens 44 × 44 px, auch wenn das Symbol kleiner ist (`tap`).
+ *  - Nichts liegt unter Notch, runden Ecken oder der Home-Leiste (`safe-*`).
+ *  - Ecken laufen weich aus („Continuous Corners“), wo der Browser das kann.
+ *  - Ein Fehler im Formular macht sich einmal kurz bemerkbar.
+ */
+
+/*
+ * Unsichtbar vergrößerte Tippfläche: ein Pseudoelement deckt mindestens 44 × 44 px ab, die sichtbare Größe bleibt.
+ * Nur für Finger (pointer: coarse) – mit der Maus soll nichts außerhalb des sichtbaren Knopfs reagieren.
+ * Das Element muss positioniert sein (relative/absolute); Knöpfe aus buttonClasses sind es schon.
+ */
+@utility tap {
+  @media (pointer: coarse) {
+    &::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 2.75rem);
+      height: max(100%, 2.75rem);
+      translate: -50% -50%;
+    }
+  }
+}
+
+/* Abstände zu Notch und Home-Leiste (wirken nur mit viewport-fit=cover, sonst sind die Werte 0) */
+@utility safe-x {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+@utility safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+@utility safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/*
+ * Weich auslaufende Ecken (Squircle) statt Kreisbögen – als Zugabe für Browser, die `corner-shape` kennen.
+ * Dieselbe Rundung wirkt als Squircle enger, deshalb sind die Radien dort etwas größer.
+ * Kreise und Pillen (rounded-full) bleiben rund.
+ */
+@supports (corner-shape: squircle) {
+  :root {
+    --radius-md: 0.5rem;
+    --radius-lg: 0.6875rem;
+    --radius-xl: 1rem;
+    --radius-2xl: 1.375rem;
+    --radius-3xl: 2rem;
+    --radius-card: 1.375rem;
+  }
+
+  :where([class*='rounded-']):not([class*='rounded-full']),
+  dialog {
+    corner-shape: squircle;
+  }
+}
+
+/* Fehler im Formular: Das Feld ruckt einmal kurz zur Seite, sobald es als ungültig markiert wird */
+@keyframes field-nudge {
+  25% {
+    translate: -0.3125rem 0;
+  }
+  60% {
+    translate: 0.25rem 0;
+  }
+  85% {
+    translate: -0.125rem 0;
+  }
+}
+
+@layer components {
+  :is(input, textarea, select)[aria-invalid='true'] {
+    animation: field-nudge 320ms var(--ease-in-out);
+  }
+}
+
+/* Hinweise („Rückgängig“) stehen unten in der Mitte – am Handy über einem festen Balken, falls die Seite einen hat */
+.toast-region {
+  bottom: max(1rem, env(safe-area-inset-bottom, 0px));
+}
+
+@media (width < 64rem) {
+  body:has([data-bottom-bar]) .toast-region {
+    bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
+/*
+ * Foto gleitet von der Karte in die Anzeige (View Transition, lib/photo-transition.ts).
+ * Während des Übergangs bleibt die Seite bedienbar; wer weniger Bewegung wünscht, sieht einen harten Wechsel.
+ */
+::view-transition {
+  pointer-events: none;
+}
+
+::view-transition-group(listing-photo) {
+  animation-duration: 320ms;
+  animation-timing-function: var(--ease-in-out);
+}
+
+::view-transition-old(listing-photo),
+::view-transition-new(listing-photo) {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  animation-duration: 160ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+  }
+}

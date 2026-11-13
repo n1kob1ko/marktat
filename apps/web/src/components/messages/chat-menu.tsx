@@ -48,7 +48,7 @@ export function ChatMenu({ conversation }: { conversation: ConversationDetail })
         aria-expanded={open}
         aria-controls={menuId}
         aria-label="Weitere Aktionen"
-        className="press flex size-10 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5"
+        className="press tap relative flex size-10 items-center justify-center rounded-xl text-ink-700 hover:bg-ink-900/5"
       >
         <MoreVertical className="size-5" aria-hidden="true" />
       </button>

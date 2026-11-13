@@ -23,7 +23,7 @@ export const listingInclude = {
   images: {
     where: { status: 'READY' },
     orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }],
-    select: { id: true, width: true, height: true, sortOrder: true },
+    select: { id: true, width: true, height: true, sortOrder: true, placeholder: true },
   },
   seller: {
     select: {
@@ -79,6 +79,7 @@ export function toListingSummary(listing: ListingWithRelations, urls: ImageUrls)
     category: listing.category ?? { id: '', name: 'Ohne Kategorie', slug: '', path: '' },
     location: listing.location ? toLocationSummary(listing.location) : null,
     imageUrl: main ? urls.url(main.id, 'thumb', needsSignedUrls(listing)) : null,
+    imagePlaceholder: main?.placeholder || null,
     isBusiness: listing.seller.accountType === 'BUSINESS',
     facts: listingFacts(schema, listing.attributes),
     priceSuffix: priceSuffix(schema, listing.attributes),

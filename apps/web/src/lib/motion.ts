@@ -54,6 +54,16 @@ export function swipeTarget(dx: number, elapsedMs: number, width: number): -1 | 
 }
 
 /**
+ * Ob ein nach unten gezogenes Menü beim Loslassen schließt: ab einem Viertel der Höhe (höchstens 180 px)
+ * oder bei einem schnellen Wisch. Ein kurzes Antippen oder Zurückschieben lässt es offen.
+ */
+export function sheetDismisses(dy: number, elapsedMs: number, height: number): boolean {
+  if (dy < 24) return false;
+  const velocity = elapsedMs > 0 ? dy / elapsedMs : 0;
+  return dy > Math.min(180, height * 0.25) || velocity > 0.5;
+}
+
+/**
  * Wegpunkte für eine Bewegung von (dx, dy) zurück auf (0, 0), leicht gebogen statt schnurgerade.
  * Zwei Elemente, die die Plätze tauschen, weichen einander so aus (die Bögen zeigen in entgegengesetzte Richtungen).
  */

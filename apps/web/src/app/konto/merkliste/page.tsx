@@ -10,10 +10,11 @@ import { requireUser } from '@/lib/auth';
 import { FlashMessage } from '@/components/flash-message';
 import { ListingCard } from '@/components/listing-card';
 import { SlidingIndicator } from '@/components/sliding-indicator';
-import { SubmitButton } from '@/components/submit-button';
 import { DealCard } from '@/components/deals/deal-card';
 import { ServiceCard } from '@/components/services/service-card';
-import { removeFavoriteAction, removeItemFavoriteAction } from '@/components/favorites/actions';
+import { removeFavoriteAction, removeItemFavoriteAction, setFavoriteAction, setItemFavoriteAction } from '@/components/favorites/actions';
+import { UndoableItem, UndoRemoveButton } from '@/components/undo-remove';
+import { CardGridSkeleton } from '@/components/skeletons';
 
 const TABS = [
   { art: 'anzeigen', label: 'Anzeigen' },
@@ -26,7 +27,15 @@ export const metadata: Metadata = { title: 'Merkliste', robots: { index: false }
 
 export default function FavoritesPage({ searchParams }: PageProps<'/konto/merkliste'>) {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="space-y-5">
+          <Skeleton className="h-11 w-80 max-w-full" />
+          <Skeleton className="h-4 w-40" />
+          <CardGridSkeleton count={8} className="lg:grid-cols-4" />
+        </div>
+      }
+    >
       <Favorites searchParams={searchParams} />
     </Suspense>
   );
@@ -51,7 +60,7 @@ async function Favorites({ searchParams }: Pick<PageProps<'/konto/merkliste'>, '
             href={t.art === 'anzeigen' ? '/konto/merkliste' : `/konto/merkliste?art=${t.art}`}
             aria-current={t.art === tab ? 'page' : undefined}
             className={cn(
-              'flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold whitespace-nowrap press',
+              'flex-1 rounded-lg px-3 py-2 text-center text-sm font-semibold whitespace-nowrap press max-lg:py-3',
               t.art === tab ? 'bg-primary text-white group-data-[indicator]/nav:bg-transparent' : 'text-ink-700 hover:bg-ink-900/5',
             )}
           >
@@ -106,7 +115,7 @@ async function ListingFavorites({ token, page }: { token: string; page: number }
           </h2>
           <ul className="space-y-2">
             {gone.map((item) => (
-              <li key={item.listing.id}>
+              <UndoableItem key={item.listing.id}>
                 <Card className="flex items-center gap-4 p-3 sm:p-4" data-testid="favorite-unavailable">
                   <span className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-canvas">
                     <ImageOff className="size-5 text-ink-300" aria-hidden="true" />
@@ -119,12 +128,18 @@ async function ListingFavorites({ token, page }: { token: string; page: number }
                   </div>
                   <form action={removeFavoriteAction}>
                     <input type="hidden" name="listingId" value={item.listing.id} />
-                    <SubmitButton variant="ghost" size="sm">
+                    <UndoRemoveButton
+                      action={setFavoriteAction.bind(null, item.listing.id, false)}
+                      message={`„${item.listing.title}“ von der Merkliste entfernt.`}
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`„${item.listing.title}“ von der Merkliste entfernen`}
+                    >
                       Entfernen
-                    </SubmitButton>
+                    </UndoRemoveButton>
                   </form>
                 </Card>
-              </li>
+              </UndoableItem>
             ))}
           </ul>
         </section>
@@ -162,9 +177,15 @@ function RemoveItemForm({ kind, id, title }: { kind: 'deal' | 'service'; id: str
     <form action={removeItemFavoriteAction}>
       <input type="hidden" name="kind" value={kind} />
       <input type="hidden" name="id" value={id} />
-      <SubmitButton variant="ghost" size="sm" aria-label={`„${title}“ von der Merkliste entfernen`}>
+      <UndoRemoveButton
+        action={setItemFavoriteAction.bind(null, kind, id, false)}
+        message={`„${title}“ von der Merkliste entfernt.`}
+        variant="ghost"
+        size="sm"
+        aria-label={`„${title}“ von der Merkliste entfernen`}
+      >
         Entfernen
-      </SubmitButton>
+      </UndoRemoveButton>
     </form>
   );
 }
@@ -214,7 +235,7 @@ async function DealFavorites({ token, page }: { token: string; page: number }) {
       {available.length ? (
         <ul className="stagger grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3 lg:grid-cols-4">
           {available.map((item) => (
-            <li key={item.deal.id} className="flex flex-col gap-1">
+            <UndoableItem key={item.deal.id} className="flex flex-col gap-1">
               <DealCard deal={item.deal} className="flex-1" />
               {item.priceAlert ? (
                 <p className="flex items-center gap-1 text-xs font-semibold text-brand-700">
@@ -222,7 +243,7 @@ async function DealFavorites({ token, page }: { token: string; page: number }) {
                 </p>
               ) : null}
               <RemoveItemForm kind="deal" id={item.deal.id} title={item.deal.title} />
-            </li>
+            </UndoableItem>
           ))}
         </ul>
       ) : null}
@@ -233,11 +254,11 @@ async function DealFavorites({ token, page }: { token: string; page: number }) {
           </h2>
           <ul className="space-y-2">
             {gone.map((item) => (
-              <li key={item.deal.id}>
+              <UndoableItem key={item.deal.id}>
                 <UnavailableRow title={item.deal.title} savedAt={item.savedAt} note="Abgelaufen, beendet oder entfernt">
                   <RemoveItemForm kind="deal" id={item.deal.id} title={item.deal.title} />
                 </UnavailableRow>
-              </li>
+              </UndoableItem>
             ))}
           </ul>
         </section>
@@ -262,10 +283,10 @@ async function ServiceFavorites({ token, page }: { token: string; page: number }
       {available.length ? (
         <ul className="stagger grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {available.map((item) => (
-            <li key={item.profile.id} className="flex flex-col gap-1">
+            <UndoableItem key={item.profile.id} className="flex flex-col gap-1">
               <ServiceCard profile={item.profile} className="flex-1" />
               <RemoveItemForm kind="service" id={item.profile.id} title={item.profile.headline} />
-            </li>
+            </UndoableItem>
           ))}
         </ul>
       ) : null}
@@ -276,11 +297,11 @@ async function ServiceFavorites({ token, page }: { token: string; page: number }
           </h2>
           <ul className="space-y-2">
             {gone.map((item) => (
-              <li key={item.profile.id}>
+              <UndoableItem key={item.profile.id}>
                 <UnavailableRow title={item.profile.headline} savedAt={item.savedAt} note="Pausiert oder in Prüfung">
                   <RemoveItemForm kind="service" id={item.profile.id} title={item.profile.headline} />
                 </UnavailableRow>
-              </li>
+              </UndoableItem>
             ))}
           </ul>
         </section>

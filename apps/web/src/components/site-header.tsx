@@ -6,12 +6,13 @@ import { Logo } from './logo';
 import { UserMenu } from './user-menu';
 import { ThemeToggle } from './theme-toggle';
 import { MobileSearch, MobileSearchFallback } from './mobile-search';
+import { CommandMenu, SearchShortcutHint } from './command-menu';
 
 export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <Container className="flex h-16 items-center gap-2 sm:gap-6">
-        <Link href="/" className="shrink-0 rounded-lg" aria-label="Markterl – zur Startseite">
+        <Link href="/" className="relative shrink-0 rounded-lg tap" aria-label="Markterl – zur Startseite">
           {/* Am Handy etwas kleiner, unter 400 px nur das Bildzeichen – Lupe, Konto und „Inserieren“ müssen daneben Platz haben */}
           <Logo wordmarkClassName="text-lg max-[400px]:sr-only sm:text-[1.375rem]" />
         </Link>
@@ -27,10 +28,13 @@ export function SiteHeader() {
               name="q"
               type="search"
               placeholder="Was suchst du?"
-              className="h-11 w-full rounded-xl border border-line-strong bg-canvas pr-4 pl-10 text-[0.9375rem] placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
+              className="peer h-11 w-full rounded-xl border border-line-strong bg-canvas pr-4 pl-10 text-[0.9375rem] placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
             />
+            {/* Kürzel-Hinweis; verschwindet, sobald etwas im Feld steht */}
+            <SearchShortcutHint />
           </div>
         </form>
+        <CommandMenu />
 
         <nav aria-label="Konto" className="ml-auto flex items-center gap-0 sm:gap-2">
           {/* Unter 768 px gibt es kein Suchfeld im Kopf – die Lupe klappt eines auf (Startseite hat zusätzlich die große Suche) */}

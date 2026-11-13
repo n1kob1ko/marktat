@@ -139,9 +139,12 @@ test('Händler veröffentlicht einen Deal mit Filiale; er ist auffindbar, pausie
   await visitor.page.goto('/konto/merkliste?art=deals');
   const gone = visitor.page.getByTestId('favorite-unavailable').filter({ hasText: title });
   await expect(gone).toBeVisible();
+  // Entfernen ohne Sicherheitsabfrage: sofort weg, der Hinweis bietet „Rückgängig“; nach seinem Ablauf ist es endgültig
+  await visitor.page.waitForLoadState('networkidle');
   await gone.getByRole('button', { name: /von der Merkliste entfernen/ }).click();
-  await expect(visitor.page).toHaveURL(/art=deals&hinweis=entfernt/);
-  await expect(visitor.page.getByText('Noch keine Deals gemerkt')).toBeVisible();
+  await expect(visitor.page.getByTestId('toast')).toContainText('von der Merkliste entfernt.');
+  await expect(gone).toBeHidden();
+  await expect(visitor.page.getByText('Noch keine Deals gemerkt')).toBeVisible({ timeout: 20_000 });
 
   // Löschen
   await page.getByRole('button', { name: 'Löschen' }).click();

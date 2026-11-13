@@ -42,7 +42,7 @@ export function ContactForm({ listingId, serviceProfileId, projectId, sellerName
               <button
                 type="button"
                 onClick={() => suggest(text)}
-                className="rounded-full border border-line-strong bg-surface px-3 py-1 text-xs font-medium text-ink-700 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-900"
+                className="relative rounded-full border border-line-strong bg-surface px-3 py-1 text-xs font-medium tap [@media(pointer:coarse)]:py-1.5 text-ink-700 hover:border-brand-400 hover:bg-brand-50 hover:text-brand-900"
               >
                 {text}
               </button>

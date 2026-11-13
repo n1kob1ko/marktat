@@ -60,11 +60,11 @@ async function ProjectContent({ params, searchParams }: Pick<PageProps<'/dienstl
       {project.isOwner || staff ? <OwnerBar project={project} staff={staff} /> : null}
 
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/dienstleistungen" className="hover:text-brand-700 hover:underline">Dienstleistungen</Link>
+        <Link href="/dienstleistungen" className="tap relative inline-block hover:text-brand-700 hover:underline">Dienstleistungen</Link>
         <span aria-hidden="true"> / </span>
-        <Link href="/dienstleistungen/projekte" className="hover:text-brand-700 hover:underline">Projektaufträge</Link>
+        <Link href="/dienstleistungen/projekte" className="tap relative inline-block hover:text-brand-700 hover:underline">Projektaufträge</Link>
         <span aria-hidden="true"> / </span>
-        <Link href={`/dienstleistungen/projekte?kategorie=${project.category.slug}`} className="hover:text-brand-700 hover:underline">{project.category.name}</Link>
+        <Link href={`/dienstleistungen/projekte?kategorie=${project.category.slug}`} className="tap relative inline-block hover:text-brand-700 hover:underline">{project.category.name}</Link>
       </nav>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">

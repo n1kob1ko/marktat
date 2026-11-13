@@ -29,7 +29,7 @@ export function SortSelect<T extends string = SearchSort>({
         value={value}
         aria-busy={pending}
         onChange={(e) => startTransition(() => router.push(hrefFor[e.target.value]!, { scroll: false }))}
-        className="h-10 w-auto min-w-44 text-sm"
+        className="h-10 w-auto min-w-44 text-sm max-lg:h-11"
       >
         {options.map((sort) => (
           <option key={sort} value={sort}>

@@ -233,9 +233,26 @@ test('Suche speichern, umbenennen, Benachrichtigung schalten, ausführen und lö
   await expect(page).toHaveURL(/umkreis=25/);
   await expect(page).toHaveURL(/preis_bis=500/);
 
+  // Löschen ohne Sicherheitsabfrage: Die Suche verschwindet sofort, „Rückgängig“ holt sie zurück
   await page.goto('/konto/suchen');
-  await renamed.getByRole('button', { name: 'Löschen' }).click();
-  await renamed.getByRole('button', { name: 'Endgültig löschen' }).click();
-  await expect(page.getByText('Die gespeicherte Suche wurde gelöscht.')).toBeVisible();
+  const toast = page.getByTestId('toast');
+  const remove = renamed.getByRole('button', { name: 'Suche „Rad für den Arbeitsweg“ löschen' });
+  // Erst klicken, wenn die Seite bereit ist – davor würde der Knopf das Formular abschicken und sofort löschen
+  await page.waitForLoadState('networkidle');
+  await remove.click();
+  await expect(toast).toContainText('Suche „Rad für den Arbeitsweg“ gelöscht.');
+  await expect(renamed).toBeHidden();
+  await toast.getByRole('button', { name: /Rückgängig/ }).click();
+  await expect(renamed).toBeVisible();
+  await expect(toast).toBeHidden();
+  // Auch mit Strg+Z – solange der Hinweis zu sehen ist
+  await remove.click();
+  await expect(renamed).toBeHidden();
+  await page.keyboard.press('Control+z');
+  await expect(renamed).toBeVisible();
+  // Ohne „Rückgängig“ wird nach Ablauf des Hinweises wirklich gelöscht
+  await remove.click();
+  await expect(page.getByText('Noch keine gespeicherten Suchen')).toBeVisible({ timeout: 20_000 });
+  await page.reload();
   await expect(page.getByText('Noch keine gespeicherten Suchen')).toBeVisible();
 });

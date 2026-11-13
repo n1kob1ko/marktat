@@ -81,9 +81,9 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
       {deal.isOwner || staff ? <OwnerBar deal={deal} staff={staff} /> : null}
 
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/deals" className="hover:text-brand-700 hover:underline">Deals & Angebote</Link>
+        <Link href="/deals" className="tap relative inline-block hover:text-brand-700 hover:underline">Deals & Angebote</Link>
         <span aria-hidden="true"> / </span>
-        <Link href={`/deals?kategorie=${deal.category.slug}`} className="hover:text-brand-700 hover:underline">
+        <Link href={`/deals?kategorie=${deal.category.slug}`} className="tap relative inline-block hover:text-brand-700 hover:underline">
           {deal.category.name}
         </Link>
       </nav>
@@ -275,11 +275,11 @@ async function DealContent({ params, searchParams }: Pick<PageProps<'/deals/[id]
             </p>
             {deal.merchant ? (
               <>
-                <Link href={`/haendler/${deal.merchant.id}`} className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                <Link href={`/haendler/${deal.merchant.id}`} className="mt-3 relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
                   <Store className="size-4" aria-hidden="true" /> Händlerprofil
                 </Link>
                 <br />
-                <Link href={`/deals?haendler=${deal.merchant.id}`} className="mt-1 inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+                <Link href={`/deals?haendler=${deal.merchant.id}`} className="mt-1 relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
                   Alle Angebote dieses Händlers
                 </Link>
               </>

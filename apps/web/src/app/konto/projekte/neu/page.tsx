@@ -21,7 +21,7 @@ async function NewProject() {
   return (
     <div className="space-y-6">
       <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-        <Link href="/konto/projekte" className="hover:text-brand-700 hover:underline">Projektaufträge</Link>
+        <Link href="/konto/projekte" className="tap relative inline-block hover:text-brand-700 hover:underline">Projektaufträge</Link>
       </nav>
       <Card className="space-y-2 p-5 sm:p-7">
         <h2 className="font-sans text-xl font-semibold tracking-normal">Projektauftrag beschreiben</h2>

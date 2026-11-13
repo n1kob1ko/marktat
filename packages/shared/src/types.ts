@@ -155,6 +155,8 @@ export interface ListingSummary {
   location: LocationSummary | null;
   /** Vorschaubild (Hauptbild, 480 × 360) oder null */
   imageUrl: string | null;
+  /** Winziges, unscharfes Vorschaubild als Daten-URL – Platzhalter, bis `imageUrl` geladen ist (null bei alten Bildern) */
+  imagePlaceholder: string | null;
   isBusiness: boolean;
   /** Kurzinfos aus den Zusatzangaben, z. B. [„03/2019“, „85.000 km“, „Diesel“] */
   facts: string[];
@@ -186,6 +188,8 @@ export interface ListingImage {
   url: string;
   /** Vorschaubild 480 × 360 */
   thumbUrl: string;
+  /** Winziges, unscharfes Vorschaubild als Daten-URL – Platzhalter, bis das Bild geladen ist (null bei alten Bildern) */
+  placeholder: string | null;
   width: number;
   height: number;
   /** 0 = Hauptbild */

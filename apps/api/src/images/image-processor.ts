@@ -19,6 +19,9 @@ const FORMAT_TO_TYPE: Record<string, ImageContentType> = {
   webp: 'image/webp',
 };
 
+/** Platzhalter: so klein, dass er in jeder Antwort mitreisen kann (rund 150 Byte), aber Farben und Aufbau zeigt */
+const PLACEHOLDER = { width: 16, height: 12, quality: 40 } as const;
+
 export class InvalidImageError extends Error {}
 
 export interface ProcessedImage {
@@ -26,6 +29,8 @@ export interface ProcessedImage {
   /** Abmessungen der großen Variante */
   width: number;
   height: number;
+  /** Winziges Vorschaubild als Daten-URL (gleicher Ausschnitt wie `thumb`) */
+  placeholder: string;
   variants: {
     name: ImageVariant;
     body: Buffer;
@@ -90,5 +95,24 @@ export async function processImage(input: Buffer): Promise<ProcessedImage> {
     throw new InvalidImageError('Die Datei ist beschädigt oder unvollständig.');
   }
   const large = variants.find((v) => v.name === 'large')!;
-  return { detectedType, width: large.width, height: large.height, variants };
+  const thumb = variants.find((v) => v.name === 'thumb')!;
+  return {
+    detectedType,
+    width: large.width,
+    height: large.height,
+    placeholder: await imagePlaceholder(thumb.body),
+    variants,
+  };
+}
+
+/**
+ * Winziges Vorschaubild (16 × 12 px, WebP) als Daten-URL. Der Browser zeigt es vergrößert und damit unscharf,
+ * bis das eigentliche Foto geladen ist. Eingabe ist das fertige Vorschaubild (schon ausgerichtet, ohne Metadaten).
+ */
+export async function imagePlaceholder(thumb: Buffer): Promise<string> {
+  const data = await sharp(thumb)
+    .resize({ width: PLACEHOLDER.width, height: PLACEHOLDER.height, fit: 'cover' })
+    .webp({ quality: PLACEHOLDER.quality, effort: 4 })
+    .toBuffer();
+  return `data:image/webp;base64,${data.toString('base64')}`;
 }

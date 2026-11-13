@@ -85,7 +85,7 @@ function NavGroup({ group, activeHref }: { group: SectionNavGroup; activeHref: s
                 href={item.href}
                 aria-current={isActive ? 'page' : undefined}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors',
+                  'flex items-center gap-3 rounded-lg px-3 py-1.5 text-sm transition-colors max-lg:py-3',
                   isActive ? 'bg-brand-50 font-semibold text-brand-800 group-data-[indicator]/nav:bg-transparent' : 'font-medium text-ink-700 hover:bg-ink-900/5 hover:text-ink-950',
                 )}
               >
@@ -108,7 +108,7 @@ function NavGroup({ group, activeHref }: { group: SectionNavGroup; activeHref: s
 
 function CountBubble({ count }: { count: number }) {
   return (
-    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-on-accent">
+    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-500 px-1.5 text-[0.6875rem] font-bold text-on-accent tabular-nums">
       {count > 99 ? '99+' : count}
     </span>
   );

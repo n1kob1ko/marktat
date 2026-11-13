@@ -7,12 +7,20 @@ import { formatDateTime, type NotificationList } from '@marktat/shared';
 import { api } from '@/lib/api';
 import { requireUser, safeRedirectPath } from '@/lib/auth';
 import { markNotificationsReadAction } from './actions';
+import { RowsSkeleton } from '@/components/skeletons';
 
 export const metadata: Metadata = { title: 'Mitteilungen', robots: { index: false } };
 
 export default function NotificationsPage() {
   return (
-    <Suspense fallback={<Skeleton className="h-96" />}>
+    <Suspense
+      fallback={
+        <div className="max-w-3xl space-y-4">
+          <Skeleton className="h-4 w-4/5" />
+          <RowsSkeleton rows={4} actions={0} />
+        </div>
+      }
+    >
       <Notifications />
     </Suspense>
   );

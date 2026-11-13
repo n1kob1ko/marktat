@@ -66,7 +66,7 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
             defaultValue={params.q}
             maxLength={100}
             placeholder="Name oder Anzeige suchen"
-            className="h-10 w-full rounded-xl border border-line-strong bg-canvas pr-3 pl-9 text-sm placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
+            className="h-10 w-full rounded-xl border border-line-strong bg-canvas pr-3 pl-9 text-sm max-lg:h-11 placeholder:text-ink-400 focus:border-brand-500 focus:bg-surface focus:ring-3 focus:ring-brand-500/20 focus:outline-none"
           />
         </form>
         <nav aria-label="Unterhaltungen filtern" className="group/nav relative isolate -mx-1 flex gap-1 overflow-x-auto overflow-y-hidden overscroll-x-contain">
@@ -80,7 +80,7 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
                 href={`${base}${query ? `?${query}` : ''}`}
                 aria-current={current ? 'page' : undefined}
                 className={cn(
-                  'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold press',
+                  'shrink-0 rounded-full px-3 py-1.5 text-sm font-semibold press max-lg:py-3',
                   current ? 'bg-primary text-white group-data-[indicator]/nav:bg-transparent' : 'text-ink-600 hover:bg-ink-900/5 hover:text-ink-900',
                 )}
               >

@@ -30,6 +30,7 @@ Browser                    Web (Server Action)          API                     
 | JPEG, PNG, WebP | Angekündigter Typ wird geprüft, maßgeblich ist aber der **Dateiinhalt** (sharp erkennt das Format). Text, SVG, GIF, beschädigte oder abgeschnittene Dateien werden abgelehnt und gelöscht. |
 | Metadaten | Alle Varianten werden neu als WebP kodiert; EXIF (inkl. GPS), XMP und IPTC werden entfernt, die EXIF-Ausrichtung vorher angewendet. |
 | Varianten | `large` (max. 1600 px, WebP q82) für die Detailseite, `thumb` (480 × 360, Bildausschnitt automatisch) für Listen. |
+| Platzhalter | Zusätzlich eine 16 × 12 px große WebP-Miniatur als Data-URI in `listing_images.placeholder` – sie liegt hinter dem Foto, bis es geladen ist ([design-bedienung.md](design-bedienung.md)). Ältere Bilder trägt `ImagePlaceholderService` im Hintergrund nach. |
 | Hauptbild/Reihenfolge | `sortOrder` 0 ist das Hauptbild. Endpunkte zum Umsortieren, Hauptbild setzen, Löschen. |
 | Berechtigung | Nur der Eigentümer des Inserats. Fremde Inserate und Bilder liefern 404. |
 | Keine öffentlichen Rohdaten | Rohdateien liegen unter `uploads/` und werden nie über eine Lese-URL ausgegeben. Die API signiert Lese-URLs nur für fertige Varianten und nur, wenn das Inserat aktiv ist (oder für den Eigentümer über eine zeitlich begrenzte Signatur). |

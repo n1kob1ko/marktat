@@ -4,9 +4,10 @@ import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent, ty
 import { useRouter } from 'next/navigation';
 import { flushSync } from 'react-dom';
 import Link from 'next/link';
-import { ChevronLeft, Loader2, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ChevronLeft, Loader2, Search, SlidersHorizontal } from 'lucide-react';
 import { Input, Select, buttonClasses, cn } from '@marktat/ui';
 import { MOTION, usePresence } from '@/lib/motion';
+import { SheetHeader } from '@/components/sheet-header';
 import {
   CONDITION_PARAMS,
   ITEM_CONDITIONS,
@@ -186,20 +187,9 @@ export function SearchFilters({
         // Während des Ausblendens nicht mehr bedienbar und für Vorlesesoftware schon weg
         inert={closing}
         aria-hidden={closing || undefined}
-        className={cn('sheet max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:flex-col max-lg:bg-surface lg:block', open ? 'max-lg:flex' : 'max-lg:hidden')}
+        className={cn('sheet max-lg:safe-x max-lg:fixed max-lg:inset-0 max-lg:z-50 max-lg:flex-col max-lg:bg-surface lg:block', open ? 'max-lg:flex' : 'max-lg:hidden')}
       >
-        <div className="flex items-center justify-between border-b border-line px-4 py-3 lg:hidden">
-          <h2 className="font-sans text-lg font-semibold tracking-normal">Filter</h2>
-          <button
-            ref={closeRef}
-            type="button"
-            onClick={() => setOpen(false)}
-            className="press flex size-10 items-center justify-center rounded-xl text-ink-600 hover:bg-canvas"
-            aria-label="Filter schließen"
-          >
-            <X className="size-5" aria-hidden="true" />
-          </button>
-        </div>
+        <SheetHeader title="Filter" closeLabel="Filter schließen" onClose={() => setOpen(false)} closeRef={closeRef} />
 
         <form
           ref={formRef}
@@ -319,7 +309,7 @@ export function SearchFilters({
             </button>
           </div>
 
-          <div className="flex gap-3 border-t border-line bg-surface px-4 py-3 lg:hidden">
+          <div className="flex gap-3 border-t border-line bg-surface px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
             <a href={query.q ? `/suche?${new URLSearchParams({ q: query.q })}` : '/suche'} className={buttonClasses({ variant: 'outline', className: 'flex-1' })}>
               Zurücksetzen
             </a>

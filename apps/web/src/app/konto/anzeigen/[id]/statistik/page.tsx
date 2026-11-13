@@ -47,7 +47,7 @@ async function Stats({ params }: Pick<PageProps<'/konto/anzeigen/[id]/statistik'
 
   return (
     <div className="space-y-5">
-      <Link href="/konto/anzeigen" className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline">
+      <Link href="/konto/anzeigen" className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline">
         <ArrowLeft className="size-4" aria-hidden="true" /> Meine Anzeigen
       </Link>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">

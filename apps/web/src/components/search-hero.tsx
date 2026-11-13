@@ -51,7 +51,7 @@ export function SearchHero() {
           <a
             key={term}
             href={`/suche?q=${encodeURIComponent(term)}`}
-            className="rounded-full border border-white/20 px-3 py-1 text-white/90 press hover:border-white/50 hover:bg-white/10"
+            className="relative rounded-full border border-white/20 px-3 py-1 text-white/90 press tap hover:border-white/50 hover:bg-white/10"
           >
             {term}
           </a>

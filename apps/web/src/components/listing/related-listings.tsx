@@ -26,7 +26,7 @@ export async function RelatedListings({ listing }: { listing: ListingDetail }) {
             {seller.accountType === 'BUSINESS' ? (
               <Link
                 href={`/haendler/${seller.id}`}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+                className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
               >
                 Alle {related.sellerTotal + 1} Anzeigen{' '}
                 <ArrowRight className="size-4" aria-hidden="true" />
@@ -54,7 +54,7 @@ export async function RelatedListings({ listing }: { listing: ListingDetail }) {
             </h2>
             <Link
               href={`/suche?kategorie=${listing.category.path}`}
-              className="inline-flex items-center gap-1 text-sm font-semibold text-brand-700 hover:underline"
+              className="relative inline-flex items-center gap-1 text-sm font-semibold text-brand-700 tap hover:underline"
             >
               Alle in {listing.category.name} <ArrowRight className="size-4" aria-hidden="true" />
             </Link>

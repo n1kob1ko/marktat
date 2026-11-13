@@ -30,6 +30,7 @@ import { SearchFilters } from '@/components/search/search-filters';
 import { SortSelect } from '@/components/search/sort-select';
 import { SaveSearchButton } from '@/components/saved-search/save-search-button';
 import { Pagination } from '@/components/pagination';
+import { CardSkeleton } from '@/components/skeletons';
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -168,7 +169,7 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
                 key={chip.id}
                 href={chip.removeHref}
                 scroll={false}
-                className="inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 press hover:border-brand-400 hover:bg-brand-100"
+                className="relative inline-flex items-center gap-1.5 rounded-full border border-brand-200 bg-brand-50 py-1 pr-2 pl-3 text-sm font-medium text-brand-900 press tap hover:border-brand-400 hover:bg-brand-100"
                 aria-label={`Filter entfernen: ${chip.label}`}
               >
                 {chip.label}
@@ -176,7 +177,7 @@ async function SearchResults({ searchParams }: { searchParams: Promise<Params> }
               </Link>
             ))}
             {chips.length > 1 ? (
-              <Link href={resetHref(query)} className="px-2 text-sm font-semibold text-brand-700 hover:underline">
+              <Link href={resetHref(query)} className="relative px-2 text-sm font-semibold text-brand-700 tap hover:underline">
                 Alle zurücksetzen
               </Link>
             ) : null}
@@ -239,7 +240,7 @@ function Breadcrumb({ categories, query }: { categories: CategoryNode[]; query: 
     <nav aria-label="Kategoriepfad" className="mb-2">
       <ol className="flex flex-wrap items-center gap-x-1 gap-y-0.5 text-sm text-ink-500">
         <li>
-          <Link href={scopeHref(query, null)} className="hover:text-brand-700 hover:underline">Alle Kategorien</Link>
+          <Link href={scopeHref(query, null)} className="tap relative inline-block hover:text-brand-700 hover:underline">Alle Kategorien</Link>
         </li>
         {trail.map((entry, i) => (
           <li key={entry.key} className="flex items-center gap-1">
@@ -247,7 +248,7 @@ function Breadcrumb({ categories, query }: { categories: CategoryNode[]; query: 
             {i === trail.length - 1 ? (
               <span aria-current="page" className="font-semibold text-brand-800">{entry.label}</span>
             ) : (
-              <Link href={scopeHref(query, entry.scope)} className="hover:text-brand-700 hover:underline">{entry.label}</Link>
+              <Link href={scopeHref(query, entry.scope)} className="tap relative inline-block hover:text-brand-700 hover:underline">{entry.label}</Link>
             )}
           </li>
         ))}
@@ -326,7 +327,7 @@ function SearchSkeleton() {
         <Skeleton className="mb-6 h-9 w-64" />
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
           {Array.from({ length: 6 }, (_, i) => (
-            <Skeleton key={i} className="h-72" />
+            <CardSkeleton key={i} />
           ))}
         </div>
       </div>

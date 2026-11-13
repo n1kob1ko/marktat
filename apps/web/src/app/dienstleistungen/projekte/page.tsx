@@ -46,7 +46,7 @@ export default function ProjectsPage({ searchParams }: PageProps<'/dienstleistun
       <section className="border-b border-line bg-accent-50/60">
         <Container className="py-6 sm:py-8">
           <nav aria-label="Brotkrümel" className="text-sm text-ink-500">
-            <Link href="/dienstleistungen" className="hover:text-brand-700 hover:underline">Dienstleistungen</Link>
+            <Link href="/dienstleistungen" className="tap relative inline-block hover:text-brand-700 hover:underline">Dienstleistungen</Link>
           </nav>
           <h1 className="mt-1 text-2xl font-bold text-balance text-ink-950 sm:text-3xl">Projektaufträge</h1>
           <p className="mt-2 max-w-2xl text-sm text-ink-600">

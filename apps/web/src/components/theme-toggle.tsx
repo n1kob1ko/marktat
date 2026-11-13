@@ -38,6 +38,15 @@ function subscribe(onChange: () => void) {
   };
 }
 
+/** Wechselt Hell/Dunkel ohne Übergang (Schnellmenü); die Wahl bleibt im Browser gespeichert */
+export function toggleTheme() {
+  const next: Theme = currentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, next);
+  } catch {}
+}
+
 /**
  * Umschalter Hell/Dunkel; die Wahl bleibt im Browser gespeichert. Im Kopf nur als Symbol,
  * mit `withLabel` (Fuß am Handy) mit sichtbarer Beschriftung.

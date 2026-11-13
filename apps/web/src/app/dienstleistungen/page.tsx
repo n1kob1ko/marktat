@@ -69,7 +69,7 @@ export default function ServicesPage({ searchParams }: PageProps<'/dienstleistun
               <li key={group.slug}>
                 <Link
                   href={`/dienstleistungen?bereich=${group.slug}`}
-                  className="inline-flex rounded-full border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium text-ink-800 hover:border-brand-400 hover:bg-brand-50"
+                  className="relative inline-flex rounded-full border border-line-strong bg-surface px-3 py-1.5 text-sm font-medium tap text-ink-800 hover:border-brand-400 hover:bg-brand-50"
                 >
                   {group.name}
                 </Link>

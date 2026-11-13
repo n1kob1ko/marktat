@@ -27,7 +27,7 @@ export function SaveSearchButton(props: SaveSearchButtonProps) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="h-10">
+      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="h-10 max-lg:h-11">
         <Bookmark className="size-4" aria-hidden="true" /> Suche speichern
       </Button>
       {open ? <SaveSearchDialog {...props} onClose={() => setOpen(false)} /> : null}
