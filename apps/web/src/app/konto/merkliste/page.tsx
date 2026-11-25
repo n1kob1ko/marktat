@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Suspense, type ReactNode } from 'react';
-import { BellRing, Heart, ImageOff } from 'lucide-react';
+import { BellRing, ImageOff } from 'lucide-react';
 import { buttonClasses, Card, Skeleton } from '@marktat/ui';
 import { formatDate, type DealFavoriteItem, type FavoriteItem, type Paginated, type ServiceFavoriteItem } from '@marktat/shared';
 import { cn } from '@marktat/ui';
@@ -15,6 +16,7 @@ import { ServiceCard } from '@/components/services/service-card';
 import { removeFavoriteAction, removeItemFavoriteAction, setFavoriteAction, setItemFavoriteAction } from '@/components/favorites/actions';
 import { UndoableItem, UndoRemoveButton } from '@/components/undo-remove';
 import { CardGridSkeleton } from '@/components/skeletons';
+import emptyFavorites from '@/assets/bilder/leer-merkliste.png';
 
 const TABS = [
   { art: 'anzeigen', label: 'Anzeigen' },
@@ -87,7 +89,7 @@ async function ListingFavorites({ token, page }: { token: string; page: number }
 
       {result.total === 0 ? (
         <Card className="px-6 py-12 text-center">
-          <Heart className="mx-auto size-8 text-ink-300" aria-hidden="true" />
+          <Image src={emptyFavorites} alt="" className="mx-auto size-28" sizes="7rem" />
           <p className="mt-3 font-semibold text-ink-900">Deine Merkliste ist leer</p>
           <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">
             Tippe bei einer Anzeige auf das Herz, um sie hier zu sammeln. Die Liste bleibt auch nach dem Abmelden erhalten.
@@ -193,7 +195,7 @@ function RemoveItemForm({ kind, id, title }: { kind: 'deal' | 'service'; id: str
 function EmptyTab({ title, text, href, cta }: { title: string; text: string; href: string; cta: string }) {
   return (
     <Card className="px-6 py-12 text-center">
-      <Heart className="mx-auto size-8 text-ink-300" aria-hidden="true" />
+      <Image src={emptyFavorites} alt="" className="mx-auto size-28" sizes="7rem" />
       <p className="mt-3 font-semibold text-ink-900">{title}</p>
       <p className="mx-auto mt-1 max-w-md text-sm text-ink-500">{text}</p>
       <Link href={href} className={buttonClasses({ variant: 'outline', className: 'mt-5' })}>

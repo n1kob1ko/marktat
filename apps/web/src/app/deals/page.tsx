@@ -27,6 +27,8 @@ import { ShopBar } from '@/components/deals/shop-bar';
 import { SortSelect } from '@/components/search/sort-select';
 import { Pagination } from '@/components/pagination';
 import { SaveSearchButton } from '@/components/saved-search/save-search-button';
+import { HeaderPhoto } from '@/components/header-photo';
+import dealsPhoto from '@/assets/bilder/deals-angebote.jpg';
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -52,7 +54,8 @@ export async function generateMetadata({ searchParams }: PageProps<'/deals'>): P
 export default function DealsPage({ searchParams }: PageProps<'/deals'>) {
   return (
     <>
-      <section className="border-b border-line bg-accent-50/60">
+      <section className="relative isolate overflow-hidden border-b border-line bg-accent-50/60">
+        <HeaderPhoto src={dealsPhoto} position="40% 55%" />
         <Container className="py-6 sm:py-8">
           <p className="text-sm font-semibold text-accent-700">Deals & Angebote</p>
           <h1 className="mt-1 text-2xl font-bold text-balance text-ink-950 sm:text-3xl">Aktuelle Angebote von Händlern</h1>

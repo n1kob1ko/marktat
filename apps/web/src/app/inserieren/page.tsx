@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { Suspense } from 'react';
 import { Container, Skeleton } from '@marktat/ui';
 import { formatAmountCents } from '@marktat/shared';
@@ -9,14 +10,23 @@ import { getAutofillStatus } from '@/lib/autofill';
 import { IntroBanner } from '@/components/billing/intro-banner';
 import { ListingForm } from '@/components/listing-form/listing-form';
 import { createListingAction } from '@/components/listing-form/actions';
+import startPhoto from '@/assets/bilder/inserieren-sachen.jpg';
 
 export const metadata: Metadata = { title: 'Inserat aufgeben', robots: { index: false } };
 
 export default function NewListingPage() {
   return (
     <Container className="py-8 sm:py-10">
-      <h1 className="text-3xl font-bold text-ink-950 sm:text-4xl">Inserat aufgeben</h1>
-      <p className="mt-2 text-ink-600">Fülle die Angaben aus – die Vorschau zeigt dir, wie deine Anzeige aussehen wird.</p>
+      <div className="flex items-center justify-between gap-6">
+        <div>
+          <h1 className="text-3xl font-bold text-ink-950 sm:text-4xl">Inserat aufgeben</h1>
+          <p className="mt-2 text-ink-600">Fülle die Angaben aus – die Vorschau zeigt dir, wie deine Anzeige aussehen wird.</p>
+        </div>
+        {/* Kleines Stimmungsbild ab Tablet, damit der Einstieg nicht nur aus Formular besteht */}
+        <div className="relative hidden aspect-[4/3] w-48 shrink-0 overflow-hidden rounded-[var(--radius-card)] md:block lg:w-56">
+          <Image src={startPhoto} alt="" fill sizes="14rem" placeholder="blur" className="object-cover" />
+        </div>
+      </div>
       <div className="mt-8">
         <Suspense fallback={<Skeleton className="h-[40rem]" />}>
           <NewListingForm />

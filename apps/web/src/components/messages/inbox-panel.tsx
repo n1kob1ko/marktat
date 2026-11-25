@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { Inbox, Search } from 'lucide-react';
 import type { ConversationSummary, Paginated } from '@marktat/shared';
@@ -5,6 +6,7 @@ import { buttonClasses, cn } from '@marktat/ui';
 import { api } from '@/lib/api';
 import { SlidingIndicator } from '@/components/sliding-indicator';
 import { ConversationList } from './conversation-list';
+import emptyMessages from '@/assets/bilder/leer-nachrichten.png';
 
 export const INBOX_FILTERS = [
   { value: 'alle', label: 'Alle' },
@@ -101,7 +103,7 @@ export async function InboxPanel({ token, params, activeId }: { token: string; p
           </div>
         ) : result.items.length === 0 ? (
           <div className="flex flex-col items-center px-6 py-12 text-center">
-            <Inbox className="size-8 text-ink-300" aria-hidden="true" />
+            {filtered ? <Inbox className="size-8 text-ink-300" aria-hidden="true" /> : <Image src={emptyMessages} alt="" className="size-28" sizes="7rem" />}
             <p className="mt-3 font-semibold text-ink-900">{filtered ? 'Keine passenden Unterhaltungen' : 'Noch keine Nachrichten'}</p>
             <p className="mt-1 max-w-xs text-sm text-ink-500">
               {filtered

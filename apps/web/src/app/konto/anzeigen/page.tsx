@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Suspense } from 'react';
 import { BarChart3, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
 import { Badge, buttonClasses, Card, Skeleton } from '@marktat/ui';
@@ -15,6 +16,7 @@ import { getPublicBilling, newIdempotencyKey } from '@/lib/billing';
 import { bookPromotionAction, listingStatusAction } from './actions';
 import { expiresSoon } from '@/lib/listing-lifecycle';
 import { RowsSkeleton } from '@/components/skeletons';
+import emptyListings from '@/assets/bilder/leer-anzeigen.png';
 
 export const metadata: Metadata = { title: 'Meine Anzeigen', robots: { index: false } };
 
@@ -63,7 +65,8 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
       </div>
       {listings.length === 0 ? (
         <Card className="px-6 py-12 text-center">
-          <p className="font-semibold text-ink-900">Du hast noch keine Anzeigen.</p>
+          <Image src={emptyListings} alt="" className="mx-auto size-28" sizes="7rem" />
+          <p className="mt-3 font-semibold text-ink-900">Du hast noch keine Anzeigen.</p>
           <p className="mt-1 text-sm text-ink-500">Was liegt bei dir herum, das jemand anderer brauchen kann?</p>
         </Card>
       ) : (

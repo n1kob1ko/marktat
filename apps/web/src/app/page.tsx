@@ -18,6 +18,7 @@ import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
 import heroPhoto from '@/assets/bilder/startseite-wien.jpg';
 import sellPhoto from '@/assets/bilder/inserat-fotografieren.jpg';
+import shopPhoto from '@/assets/bilder/haendler-laden.jpg';
 
 /** Die sechs Bereiche als eine Icon-Reihe; Kleinanzeigen-Bereiche zeigen die Zahl ihrer Anzeigen */
 const VERTICAL_TILES = [
@@ -174,15 +175,27 @@ export default function HomePage() {
                 <li>Verdächtige Anzeigen über „Melden“ an unser Team schicken.</li>
               </ul>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-hero-deep p-5 text-white sm:p-8">
-              <Store className="size-7 text-accent-300" aria-hidden="true" />
-              <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
-              <p className="mt-2 text-sm leading-relaxed text-hero-muted">
-                Gewerbliches Konto mit Firmenprofil, gekennzeichneten Angeboten und bald auch Anzeigenpaketen.
-              </p>
-              <Link href="/registrieren" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent-300 hover:underline">
-                Gewerbekonto erstellen <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
+            <div className="overflow-hidden rounded-[var(--radius-card)] bg-hero-deep text-white">
+              <div className="relative aspect-[16/9] max-sm:hidden">
+                <Image
+                  src={shopPhoto}
+                  alt="Inhaberin eines kleinen Fahrradgeschäfts hinter ihrer Theke"
+                  fill
+                  sizes="(min-width: 1024px) 28rem, 100vw"
+                  placeholder="blur"
+                  className="object-cover object-[50%_35%]"
+                />
+              </div>
+              <div className="p-5 sm:p-8">
+                <Store className="size-7 text-accent-300" aria-hidden="true" />
+                <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
+                <p className="mt-2 text-sm leading-relaxed text-hero-muted">
+                  Gewerbliches Konto mit Firmenprofil, gekennzeichneten Angeboten und bald auch Anzeigenpaketen.
+                </p>
+                <Link href="/registrieren" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent-300 hover:underline">
+                  Gewerbekonto erstellen <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
