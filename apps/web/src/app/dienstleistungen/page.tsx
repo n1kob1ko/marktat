@@ -24,6 +24,8 @@ import { ServiceFilters } from '@/components/services/service-filters';
 import { SortSelect } from '@/components/search/sort-select';
 import { Pagination } from '@/components/pagination';
 import { SaveSearchButton } from '@/components/saved-search/save-search-button';
+import { HeaderPhoto } from '@/components/header-photo';
+import servicesPhoto from '@/assets/bilder/dienstleistungen-handwerk.jpg';
 
 type Params = Record<string, string | string[] | undefined>;
 
@@ -51,7 +53,8 @@ export async function generateMetadata({ searchParams }: PageProps<'/dienstleist
 export default function ServicesPage({ searchParams }: PageProps<'/dienstleistungen'>) {
   return (
     <>
-      <section className="border-b border-line bg-brand-50/60">
+      <section className="relative isolate overflow-hidden border-b border-line bg-brand-50/60">
+        <HeaderPhoto src={servicesPhoto} position="80% 50%" />
         <Container className="py-6 sm:py-8">
           <p className="text-sm font-semibold text-brand-700">Dienstleistungen</p>
           <h1 className="mt-1 text-2xl font-bold text-balance text-ink-950 sm:text-3xl">Anbieter und Freelancer finden</h1>

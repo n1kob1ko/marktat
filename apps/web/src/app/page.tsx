@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { Suspense } from 'react';
@@ -15,6 +16,9 @@ import { getCategories, getCategoryCounts, getCategoryListings, getLatestDeals, 
 import { DealCard } from '@/components/deals/deal-card';
 import { getPublicBilling } from '@/lib/billing';
 import { IntroBanner } from '@/components/billing/intro-banner';
+import heroPhoto from '@/assets/bilder/startseite-wien.jpg';
+import sellPhoto from '@/assets/bilder/inserat-fotografieren.jpg';
+import shopPhoto from '@/assets/bilder/haendler-laden.jpg';
 
 /** Die sechs Bereiche als eine Icon-Reihe; Kleinanzeigen-Bereiche zeigen die Zahl ihrer Anzeigen */
 const VERTICAL_TILES = [
@@ -31,6 +35,12 @@ export default function HomePage() {
   return (
     <>
       <section className="relative isolate overflow-hidden bg-hero text-white">
+        {/* Wiener Straße als Stimmung: stark in Grün eingefärbt, damit Überschrift und Suche immer gut lesbar bleiben */}
+        <Image src={heroPhoto} alt="" fill loading="eager" sizes="100vw" placeholder="blur" className="-z-30 object-cover object-[70%_60%]" />
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 -z-20 bg-gradient-to-r from-hero/95 via-hero/85 to-hero/70 lg:from-hero lg:via-hero/80 lg:to-hero/45"
+        />
         <TopoPattern className="absolute inset-0 -z-10 size-full text-white/[0.07]" />
         <div aria-hidden="true" className="absolute -top-40 -right-40 -z-10 size-[32rem] rounded-full bg-accent-500/15 blur-3xl" />
         {/* Kompakter Kopf: Suche im Mittelpunkt, damit Bereiche und erste Anzeigen schon im ersten Bildschirm stehen */}
@@ -112,35 +122,48 @@ export default function HomePage() {
 
       <Container className="mt-12 sm:mt-20">
         <div className="grid items-start gap-6 lg:grid-cols-[1.4fr_1fr]">
-          <div className="rounded-[var(--radius-card)] border border-line bg-surface p-6 sm:p-10">
-            <h2 className="text-2xl font-bold text-ink-950 sm:text-3xl">In drei Schritten verkauft</h2>
-            {/* Am Handy nur Nummer und Titel in einer Reihe, damit die Seite kurz bleibt */}
-            <ol className="mt-6 grid grid-cols-3 gap-3 sm:mt-8 sm:gap-6">
-              {[
-                { icon: Camera, title: 'Fotografieren', text: 'Gute Fotos bei Tageslicht – das wirkt sofort vertrauenswürdig.' },
-                { icon: Tag, title: 'Inserieren', text: 'Titel, Preis und Ort eingeben – die Vorschau zeigt sofort, wie es aussieht.' },
-                { icon: MessageCircle, title: 'Verkaufen', text: 'Anfragen beantworten, Treffpunkt ausmachen, fertig.' },
-              ].map((step, i) => (
-                <li key={step.title}>
-                  <span className="flex size-9 items-center justify-center rounded-full bg-primary font-display text-lg font-bold text-white sm:size-10">
-                    {i + 1}
-                  </span>
-                  <h3 className="mt-3 flex items-center gap-2 font-sans text-sm font-semibold tracking-normal text-ink-900 sm:mt-4 sm:text-base">
-                    <step.icon className="size-4.5 text-brand-600" aria-hidden="true" /> {step.title}
-                  </h3>
-                  <p className="mt-1.5 text-sm leading-relaxed text-ink-600 max-sm:hidden">{step.text}</p>
-                </li>
-              ))}
-            </ol>
-            <Suspense
-              fallback={
-                <Link href="/inserieren" className={buttonClasses({ size: 'lg', className: 'mt-8' })}>
-                  Jetzt inserieren
-                </Link>
-              }
-            >
-              <ListCta />
-            </Suspense>
+          <div className="overflow-hidden rounded-[var(--radius-card)] border border-line bg-surface">
+            {/* Foto nur ab Tablet, am Handy bleibt der Block kurz */}
+            <div className="relative aspect-[16/7] max-sm:hidden">
+              <Image
+                src={sellPhoto}
+                alt="Jemand fotografiert Lederschuhe und einen Pullover mit dem Handy für ein Inserat"
+                fill
+                sizes="(min-width: 1024px) 45rem, 100vw"
+                placeholder="blur"
+                className="object-cover object-[50%_45%]"
+              />
+            </div>
+            <div className="p-6 sm:p-10">
+              <h2 className="text-2xl font-bold text-ink-950 sm:text-3xl">In drei Schritten verkauft</h2>
+              {/* Am Handy nur Nummer und Titel in einer Reihe, damit die Seite kurz bleibt */}
+              <ol className="mt-6 grid grid-cols-3 gap-3 sm:mt-8 sm:gap-6">
+                {[
+                  { icon: Camera, title: 'Fotografieren', text: 'Gute Fotos bei Tageslicht – das wirkt sofort vertrauenswürdig.' },
+                  { icon: Tag, title: 'Inserieren', text: 'Titel, Preis und Ort eingeben – die Vorschau zeigt sofort, wie es aussieht.' },
+                  { icon: MessageCircle, title: 'Verkaufen', text: 'Anfragen beantworten, Treffpunkt ausmachen, fertig.' },
+                ].map((step, i) => (
+                  <li key={step.title}>
+                    <span className="flex size-9 items-center justify-center rounded-full bg-primary font-display text-lg font-bold text-white sm:size-10">
+                      {i + 1}
+                    </span>
+                    <h3 className="mt-3 flex items-center gap-2 font-sans text-sm font-semibold tracking-normal text-ink-900 sm:mt-4 sm:text-base">
+                      <step.icon className="size-4.5 text-brand-600" aria-hidden="true" /> {step.title}
+                    </h3>
+                    <p className="mt-1.5 text-sm leading-relaxed text-ink-600 max-sm:hidden">{step.text}</p>
+                  </li>
+                ))}
+              </ol>
+              <Suspense
+                fallback={
+                  <Link href="/inserieren" className={buttonClasses({ size: 'lg', className: 'mt-8' })}>
+                    Jetzt inserieren
+                  </Link>
+                }
+              >
+                <ListCta />
+              </Suspense>
+            </div>
           </div>
           <div className="flex flex-col gap-6">
             <div className="rounded-[var(--radius-card)] bg-accent-50 p-5 sm:p-8">
@@ -152,15 +175,27 @@ export default function HomePage() {
                 <li>Verdächtige Anzeigen über „Melden“ an unser Team schicken.</li>
               </ul>
             </div>
-            <div className="rounded-[var(--radius-card)] bg-hero-deep p-5 text-white sm:p-8">
-              <Store className="size-7 text-accent-300" aria-hidden="true" />
-              <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
-              <p className="mt-2 text-sm leading-relaxed text-hero-muted">
-                Gewerbliches Konto mit Firmenprofil, gekennzeichneten Angeboten und bald auch Anzeigenpaketen.
-              </p>
-              <Link href="/registrieren" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent-300 hover:underline">
-                Gewerbekonto erstellen <ArrowRight className="size-4" aria-hidden="true" />
-              </Link>
+            <div className="overflow-hidden rounded-[var(--radius-card)] bg-hero-deep text-white">
+              <div className="relative aspect-[16/9] max-sm:hidden">
+                <Image
+                  src={shopPhoto}
+                  alt="Inhaberin eines kleinen Fahrradgeschäfts hinter ihrer Theke"
+                  fill
+                  sizes="(min-width: 1024px) 28rem, 100vw"
+                  placeholder="blur"
+                  className="object-cover object-[50%_35%]"
+                />
+              </div>
+              <div className="p-5 sm:p-8">
+                <Store className="size-7 text-accent-300" aria-hidden="true" />
+                <h2 className="mt-3 font-sans text-lg font-semibold tracking-normal">Für Händler & Unternehmen</h2>
+                <p className="mt-2 text-sm leading-relaxed text-hero-muted">
+                  Gewerbliches Konto mit Firmenprofil, gekennzeichneten Angeboten und bald auch Anzeigenpaketen.
+                </p>
+                <Link href="/registrieren" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-accent-300 hover:underline">
+                  Gewerbekonto erstellen <ArrowRight className="size-4" aria-hidden="true" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
