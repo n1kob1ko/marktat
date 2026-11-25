@@ -92,7 +92,7 @@ jobs:
   e2e:
     name: Browser-Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     env:
       # Bilder im lokalen Dateisystem statt R2 – die CI hat (und braucht) keine Cloudflare-Zugangsdaten.
       STORAGE_DRIVER: local
@@ -120,9 +120,13 @@ jobs:
         # Sind die nicht erreichbar, wird nach 4 Minuten nur der Browser geladen: Die Bibliotheken für Chromium
         # bringt das Runner-Image mit, die Seite liefert ihre Schriften selbst. Fehlt doch etwas, startet der
         # Browser nicht und die Tests schlagen sichtbar fehl.
+        # Auch der Browser-Download selbst kann hängen (am 25.11.2026 zweimal bis zum Job-Abbruch nach 30 Minuten):
+        # deshalb jeder Versuch mit Zeitlimit und zwei weitere Versuche.
         run: |
           timeout 240 pnpm --filter @marktat/web exec playwright install --with-deps chromium \
-            || pnpm --filter @marktat/web exec playwright install chromium
+            || timeout 300 pnpm --filter @marktat/web exec playwright install chromium \
+            || timeout 300 pnpm --filter @marktat/web exec playwright install chromium \
+            || timeout 300 pnpm --filter @marktat/web exec playwright install chromium
       - name: API und Web starten
         # Partnerangebote gegen den Awin-Testserver aus e2e/fake-awin.ts (startet affiliate.spec.ts) – keine echten Schlüssel
         env:
