@@ -11,6 +11,7 @@ import {
 } from '@marktat/shared';
 import { CATEGORY_TREE, type CategorySeed } from './categories.js';
 import { DEMO_LISTINGS } from './demo.js';
+import { CATEGORY_KEYWORDS } from '../../src/search/search-keywords.js';
 
 /** Pfade genau so, wie seed.ts sie in `categories.path` schreibt. */
 function allPaths(): { path: string; leaf: boolean }[] {
@@ -28,6 +29,11 @@ function allPaths(): { path: string; leaf: boolean }[] {
 
 describe('Zusatzfelder und Kategoriebaum', () => {
   const paths = allPaths();
+
+  it('Suchwörter (Auto, Handy, Radl …) hängen nur an existierenden Kategorien', () => {
+    const known = new Set(paths.map((p) => p.path));
+    expect(Object.keys(CATEGORY_KEYWORDS).filter((path) => !known.has(path))).toEqual([]);
+  });
 
   it('Deal-Kategorien verweisen nur auf existierende Kategorien der Kleinanzeigen', () => {
     const known = new Set(paths.map((p) => p.path));

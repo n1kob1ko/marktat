@@ -6,11 +6,14 @@ import { Alert, Field, Input } from '@marktat/ui';
 import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
+import { ResendConfirmation } from '@/components/resend-confirmation';
 import { loginAction } from '../actions';
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, action] = useActionState(loginAction, initialFormState);
+  const unconfirmedEmail = state.values?.unbestaetigt ? state.values.email : undefined;
   return (
+    <>
     <form action={action} className="space-y-5" noValidate>
       {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
       <input type="hidden" name="weiter" value={next ?? '/konto'} />
@@ -30,5 +33,7 @@ export function LoginForm({ next }: { next?: string }) {
         Anmelden
       </SubmitButton>
     </form>
+    {unconfirmedEmail ? <ResendConfirmation email={unconfirmedEmail} next={next} /> : null}
+    </>
   );
 }

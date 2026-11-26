@@ -73,13 +73,19 @@ test('Kostenlos inserieren und kostenlose Zusatzleistungen mit Limits, Top-Anzei
   // Meine Anzeigen: hervorheben und Top – sofort aktiv, ohne Zahlung
   await seller.page.goto('/konto/anzeigen');
   const card = seller.page.getByRole('listitem').filter({ hasText: title });
+  // Statistik und Zusatzleistungen liegen unter „Mehr“; nach jeder Buchung ist das Menü wieder zu
+  const openMore = () => card.getByText(/^Mehr: Statistik/).click();
+  await openMore();
   await card.getByRole('button', { name: 'Hervorheben' }).click();
   await expect(seller.page.getByText('Deine Anzeige ist jetzt hervorgehoben.')).toBeVisible();
   await expect(card.getByText(/^Hervorgehoben bis/)).toBeVisible();
+  await openMore();
   await card.getByRole('button', { name: 'Top-Anzeige' }).click();
   await expect(seller.page.getByText(/ist jetzt eine Top-Anzeige/)).toBeVisible();
   await expect(card.getByText(/^Top-Anzeige bis/)).toBeVisible();
   // Laufende Leistungen haben keinen zweiten Knopf
+  await openMore();
+  await expect(card.getByRole('button', { name: 'Hochschieben' })).toBeVisible();
   await expect(card.getByRole('button', { name: 'Hervorheben' })).toHaveCount(0);
   await expectNoHorizontalScroll(seller.page);
 

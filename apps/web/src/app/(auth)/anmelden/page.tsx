@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Alert, Skeleton } from '@marktat/ui';
+import { UserPlus } from 'lucide-react';
+import { Alert, buttonClasses, Skeleton } from '@marktat/ui';
 import { AuthShell } from '@/components/auth-shell';
 import { SocialLogin } from '@/components/social-login';
 import { LoginForm } from './login-form';
@@ -18,8 +19,8 @@ const HINTS: Record<string, string> = {
 export default function LoginPage({ searchParams }: PageProps<'/anmelden'>) {
   return (
     <AuthShell
-      title="Willkommen zurück"
-      intro="Melde dich an, um Anzeigen aufzugeben und deine Inserate zu verwalten."
+      title="Anmelden"
+      intro="Melde dich an, um Anzeigen aufzugeben und deine Inserate zu verwalten. Neu hier? Ein Konto ist kostenlos."
       footer={
         <>
           Noch kein Konto?{' '}
@@ -39,6 +40,11 @@ export default function LoginPage({ searchParams }: PageProps<'/anmelden'>) {
 async function LoginContent({ searchParams }: Pick<PageProps<'/anmelden'>, 'searchParams'>) {
   const params = await searchParams;
   const next = typeof params.weiter === 'string' ? params.weiter : undefined;
+  const hint =
+    (typeof params.hinweis === 'string' && HINTS[params.hinweis]) ||
+    (next?.startsWith('/inserieren')
+      ? 'Zum Inserieren brauchst du ein kostenloses Konto. Melde dich an oder erstelle in einer Minute ein neues.'
+      : 'Bitte melde dich an, um fortzufahren.');
   return (
     <div className="space-y-5">
       {params.fehler === 'link' ? (
@@ -48,7 +54,14 @@ async function LoginContent({ searchParams }: Pick<PageProps<'/anmelden'>, 'sear
         <Alert tone="warning">Die Anmeldung über den Anbieter wurde abgebrochen oder hat nicht geklappt. Bitte versuche es noch einmal oder melde dich mit E-Mail und Passwort an.</Alert>
       ) : null}
       {next ? (
-        <Alert tone="info">{(typeof params.hinweis === 'string' && HINTS[params.hinweis]) || 'Bitte melde dich an, um fortzufahren.'}</Alert>
+        <>
+          <Alert tone="info">{hint}</Alert>
+          {/* Wer über „Inserieren“ oder „Merken“ hier landet, hat oft noch kein Konto: Registrieren gleich oben anbieten */}
+          <Link href={`/registrieren?weiter=${encodeURIComponent(next)}`} className={buttonClasses({ variant: 'outline', size: 'lg', className: 'w-full' })}>
+            <UserPlus className="size-5" aria-hidden="true" /> Noch kein Konto? Kostenlos registrieren
+          </Link>
+          <p className="text-center text-sm font-medium text-ink-500">oder mit deinem Konto anmelden</p>
+        </>
       ) : null}
       <SocialLogin next={next} />
       <LoginForm next={next} />

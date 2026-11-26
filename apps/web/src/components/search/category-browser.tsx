@@ -44,9 +44,11 @@ export function CategoryBrowser({
         <ul
           className={cn(
             // relative: unsichtbare Texte (sr-only, absolut positioniert) bleiben in der Leiste, sonst wird die Seite breit
-            // Smartphone: wischbare Leiste mit quadratischen Kacheln, ab Tablet alle nebeneinander in einer Zeile
+            // Smartphone: wischbare Leiste mit quadratischen Kacheln, ab Tablet alle nebeneinander in einer Zeile.
+            // Feste Spaltenzahl: bei nur einer oder zwei Kategorien bleiben die Kacheln klein, statt die ganze Breite
+            // zu füllen und die Treffer aus dem Bild zu schieben.
             'relative -mx-4 flex gap-2 overflow-x-auto overflow-y-hidden overscroll-x-contain px-4 pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
-            'sm:mx-0 sm:grid sm:auto-cols-fr sm:grid-flow-col sm:gap-3 sm:overflow-visible sm:px-0',
+            'sm:mx-0 sm:grid sm:grid-cols-6 sm:gap-3 sm:overflow-visible sm:px-0', // 6 = MAX_TILES
           )}
         >
           {entries.map((entry, i) => (

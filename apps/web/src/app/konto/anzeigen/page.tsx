@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Suspense } from 'react';
-import { BarChart3, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
+import { BarChart3, ChevronDown, MapPin, Pencil, Plus, Sparkles } from 'lucide-react';
 import { Badge, buttonClasses, Card, Skeleton } from '@marktat/ui';
 import { formatAmountCents, formatDate, formatDateTime, type ListingSummary, type PublicBillingInfo } from '@marktat/shared';
 import { api } from '@/lib/api';
@@ -47,15 +47,16 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
   return (
     <div className="space-y-4">
       <FlashMessage hinweis={hinweis} fehler={fehler} />
-      <div className="flex items-center justify-between gap-4">
-        <p className="text-sm text-ink-600">{listings.length} {listings.length === 1 ? 'Anzeige' : 'Anzeigen'}</p>
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
+        <p className="text-sm whitespace-nowrap text-ink-600">{listings.length} {listings.length === 1 ? 'Anzeige' : 'Anzeigen'}</p>
         <div className="flex flex-wrap justify-end gap-2">
           {user.accountType === 'BUSINESS' ? (
             <Link href="/konto/haendler" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
               Händler-Dashboard
             </Link>
           ) : null}
-          <Link href="/konto/leistungen" className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+          {/* Am Handy über das Konto-Menü („Mehr Sichtbarkeit“) – hier stand der Link sonst einzeln in einer Zeile */}
+          <Link href="/konto/leistungen" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'max-sm:hidden' })}>
             Meine Leistungen
           </Link>
           <Link href="/inserieren" className={buttonClasses({ size: 'sm' })}>
@@ -100,16 +101,15 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
                   <ActivePromotions listing={listing} />
                 </div>
                 <div className="flex shrink-0 flex-col gap-2 sm:items-end">
-                {listing.status === 'ACTIVE' ? <PromotionButtons listing={listing} billing={billing} /> : null}
-                <div className="flex flex-wrap gap-2 sm:justify-end">
-                  <Link href={`/konto/anzeigen/${listing.id}/statistik`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
-                    <BarChart3 className="size-4" aria-hidden="true" /> Statistik
-                  </Link>
-                  <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
-                    <Pencil className="size-4" aria-hidden="true" /> Bearbeiten
-                  </Link>
+                  {/* Das Wichtigste zuerst: Bearbeiten und Status. Statistik und bezahlbare Extras liegen unter „Mehr“. */}
                   <form action={listingStatusAction} className="flex flex-wrap gap-2 sm:justify-end">
                     <input type="hidden" name="id" value={listing.id} />
+                    <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+                      <Pencil className="size-4" aria-hidden="true" /> Bearbeiten
+                    </Link>
+                    {listing.status === 'ACTIVE' || listing.status === 'PAUSED' ? (
+                      <button name="action" value="sold" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Verkauft</button>
+                    ) : null}
                     {expiresSoon(listing) ? (
                       <button name="action" value="publish" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>Verlängern</button>
                     ) : null}
@@ -121,9 +121,6 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
                         <button name="action" value="pause" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Pausieren</button>
                       </>
                     ) : null}
-                    {listing.status === 'ACTIVE' || listing.status === 'PAUSED' ? (
-                      <button name="action" value="sold" className={buttonClasses({ variant: 'outline', size: 'sm' })}>Verkauft</button>
-                    ) : null}
                     {listing.status === 'PAUSED' ? (
                       <button name="action" value="resume" className={buttonClasses({ variant: 'secondary', size: 'sm' })}>Fortsetzen</button>
                     ) : null}
@@ -134,7 +131,18 @@ async function MyListings({ searchParams }: Pick<PageProps<'/konto/anzeigen'>, '
                     ) : null}
                     <ConfirmDeleteButton />
                   </form>
-                </div>
+                  <details className="group w-full sm:w-auto">
+                    <summary className="tap relative inline-flex cursor-pointer list-none items-center gap-1 text-sm font-semibold text-brand-700 hover:underline sm:float-right [&::-webkit-details-marker]:hidden">
+                      Mehr: Statistik{listing.status === 'ACTIVE' ? ' und Sichtbarkeit' : ''}
+                      <ChevronDown className="size-4 transition-transform group-open:rotate-180" aria-hidden="true" />
+                    </summary>
+                    <div className="clear-both mt-2 flex flex-wrap gap-2 sm:justify-end">
+                      <Link href={`/konto/anzeigen/${listing.id}/statistik`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
+                        <BarChart3 className="size-4" aria-hidden="true" /> Statistik
+                      </Link>
+                      {listing.status === 'ACTIVE' ? <PromotionButtons listing={listing} billing={billing} /> : null}
+                    </div>
+                  </details>
                 </div>
               </Card>
             </li>
@@ -195,7 +203,7 @@ function PromotionButtons({ listing, billing }: { listing: ListingSummary; billi
         </form>
       ))}
       <Link href={`/konto/anzeigen/${listing.id}/leistungen`} className={buttonClasses({ variant: 'ghost', size: 'sm' })}>
-        <Sparkles className="size-4" aria-hidden="true" /> Leistungen
+        <Sparkles className="size-4" aria-hidden="true" /> Mehr Sichtbarkeit
       </Link>
     </div>
   );

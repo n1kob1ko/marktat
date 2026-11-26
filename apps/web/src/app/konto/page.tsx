@@ -1,7 +1,8 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { Suspense } from 'react';
-import { Alert, Badge, Card, Skeleton } from '@marktat/ui';
+import { Plus } from 'lucide-react';
+import { Alert, Badge, buttonClasses, Card, Skeleton } from '@marktat/ui';
 import { SubmitButton } from '@/components/submit-button';
 import { formatDate } from '@marktat/shared';
 import { isStaff, requireUser } from '@/lib/auth';
@@ -35,7 +36,19 @@ async function AccountContent({ searchParams }: Pick<PageProps<'/konto'>, 'searc
   return (
     <div className="grid gap-6 lg:grid-cols-[1fr_20rem]">
       <div className="space-y-4">
-        {params.bestaetigt ? <Alert tone="success">Deine E-Mail-Adresse ist bestätigt. Willkommen bei Markterl!</Alert> : null}
+        {params.bestaetigt ? (
+          <Alert tone="success" title="Deine E-Mail-Adresse ist bestätigt. Willkommen bei Markterl!">
+            <p>Wie geht es weiter? Gib dein erstes Inserat auf oder schau dich um.</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <Link href="/inserieren" className={buttonClasses({ variant: 'accent', size: 'sm' })}>
+                <Plus className="size-4" aria-hidden="true" /> Inserat aufgeben
+              </Link>
+              <Link href="/suche" className={buttonClasses({ variant: 'outline', size: 'sm' })}>
+                Anzeigen ansehen
+              </Link>
+            </div>
+          </Alert>
+        ) : null}
         {params.passwort === 'geaendert' ? <Alert tone="success">Dein Passwort wurde geändert.</Alert> : null}
         {params.kontotyp === 'gewerblich' ? (
           <Alert tone="success">Dein Konto ist jetzt gewerblich. Deals, Händlerprofil und Anbieterprofil kannst du ohne Firmenangaben nutzen.</Alert>

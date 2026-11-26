@@ -23,7 +23,11 @@ export function formatPriceCents(cents: number): string {
  * Gibt `null` zurück, wenn die Eingabe kein gültiger Betrag ist.
  */
 export function parseEuroInputToCents(input: string): number | null {
-  const raw = input.trim().replace(/\s|€/g, '');
+  // Was Leute dazuschreiben, gehört nicht zum Betrag: „35 Euro“, „EUR 35“, „35,-“, „€ 35.–“
+  const raw = input
+    .replace(/euros?|eur|€/gi, '')
+    .replace(/\s/g, '')
+    .replace(/[,.][-–]+$/, '');
   if (raw === '') return null;
   let normalized: string;
   if (raw.includes(',')) {

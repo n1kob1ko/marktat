@@ -9,8 +9,9 @@ import { MobileSearch, MobileSearchFallback } from './mobile-search';
 import { CommandMenu, SearchShortcutHint } from './command-menu';
 
 export function SiteHeader() {
+  // Auf niedrigen Bildschirmen (Laptop mit 200 % Zoom, Handy quer) scrollt der Kopf mit weg, damit Platz für den Inhalt bleibt
   return (
-    <header className="sticky top-0 z-40 border-b border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
+    <header className="sticky top-0 z-40 border-b [@media(max-height:30rem)]:static border-line bg-surface/95 backdrop-blur supports-[backdrop-filter]:bg-surface/80">
       <Container className="flex h-16 items-center gap-2 sm:gap-6">
         <Link href="/" className="relative shrink-0 rounded-lg tap" aria-label="Markterl – zur Startseite">
           {/* Am Handy etwas kleiner, unter 400 px nur das Bildzeichen – Lupe, Konto und „Inserieren“ müssen daneben Platz haben */}

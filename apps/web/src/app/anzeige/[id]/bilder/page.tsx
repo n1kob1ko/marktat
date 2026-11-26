@@ -58,14 +58,14 @@ async function Content({
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
+        <div className="min-w-0">
           <p className="flex items-center gap-2 text-sm text-ink-500">
             <ListingStatusBadge status={listing.status} />
             <span className="truncate">{listing.title}</span>
           </p>
           <h1 className="mt-2 text-3xl font-bold text-ink-950 sm:text-4xl">Bilder</h1>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Link
             href={`/anzeige/${listing.id}/bearbeiten`}
             className={buttonClasses({ variant: 'outline' })}

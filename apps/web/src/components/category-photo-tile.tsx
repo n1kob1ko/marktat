@@ -50,15 +50,16 @@ export function CategoryPhotoTile({
         <span className="absolute inset-0 grid place-items-center pb-8 text-white/90">{icon}</span>
       )}
       <span
-        className="absolute inset-0 bg-gradient-to-t from-[#101a33]/80 via-[#101a33]/15 to-transparent"
+        className="absolute inset-0 bg-gradient-to-t from-[#101a33]/90 via-[#101a33]/35 to-transparent"
         aria-hidden="true"
       />
-      <span className="relative mt-auto block w-full p-2 sm:p-3">
+      {/* Kräftigerer Verlauf und Schatten: helle Fotos machten die weiße Schrift im Nutzertest schwer lesbar */}
+      <span className="relative mt-auto block w-full p-2 [text-shadow:0_1px_2px_rgb(0_0_0/0.55)] sm:p-3">
         <span className="block text-xs leading-tight font-semibold text-white sm:text-sm">
           {name}
         </span>
         {count ? (
-          <span className="mt-0.5 block text-xs text-white/80 tabular-nums">
+          <span className="mt-0.5 block text-xs text-white/90 tabular-nums">
             {count.toLocaleString('de-AT')} {count === 1 ? unit[0] : unit[1]}
           </span>
         ) : null}

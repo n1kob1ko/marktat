@@ -24,9 +24,9 @@ export async function UserMenu() {
     return (
       <>
         <SessionSync userId={null} />
-        <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'w-10 px-0 sm:w-auto sm:px-3' })}>
-          <CircleUserRound className="size-5 shrink-0 sm:hidden" aria-hidden="true" />
-          <span className="sr-only sm:not-sr-only">Anmelden</span>
+        {/* Auch am Handy als Wort: ein Personen-Symbol allein haben ältere Testpersonen nicht als „Anmelden“ erkannt */}
+        <Link href="/anmelden" className={buttonClasses({ variant: 'ghost', size: 'sm', className: 'px-2 sm:px-3' })}>
+          Anmelden
         </Link>
       </>
     );

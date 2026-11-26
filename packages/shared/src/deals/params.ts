@@ -2,7 +2,7 @@
  * Suchparameter der Deals – gleiche Namen in der URL der Website (/deals?…) und in `GET /v1/deals`, z. B.
  *   /deals?kategorie=elektronik-computer&kanal=lokal&plz=1010&umkreis=10&rabatt_ab=20
  *   /deals?shop=Media+Markt+AT&marke=Samsung
- *   /deals?zubehoer=aus
+ *   /deals?zubehoer=an   (Zubehör ist ohne Angabe ausgeblendet)
  */
 import { isAustrianPostalCode, stateBySlug } from '../austria.js';
 import { parseLocaleNumber } from '../attributes/validation.js';
@@ -67,7 +67,10 @@ export interface DealSearchQuery {
   priceMax?: number;
   /** Mindestrabatt in Prozent (nur Deals mit zulässigem Vergleichspreis) */
   discountMin?: number;
-  /** Zubehör (Hüllen, Kabel, Ersatzteile …) ausblenden, siehe isDealAccessory */
+  /**
+   * Zubehör (Hüllen, Kabel, Ersatzteile …) ausblenden, siehe isDealAccessory. Standard: ausgeblendet – im Nutzertest
+   * zeigte die Deals-Startseite sonst vor allem Handyhüllen und Kabel. `false` (zubehoer=an) zeigt es.
+   */
   hideAccessories?: boolean;
   sort: DealSort;
   page: number;
@@ -158,9 +161,10 @@ export function parseDealSearchParams(input: RawSearchParams): { query: DealSear
     else issues.push({ param: 'rabatt_ab', message: 'Rabatt ab muss eine ganze Zahl zwischen 1 und 99 sein.' });
   }
   const accessories = first(input.zubehoer);
+  query.hideAccessories = true;
   if (accessories) {
-    if (accessories === 'aus') query.hideAccessories = true;
-    else if (accessories !== 'an') issues.push({ param: 'zubehoer', message: 'Zubehör muss „aus“ oder „an“ sein.' });
+    if (accessories === 'an') query.hideAccessories = false;
+    else if (accessories !== 'aus') issues.push({ param: 'zubehoer', message: 'Zubehör muss „aus“ oder „an“ sein.' });
   }
 
   const hasCenter = Boolean(query.locationId || query.postalCode);
@@ -203,7 +207,7 @@ export function toDealSearchParams(query: DealSearchQuery): Record<string, strin
   if (query.priceMin !== undefined) params.preis_ab = String(query.priceMin);
   if (query.priceMax !== undefined) params.preis_bis = String(query.priceMax);
   if (query.discountMin !== undefined) params.rabatt_ab = String(query.discountMin);
-  if (query.hideAccessories) params.zubehoer = 'aus';
+  if (query.hideAccessories === false) params.zubehoer = 'an';
   if (query.sort !== dealDefaultSort(query.q)) params.sortierung = query.sort;
   if (query.page > 1) params.seite = String(query.page);
   if (query.pageSize !== DEAL_PAGE_SIZE) params.pageSize = String(query.pageSize);
@@ -220,6 +224,6 @@ export function dealSearchHref(query: DealSearchQuery): string {
 export function hasActiveDealFilters(query: DealSearchQuery): boolean {
   return Boolean(
     query.q || query.category || query.merchantId || query.shop || query.brand || query.channel || query.state || query.postalCode || query.locationId ||
-      query.priceMin !== undefined || query.priceMax !== undefined || query.discountMin !== undefined || query.hideAccessories,
+      query.priceMin !== undefined || query.priceMax !== undefined || query.discountMin !== undefined || query.hideAccessories === false,
   );
 }

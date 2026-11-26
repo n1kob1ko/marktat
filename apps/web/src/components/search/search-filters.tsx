@@ -49,6 +49,8 @@ export function formToSearch(entries: Iterable<[string, FormDataEntryValue]>): s
   }
   if (!grouped.has('ort') && !grouped.has('plz')) grouped.delete('umkreis');
   if (grouped.has('ort')) grouped.delete('plz');
+  // Ort oder PLZ gewählt: ein zusätzliches Bundesland widerspricht dem oft (Wien + Tirol ⇒ keine Treffer) und fällt weg
+  if (grouped.has('ort') || grouped.has('plz')) grouped.delete('bundesland');
   // Kategorie gewählt: der Bereich ergibt sich daraus
   if (grouped.has('kategorie')) grouped.delete('bereich');
 
@@ -243,12 +245,13 @@ export function SearchFilters({
               </div>
               <div className="space-y-1.5">
                 <label htmlFor="f-bundesland" className="text-sm text-ink-700">Bundesland</label>
-                <Select id="f-bundesland" name="bundesland" defaultValue={query.state ?? ''}>
+                <Select id="f-bundesland" name="bundesland" defaultValue={query.state ?? ''} disabled={hasLocation} aria-describedby={hasLocation ? 'f-bundesland-hint' : undefined}>
                   <option value="">Ganz Österreich</option>
                   {STATES.map((s) => (
                     <option key={s.slug} value={s.slug}>{s.name}</option>
                   ))}
                 </Select>
+                {hasLocation ? <p id="f-bundesland-hint" className="text-xs text-ink-500">Mit Ort oder PLZ gilt der Umkreis.</p> : null}
               </div>
             </fieldset>
 

@@ -9,7 +9,12 @@ import { startConversationAction } from '@/app/nachrichten/actions';
 import { SubmitButton } from '@/components/submit-button';
 import { ClientIdField } from '@/components/client-id-field';
 
-const SUGGESTIONS = ['Ist die Anzeige noch verfügbar?', 'Ist der Preis verhandelbar?', 'Wann könnte ich es mir ansehen?'];
+const SUGGESTIONS = ['Ist der Preis verhandelbar?', 'Wann könnte ich es mir ansehen?', 'Wäre Versand möglich?'];
+/**
+ * Bei Inseraten steht die häufigste erste Frage schon als echter Text im Feld. Als bloßer Platzhalter sah sie im
+ * Nutzertest wie geschrieben aus – „Senden“ lieferte dann nur die Browser-Meldung „Füllen Sie dieses Feld aus“.
+ */
+const LISTING_DEFAULT = 'Hallo, ist die Anzeige noch verfügbar?';
 const SERVICE_SUGGESTIONS = ['Hätten Sie in den nächsten Wochen Zeit?', 'Können Sie mir ein unverbindliches Angebot machen?', 'Arbeiten Sie auch bei mir vor Ort?'];
 const PROJECT_SUGGESTIONS = ['Ich hätte im genannten Zeitraum Zeit.', 'Ähnliche Projekte finden Sie in meinem Anbieterprofil.', 'Darf ich ein paar Fragen zum Umfang stellen?'];
 
@@ -26,7 +31,7 @@ export function ContactForm({ listingId, serviceProfileId, projectId, sellerName
     el.focus();
   }
   return (
-    <form action={action} className="mt-5 space-y-3" id="nachricht">
+    <form action={action} className="mt-5 space-y-3" id="nachricht" noValidate>
       {listingId ? <input type="hidden" name="listingId" value={listingId} /> : null}
       {serviceProfileId ? <input type="hidden" name="serviceProfileId" value={serviceProfileId} /> : null}
       {projectId ? <input type="hidden" name="projectId" value={projectId} /> : null}
@@ -55,8 +60,8 @@ export function ContactForm({ listingId, serviceProfileId, projectId, sellerName
           name="body"
           required
           maxLength={MESSAGE_MAX_LENGTH}
-          placeholder={projectId ? 'Hallo, ich kann Ihnen bei diesem Vorhaben helfen …' : serviceProfileId ? 'Hallo, ich suche Unterstützung bei …' : 'Hallo, ist die Anzeige noch verfügbar?'}
-          defaultValue={state.values?.body}
+          placeholder={projectId ? 'Schreib hier, wie du helfen kannst …' : serviceProfileId ? 'Schreib hier, wobei du Unterstützung suchst …' : 'Schreib hier deine Nachricht …'}
+          defaultValue={state.values?.body ?? (listingId && !projectId && !serviceProfileId ? LISTING_DEFAULT : undefined)}
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? 'contact-error' : undefined}
           className="min-h-28"
