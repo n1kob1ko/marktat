@@ -3,7 +3,7 @@ import { formatDate } from '@marktat/shared';
 import { loadEnv } from '../config/env.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { JobsService } from '../jobs/jobs.service.js';
-import { MailService, escapeHtml, mailLayout } from '../mail/mail.service.js';
+import { MailService, escapeHtml, mailHeaderImageUrl, mailLayout } from '../mail/mail.service.js';
 
 export const LISTING_REMINDER_JOB = 'listing-expiry-reminders';
 const DAY_MS = 86_400_000;
@@ -144,6 +144,7 @@ export class ListingRemindersService implements OnModuleInit {
         ],
         action: { label: content.action, url },
         settingsUrl,
+        headerImageUrl: mailHeaderImageUrl(web, 'ablauf'),
       }),
     });
   }

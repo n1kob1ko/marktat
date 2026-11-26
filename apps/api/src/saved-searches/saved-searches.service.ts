@@ -22,7 +22,7 @@ import { loadEnv } from '../config/env.js';
 import { Prisma, type SavedSearch } from '../generated/prisma/client.js';
 import { JobsService } from '../jobs/jobs.service.js';
 import { ENTITY_ID } from '../listings/visibility.js';
-import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
+import { escapeHtml, MailService, mailHeaderImageUrl, mailLayout } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { ListingSearchService } from '../search/listing-search.service.js';
 import { DealSearchService } from '../deals/deal-search.service.js';
@@ -221,6 +221,7 @@ export class SavedSearchesService implements OnModuleInit {
           ],
           action: { label: 'Alle Treffer ansehen', url: searchUrl },
           settingsUrl,
+          headerImageUrl: mailHeaderImageUrl(this.env.WEB_URL, 'treffer'),
         }),
       });
     }

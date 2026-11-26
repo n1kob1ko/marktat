@@ -27,7 +27,7 @@ import { ImageUrls } from '../images/image-urls.js';
 import { MediaUrls } from '../images/media.js';
 import { JobsService } from '../jobs/jobs.service.js';
 import { ENTITY_ID, publiclyVisibleWhere } from '../listings/visibility.js';
-import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
+import { escapeHtml, MailService, mailHeaderImageUrl, mailLayout } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { RatingsService } from '../ratings/ratings.service.js';
 import { RealtimeService } from '../realtime/realtime.service.js';
@@ -491,6 +491,7 @@ export class MessagesService implements OnModuleInit {
       ],
       action: { label: 'Nachricht lesen', url },
       settingsUrl: `${this.env.WEB_URL}/konto/benachrichtigungen`,
+      headerImageUrl: mailHeaderImageUrl(this.env.WEB_URL, 'nachricht'),
     });
     await this.mail.send({ to: recipient.email, subject: oneLine(`Neue Nachricht von ${senderName} zu „${title}“`), text, html });
     await markNotified();

@@ -69,6 +69,8 @@ const csp = [
 const nextConfig: NextConfig = {
   // Für das Docker-Image (apps/web/Dockerfile): eigenständiger Server ohne node_modules des ganzen Monorepos
   ...(process.env.NEXT_OUTPUT === 'standalone' ? { output: 'standalone' as const, outputFileTracingRoot: repoRoot } : {}),
+  // Link-Vorschaubilder (lib/og-image.tsx) lesen Foto und Schriften zur Laufzeit von der Platte – mit ins Image nehmen
+  outputFileTracingIncludes: { '/**': ['./src/assets/og/*', './src/assets/fonts/*'] },
   cacheComponents: true,
   partialPrefetching: true,
   poweredByHeader: false,
