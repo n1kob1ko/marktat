@@ -24,7 +24,9 @@ test('Startseite zeigt Suche, Bereiche und Kategorien', async ({ page }) => {
 test('geschützte Seiten leiten zur Anmeldung weiter', async ({ page }) => {
   await page.goto('/inserieren');
   await expect(page).toHaveURL(/\/anmelden\?weiter=%2Finserieren/);
-  await expect(page.getByText('Bitte melde dich an, um fortzufahren.')).toBeVisible();
+  await expect(page.getByText('Zum Inserieren brauchst du ein kostenloses Konto.', { exact: false })).toBeVisible();
+  // Wer noch kein Konto hat, kommt direkt zur Registrierung – mit demselben Ziel
+  await expect(page.getByRole('link', { name: 'Noch kein Konto? Kostenlos registrieren' })).toHaveAttribute('href', '/registrieren?weiter=%2Finserieren');
 });
 
 test('Registrierung zeigt Feldfehler auf Deutsch', async ({ page }) => {
