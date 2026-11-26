@@ -110,8 +110,13 @@ test('Registrieren, E-Mail bestätigen, inserieren, finden, abmelden, Passwort z
   await page.keyboard.press('Escape');
   await expect(shareMenu).toBeHidden();
   await expect(page.locator('meta[property="og:image"]').first()).toHaveAttribute('content', /\S/);
+  // Vorschaubild als JPEG (Foto mit Logo), damit es für WhatsApp klein genug bleibt
   const ogImage = await page.request.get('/opengraph-image');
-  expect(ogImage.headers()['content-type']).toContain('image/png');
+  expect(ogImage.ok()).toBe(true);
+  expect(ogImage.headers()['content-type']).toContain('image/jpeg');
+  // Kopfbild der E-Mails liegt unter einer festen Adresse
+  const mailImage = await page.request.get('/mail/kopf-nachricht.jpg?v=1');
+  expect(mailImage.headers()['content-type']).toContain('image/jpeg');
 
   // 4. Über die Suche auffindbar
   await page.goto(`/suche?q=${encodeURIComponent(title)}`);
