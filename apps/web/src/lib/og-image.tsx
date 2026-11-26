@@ -13,7 +13,7 @@ export const ogSize = { width: 1200, height: 630 };
 /** JPEG statt PNG: ein Foto als PNG wäre über 1 MB, WhatsApp zeigt so große Vorschaubilder oft gar nicht an */
 export const ogContentType = 'image/jpeg';
 
-const HERO = '11,58,44';
+const HERO = '23,36,71';
 
 export async function brandOgImage(options: { photo: 'startseite' | 'deals' | 'dienstleistungen'; title: string; accent: string; sub: string }) {
   // Läuft beim Build (statisches Bild), Arbeitsverzeichnis ist apps/web
@@ -52,7 +52,7 @@ export async function brandOgImage(options: { photo: 'startseite' | 'deals' | 'd
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center' }}>
-          {brandMarkSvg({ shape: '#f6f4ef', cutout: `rgb(${HERO})`, accent: '#f28c38' }, { width: 64, height: 64 })}
+          {brandMarkSvg({ shape: '#f6f4ef', hole: '#f28c38', letter: `rgb(${HERO})` }, { width: 64, height: 64 })}
           <div style={{ display: 'flex', marginLeft: 18, fontFamily: 'Bricolage', fontSize: 52, letterSpacing: -1 }}>
             <span>{WORDMARK.main}</span>
             <span style={{ color: '#f28c38' }}>{WORDMARK.accent}</span>

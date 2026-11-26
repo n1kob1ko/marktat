@@ -79,16 +79,16 @@ export function mailLayout(options: {
   const { heading, paragraphs, action, settingsUrl, headerImageUrl } = options;
   const footer = settingsUrl
     ? `Du bekommst diese E-Mail, weil du sie in deinem Markterl-Konto aktiviert hast.
-<a href="${escapeHtml(settingsUrl)}" style="color:#0f4c3a">Benachrichtigungen ändern</a>`
+<a href="${escapeHtml(settingsUrl)}" style="color:#1e2f5c">Benachrichtigungen ändern</a>`
     : 'Diese E-Mail betrifft eine Entscheidung zu deinem Konto oder deinen Inhalten und wird unabhängig von deinen Benachrichtigungseinstellungen versendet.';
   return `<!doctype html>
-<html lang="de"><body style="margin:0;background:#f5f4ef;font-family:Arial,Helvetica,sans-serif;color:#1d2420">
+<html lang="de"><body style="margin:0;background:#f5f4ef;font-family:Arial,Helvetica,sans-serif;color:#1c2029">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center" style="padding:24px 12px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:12px;border:1px solid #e3e1d8">
-${headerImageUrl ? `<tr><td style="padding:0;line-height:0"><img src="${escapeHtml(headerImageUrl)}" width="520" alt="" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:12px 12px 0 0"></td></tr>\n` : ''}<tr><td style="padding:24px 28px 8px;font-size:20px;font-weight:bold;color:#0f4c3a">Markterl</td></tr>
+${headerImageUrl ? `<tr><td style="padding:0;line-height:0"><img src="${escapeHtml(headerImageUrl)}" width="520" alt="" style="display:block;width:100%;max-width:520px;height:auto;border:0;border-radius:12px 12px 0 0"></td></tr>\n` : ''}<tr><td style="padding:24px 28px 8px;font-size:20px;font-weight:bold;color:#1e2f5c">Markterl</td></tr>
 <tr><td style="padding:8px 28px 0"><h1 style="margin:0 0 12px;font-size:18px">${escapeHtml(heading)}</h1>
 ${paragraphs.map((p) => `<p style="margin:0 0 12px;font-size:15px;line-height:1.5">${p}</p>`).join('\n')}
-<p style="margin:20px 0 24px"><a href="${escapeHtml(action.url)}" style="display:inline-block;background:#0f4c3a;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold">${escapeHtml(action.label)}</a></p>
+<p style="margin:20px 0 24px"><a href="${escapeHtml(action.url)}" style="display:inline-block;background:#1e2f5c;color:#ffffff;text-decoration:none;padding:12px 20px;border-radius:10px;font-weight:bold">${escapeHtml(action.label)}</a></p>
 </td></tr>
 <tr><td style="padding:16px 28px 24px;border-top:1px solid #e3e1d8;font-size:12px;color:#6b716c">
 ${footer}

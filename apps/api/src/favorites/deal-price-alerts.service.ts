@@ -119,7 +119,7 @@ export class DealPriceAlertsService implements OnModuleInit {
           drops
             .map(
               (d) =>
-                `<a href="${escapeHtml(`${web}/deals/${d.dealId}`)}" style="color:#0f4c3a">${escapeHtml(d.title)}</a> – jetzt <strong>${escapeHtml(formatPriceCents(d.now))}</strong> statt ${escapeHtml(formatPriceCents(d.before))}`,
+                `<a href="${escapeHtml(`${web}/deals/${d.dealId}`)}" style="color:#1e2f5c">${escapeHtml(d.title)}</a> – jetzt <strong>${escapeHtml(formatPriceCents(d.now))}</strong> statt ${escapeHtml(formatPriceCents(d.before))}`,
             )
             .join('<br>'),
           'Preise laut Händler bzw. Produktfeed; maßgeblich ist der Preis im Shop.',

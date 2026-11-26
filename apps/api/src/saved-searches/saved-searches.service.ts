@@ -216,7 +216,7 @@ export class SavedSearchesService implements OnModuleInit {
             `Hallo ${escapeHtml(saved.user.displayName)},`,
             `für deine gespeicherte Suche gibt es ${escapeHtml(count)}:`,
             lines
-              .map((l) => `<a href="${escapeHtml(l.url)}" style="color:#0f4c3a">${escapeHtml(l.title)}</a>${l.price ? ` – ${escapeHtml(l.price)}` : ''}`)
+              .map((l) => `<a href="${escapeHtml(l.url)}" style="color:#1e2f5c">${escapeHtml(l.title)}</a>${l.price ? ` – ${escapeHtml(l.price)}` : ''}`)
               .join('<br>'),
           ],
           action: { label: 'Alle Treffer ansehen', url: searchUrl },
