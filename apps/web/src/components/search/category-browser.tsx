@@ -4,7 +4,7 @@ import { hasActiveFilters, type CategoryNode, type SearchQuery } from '@marktat/
 import { cn } from '@marktat/ui';
 import { CategoryIcon } from '@/components/category-icon';
 import { CategoryPhotoTile } from '@/components/category-photo-tile';
-import { CATEGORY_PHOTOS, categoryPhotoUrl, type CategoryPhoto } from '@/content/category-photos';
+import { CATEGORY_PHOTOS, categoryPhotoSrc, type CategoryPhoto } from '@/content/category-photos';
 import { browseChildren, currentScope, scopeHref, type BrowseEntry } from '@/lib/search';
 
 /** Icons der Bereiche, wenn noch kein Bereich gewählt ist */
@@ -101,7 +101,7 @@ function EntryLink({ entry, href, count, photo }: { entry: BrowseEntry; href: st
     >
       {photo ? (
         <Image
-          src={categoryPhotoUrl(photo, 160)}
+          src={categoryPhotoSrc(photo, 160)}
           alt=""
           width={32}
           height={32}

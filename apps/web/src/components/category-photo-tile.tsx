@@ -1,7 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { cn } from '@marktat/ui';
-import { categoryPhotoUrl, type CategoryPhoto } from '@/content/category-photos';
+import { categoryPhotoSrc, isUnsplashPhoto, type CategoryPhoto } from '@/content/category-photos';
 
 /** Kachel mit Foto (oder Symbol, wenn es für die Kategorie keins gibt); Name und Anzahl stehen unten auf dem Bild */
 export function CategoryPhotoTile({
@@ -39,17 +39,18 @@ export function CategoryPhotoTile({
     >
       {photo ? (
         <Image
-          src={categoryPhotoUrl(photo)}
+          src={categoryPhotoSrc(photo)}
           alt=""
           fill
           sizes={sizes}
+          placeholder={isUnsplashPhoto(photo) ? 'empty' : 'blur'}
           className="object-cover transition-transform duration-300 ease-out group-hover:scale-105 motion-reduce:transition-none"
         />
       ) : (
         <span className="absolute inset-0 grid place-items-center pb-8 text-white/90">{icon}</span>
       )}
       <span
-        className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent"
+        className="absolute inset-0 bg-gradient-to-t from-[#101a33]/80 via-[#101a33]/15 to-transparent"
         aria-hidden="true"
       />
       <span className="relative mt-auto block w-full p-2 sm:p-3">

@@ -1,12 +1,18 @@
+import type { StaticImageData } from 'next/image';
+import { KATEGORIE_BILDER } from './category-images';
+
 /**
- * Fotos für die Kategorie-Kacheln (Startseite und Suche) (Unsplash-Lizenz: kostenlos, auch kommerziell, ohne Pflicht zur
- * Namensnennung – wir nennen die Fotografen trotzdem im Impressum). Ausgeliefert werden sie über die
- * Bildoptimierung von Next.js von unserem eigenen Server: Besucher laden nichts direkt bei Unsplash.
+ * Bilder für die Kategorie-Kacheln (Startseite, Suche und Deals).
+ *
+ * Die meisten sind eigene, für Markterl erstellte Bilder (alle im gleichen Stil, siehe `category-images.ts`), liegen im
+ * Projekt und werden mit dem Rest der Seite ausgeliefert. Wo es noch keins gibt, nehmen wir ein Unsplash-Foto
+ * (Unsplash-Lizenz: kostenlos, auch kommerziell; die Fotografen nennen wir im Impressum). Die holt und verkleinert
+ * unser eigener Server über die Bildoptimierung von Next.js: Besucher laden nichts direkt bei Unsplash.
  *
  * Schlüssel ist der Kategoriepfad (bzw. der Bereich). Fehlt ein Eintrag, zeigt die Kachel das Kategorie-Symbol bzw. die
  * Suchseite ihre schlichte Liste.
  */
-export interface CategoryPhoto {
+export interface UnsplashPhoto {
   /** Pfad auf images.unsplash.com (ohne Parameter) */
   src: string;
   /** Unsplash-ID (für den Link zur Fotoseite) */
@@ -17,29 +23,21 @@ export interface CategoryPhoto {
   color: string;
 }
 
-const photo = (src: string, id: string, author: string, username: string, color: string): CategoryPhoto => ({ src, id, author, username, color });
+/** Eigenes Bild aus `src/assets/kategorien` */
+export interface LocalCategoryImage {
+  image: StaticImageData;
+  /** Hintergrund, solange es lädt */
+  color: string;
+}
 
-export const CATEGORY_PHOTOS: Record<string, CategoryPhoto> = {
-  'marktplatz/antiquitaeten-kunst': photo('photo-1443884590026-2e4d21aee71c', 'Aq7paIaerrY', 'Christelle Bourgeois', 'calliframe', '#260c0c'),
-  'marktplatz/baby-kind': photo('photo-1515488042361-ee00e0ddd4e4', 'p0hDztR46cw', 'Yuri Li', 'itshoobastank', '#d9d9d9'),
-  'marktplatz/beauty-gesundheit-wellness': photo('photo-1583209814683-c023dd293cc6', 'dMjkQJs58uo', 'pmv chamara', 'pmvch', '#f3d9d9'),
-  'marktplatz/boote-yachten-jetskis': photo('photo-1499365265913-51eac7765412', 'R4lFk-d37ng', 'Eric Ward', 'ericjamesward', '#404040'),
-  'marktplatz/buecher-filme-musik': photo('photo-1483412033650-1015ddeb83d1', 'T3mKJXfdims', 'blocks', 'blocks', '#594026'),
-  'marktplatz/computer-software': photo('photo-1496181133206-80ce9b88a853', '1SAnrIxw5OY', 'Kari Shea', 'karishea', '#d9d9d9'),
-  'marktplatz/dienstleistungen': photo('photo-1645651964715-d200ce0939cc', 'EJU7A__krX0', 'benjamin lehman', 'abject', '#260c0c'),
-  'marktplatz/freizeit-instrumente-kulinarik': photo('photo-1510915361894-db8b60106cb1', 'fCEJGBzAkrU', 'Jefferson Santos', 'jefflssantos', '#402626'),
-  'marktplatz/games-konsolen': photo('photo-1612287230202-1ff1d85d1bdf', 'hUD0PUczwJQ', 'Javier Martínez', 'cjdante', '#73f3f3'),
-  'marktplatz/haus-garten-werkstatt': photo('photo-1611843467160-25afb8df1074', 'q13Zq1Jufks', 'Sandie Clarke', 'honeypoppet', '#a68c73'),
-  'marktplatz/kameras-tv-multimedia': photo('photo-1510127034890-ba27508e9f1c', 'F3Dde_9thd8', 'NordWood Themes', 'nordwood', '#d9d9d9'),
-  'marktplatz/mode-accessoires': photo('photo-1558769132-cb1aea458c5e', 'TS--uNw-JqE', 'Alyssa Strohmann', 'anotherlovely', '#d9c0c0'),
-  'marktplatz/smartphones-telefonie': photo('photo-1592890288564-76628a30a657', 'wK-elt11pF0', 'Jonas Leupe', 'jonasleupe', '#a6a6a6'),
-  'marktplatz/spielen-spielzeug': photo('photo-1545558014-8692077e9b5c', 'gDiRwIYAMA8', 'Vanessa Bucceri', 'vbcreative', '#f3f3f3'),
-  'marktplatz/sport-sportgeraete': photo('photo-1532298229144-0ec0c57515c7', 'yjAFnkLtKY0', 'Mikkel Bech', 'bechbox', '#262626'),
-  'marktplatz/tiere-tierbedarf': photo('photo-1561037404-61cd46aa615b', 'N04FIfHhv_k', 'Victor G', 'victor_vector', '#f3d9c0'),
-  'marktplatz/uhren-schmuck': photo('photo-1523170335258-f5ed11844a49', 'TJrkkhdB39E', 'John Torcasio', 'johntorcasio', '#8c8c8c'),
-  'marktplatz/wohnen-haushalt-gastronomie': photo('photo-1555041469-a586c61ea9bc', 'fZuleEfeA1Q', 'Phillip Goldsberry', 'phillipgold', '#d9d9d9'),
-  'marktplatz/sonstiges': photo('photo-1597668900045-b9283c0de174', 'fi6kmznklGQ', 'Nikola Đuza', 'nikolalsvk', '#c0a68c'),
+export type CategoryPhoto = UnsplashPhoto | LocalCategoryImage;
 
+export const isUnsplashPhoto = (photo: CategoryPhoto): photo is UnsplashPhoto => 'id' in photo;
+
+const photo = (src: string, id: string, author: string, username: string, color: string): UnsplashPhoto => ({ src, id, author, username, color });
+
+/** Unsplash-Fotos für Kategorien, die noch kein eigenes Bild haben */
+const UNSPLASH_PHOTOS: Record<string, UnsplashPhoto> = {
   // Bereiche (Suche ohne Bereich: „Alle Bereiche“)
   marktplatz: photo('photo-1516382461343-35e1ba016e01', 'U3FPDpXQjCY', 'Jon Tyson', 'jontyson', '#262626'),
   'auto-motor': photo('photo-1772198549931-e22ded0b35c8', 'RrvBAdU52w8', 'Alin Andersen', 'onixion', '#404040'),
@@ -75,6 +73,11 @@ export const CATEGORY_PHOTOS: Record<string, CategoryPhoto> = {
   'deals/reisen-freizeit': photo('photo-1473625247510-8ceb1760943f', '_g1WdcKcV3w', 'Mantas Hesthaven', 'mantashesthaven', '#260c0c'),
 };
 
+export const CATEGORY_PHOTOS: Record<string, CategoryPhoto> = { ...UNSPLASH_PHOTOS, ...KATEGORIE_BILDER };
+
+/** Unsplash-Fotos, die tatsächlich noch angezeigt werden (für die Namensnennung im Impressum) */
+export const USED_UNSPLASH_PHOTOS: UnsplashPhoto[] = Object.values(CATEGORY_PHOTOS).filter(isUnsplashPhoto);
+
 /** Fotos der Deal-Kategorien: eigene (`deals/<slug>`) oder die der verwandten Marktplatz-Kategorie */
 const DEAL_PHOTO_KEYS: Record<string, string> = {
   'elektronik-computer': 'marktplatz/computer-software',
@@ -101,8 +104,12 @@ export function dealCategoryPhoto(slug: string, relatedCategoryPath?: string | n
 
 export const UNSPLASH_ORIGIN = 'https://images.unsplash.com';
 
-/** Bild-URL in passender Größe (Unsplash schneidet zu; Next.js optimiert danach noch einmal) */
-export function categoryPhotoUrl(photo: CategoryPhoto, width = 640) {
+/**
+ * Quelle für `next/image`: das eigene Bild oder die Unsplash-URL in passender Größe (Unsplash schneidet zu; Next.js
+ * optimiert danach noch einmal).
+ */
+export function categoryPhotoSrc(photo: CategoryPhoto, width = 640): string | StaticImageData {
+  if (!isUnsplashPhoto(photo)) return photo.image;
   return `${UNSPLASH_ORIGIN}/${photo.src}?w=${width}&h=${Math.round(width * 0.75)}&fit=crop&crop=entropy&auto=format&q=70`;
 }
 
