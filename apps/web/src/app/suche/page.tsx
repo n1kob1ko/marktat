@@ -24,7 +24,7 @@ import { api } from '@/lib/api';
 import { findCategory, getCategories } from '@/lib/data';
 import { activeFilters, browseTrail, currentScope, findCategoryByPath, resetHref, scopeHref, scopeLabel, searchHref } from '@/lib/search';
 import { CategoryBrowser } from '@/components/search/category-browser';
-import { categoryPhotoUrl, nearestCategoryPhoto } from '@/content/category-photos';
+import { categoryPhotoSrc, nearestCategoryPhoto } from '@/content/category-photos';
 import { ListingCard } from '@/components/listing-card';
 import { SearchFilters } from '@/components/search/search-filters';
 import { SortSelect } from '@/components/search/sort-select';
@@ -282,7 +282,7 @@ function EmptyState({
     >
       {photo ? (
         <div className="relative h-32 sm:h-44" style={{ backgroundColor: photo.color }}>
-          <Image src={categoryPhotoUrl(photo, 1200)} alt="" fill sizes="(min-width: 1024px) 50rem, 100vw" className="object-cover" />
+          <Image src={categoryPhotoSrc(photo, 1200)} alt="" fill sizes="(min-width: 1024px) 50rem, 100vw" className="object-cover" />
           <span className="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent" aria-hidden="true" />
         </div>
       ) : null}
