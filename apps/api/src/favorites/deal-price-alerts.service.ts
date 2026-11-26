@@ -3,7 +3,7 @@ import { formatPriceCents } from '@marktat/shared';
 import { loadEnv } from '../config/env.js';
 import { publicDealWhere } from '../deals/deals.mapper.js';
 import { JobsService } from '../jobs/jobs.service.js';
-import { escapeHtml, MailService, mailLayout } from '../mail/mail.service.js';
+import { escapeHtml, MailService, mailHeaderImageUrl, mailLayout } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 const ALERT_JOB = 'deal-price-alerts';
@@ -126,6 +126,7 @@ export class DealPriceAlertsService implements OnModuleInit {
         ],
         action: drops.length === 1 ? { label: 'Zum Deal', url: `${web}/deals/${drops[0]!.dealId}` } : { label: 'Gemerkte Deals ansehen', url: listUrl },
         settingsUrl,
+        headerImageUrl: mailHeaderImageUrl(web, 'preisalarm'),
       }),
     });
   }
