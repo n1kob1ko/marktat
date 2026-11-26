@@ -28,10 +28,14 @@ const PARAMS = ['q', 'shop', 'kategorie', 'marke', 'kanal', 'ort', 'plz', 'umkre
 /** Formular → saubere Deal-URL: leere Felder weg, Umkreis nur mit Ort */
 export function formToDealSearch(entries: Iterable<[string, FormDataEntryValue]>): string {
   const params = new URLSearchParams();
+  let hideAccessories = false;
   for (const [key, raw] of entries) {
     const value = String(raw).trim();
-    if (value && PARAMS.includes(key)) params.set(key, value);
+    if (key === 'zubehoer') hideAccessories ||= value === 'aus';
+    else if (value && PARAMS.includes(key)) params.set(key, value);
   }
+  // Zubehör ist ohne Angabe ausgeblendet; nur ein abgehaktes Kästchen muss in die URL
+  if (!hideAccessories) params.set('zubehoer', 'an');
   if (!params.has('ort') && !params.has('plz')) {
     params.delete('umkreis');
     if (params.get('sortierung') === 'entfernung') params.delete('sortierung');
@@ -212,7 +216,7 @@ export function DealFilters({
             </Group>
 
             <label className="flex cursor-pointer items-start gap-3 text-sm text-ink-800">
-              <input type="checkbox" name="zubehoer" value="aus" defaultChecked={query.hideAccessories} className="mt-0.5 size-4.5 shrink-0 accent-brand-700" />
+              <input type="checkbox" name="zubehoer" value="aus" defaultChecked={query.hideAccessories !== false} className="mt-0.5 size-4.5 shrink-0 accent-brand-700" />
               <span>
                 <span className="font-semibold text-ink-900">Zubehör ausblenden</span>
                 <span className="block text-xs text-ink-500">Hüllen, Schutzgläser, Kabel, Adapter, Ersatzteile</span>

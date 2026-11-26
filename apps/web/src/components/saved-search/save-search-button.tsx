@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useActionState, useState } from 'react';
-import { BellPlus, Bookmark } from 'lucide-react';
+import { useActionState, useEffect, useState } from 'react';
+import { BellPlus, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Alert, Button, Checkbox, Field, Input, buttonClasses } from '@marktat/ui';
 import type { SavedSearchKind } from '@marktat/shared';
 import { initialFormState } from '@/lib/form-state';
@@ -25,18 +25,30 @@ interface SaveSearchButtonProps {
 /** Speichert die aktuelle Suche mit allen Filtern – optional mit E-Mail bei neuen Treffern. */
 export function SaveSearchButton(props: SaveSearchButtonProps) {
   const [open, setOpen] = useState(false);
+  // Für welche Filter zuletzt gespeichert wurde: nach dem Speichern zeigt der Knopf das an (im Nutzertest war unklar, ob es geklappt hat)
+  const current = JSON.stringify(props.params);
+  const [savedFor, setSavedFor] = useState<string | null>(null);
   return (
     <>
-      <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="h-10 max-lg:h-11">
-        <Bookmark className="size-4" aria-hidden="true" /> Suche speichern
-      </Button>
-      {open ? <SaveSearchDialog {...props} onClose={() => setOpen(false)} /> : null}
+      {savedFor === current ? (
+        <Link href="/konto/suchen" className={buttonClasses({ variant: 'outline', size: 'sm', className: 'h-10 border-brand-600 text-brand-800 max-lg:h-11' })}>
+          <BookmarkCheck className="size-4" aria-hidden="true" /> Suche gespeichert
+        </Link>
+      ) : (
+        <Button variant="outline" size="sm" onClick={() => setOpen(true)} className="h-10 max-lg:h-11">
+          <Bookmark className="size-4" aria-hidden="true" /> Suche speichern
+        </Button>
+      )}
+      {open ? <SaveSearchDialog {...props} onClose={() => setOpen(false)} onSaved={() => setSavedFor(current)} /> : null}
     </>
   );
 }
 
-function SaveSearchDialog({ kind = 'LISTINGS', params, labels, defaultName, returnTo, onClose }: SaveSearchButtonProps & { onClose: () => void }) {
+function SaveSearchDialog({ kind = 'LISTINGS', params, labels, defaultName, returnTo, onClose, onSaved }: SaveSearchButtonProps & { onClose: () => void; onSaved: () => void }) {
   const [state, action] = useActionState(saveSearchAction, initialFormState);
+  useEffect(() => {
+    if (state.status === 'success') onSaved();
+  }, [state, onSaved]);
 
   return (
     <ModalDialog title="Suche speichern" onClose={onClose} className="w-[min(30rem,calc(100vw-2rem))]">

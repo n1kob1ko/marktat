@@ -116,6 +116,11 @@ describe('formToSearch', () => {
     expect(formToSearch([['ort', '42'], ['plz', '1010'], ['umkreis', '25']])).toBe('/suche?ort=42&umkreis=25');
   });
 
+  it('lässt das Bundesland weg, sobald ein Ort oder eine PLZ gewählt ist', () => {
+    expect(formToSearch([['plz', '1010'], ['umkreis', '10'], ['bundesland', 'tirol']])).toBe('/suche?plz=1010&umkreis=10');
+    expect(formToSearch([['bundesland', 'tirol']])).toBe('/suche?bundesland=tirol');
+  });
+
   it('kennt bei Jobs kein Preisfeld', () => {
     expect(formToSearch([['bereich', 'jobs'], ['preis_bis', '100'], ['gehalt_ab', '2500']])).toBe('/suche?bereich=jobs&gehalt_ab=2500');
   });

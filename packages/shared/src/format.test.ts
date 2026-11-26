@@ -20,6 +20,11 @@ describe('parseEuroInputToCents', () => {
     ['1.299', 129900],
     ['€ 20', 2000],
     ['0,99', 99],
+    ['35 Euro', 3500],
+    ['EUR 35', 3500],
+    ['35,-', 3500],
+    ['120,– €', 12000],
+    ['1.200 Euros', 120000],
   ])('wandelt %s in %d Cent um', (input, cents) => {
     expect(parseEuroInputToCents(input)).toBe(cents);
   });

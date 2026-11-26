@@ -194,11 +194,16 @@ describe('Suchparameter', () => {
     expect(hasActiveDealFilters({ ...query, category: undefined, brand: undefined })).toBe(true);
     expect(dealSearchHref(query)).toBe('/deals?kategorie=tv-audio&shop=Media+Markt+AT&marke=Samsung');
     expect(parseDealSearchParams({ shop: 'x'.repeat(121), marke: 'y'.repeat(61) }).issues.map((i) => i.param)).toEqual(['shop', 'marke']);
-    const accessories = parseDealSearchParams({ zubehoer: 'aus' }).query;
-    expect(accessories.hideAccessories).toBe(true);
-    expect(hasActiveDealFilters(accessories)).toBe(true);
-    expect(dealSearchHref(accessories)).toBe('/deals?zubehoer=aus');
-    expect(parseDealSearchParams({ zubehoer: 'an' }).query.hideAccessories).toBeUndefined();
+    // Zubehör ist standardmäßig ausgeblendet; „aus“ aus älteren Links bedeutet dasselbe
+    const standard = parseDealSearchParams({}).query;
+    expect(standard.hideAccessories).toBe(true);
+    expect(hasActiveDealFilters(standard)).toBe(false);
+    expect(dealSearchHref(standard)).toBe('/deals');
+    expect(dealSearchHref(parseDealSearchParams({ zubehoer: 'aus' }).query)).toBe('/deals');
+    const withAccessories = parseDealSearchParams({ zubehoer: 'an' }).query;
+    expect(withAccessories.hideAccessories).toBe(false);
+    expect(hasActiveDealFilters(withAccessories)).toBe(true);
+    expect(dealSearchHref(withAccessories)).toBe('/deals?zubehoer=an');
     expect(parseDealSearchParams({ zubehoer: 'egal' }).issues.map((i) => i.param)).toEqual(['zubehoer']);
   });
 

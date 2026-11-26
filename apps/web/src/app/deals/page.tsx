@@ -132,7 +132,7 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
                 </span>
                 {' · '}
                 <Link
-                  href={dealSearchHref({ ...query, hideAccessories: query.hideAccessories ? undefined : true, page: 1 })}
+                  href={dealSearchHref({ ...query, hideAccessories: !query.hideAccessories, page: 1 })}
                   scroll={false}
                   className="font-semibold text-brand-700 hover:underline"
                 >
@@ -175,7 +175,6 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
         ) : null}
 
         <div className="mt-6">
-          <AffiliatePromotions promotions={promotions} />
           {!result ? (
             <p className="rounded-xl border border-line bg-surface p-6 text-ink-600" role="alert">
               Die Angebote sind gerade nicht erreichbar. Bitte versuche es gleich noch einmal.
@@ -194,6 +193,8 @@ async function DealResults({ searchParams }: { searchParams: Promise<Params> }) 
               <Pagination page={query.page} totalPages={result.totalPages} hrefFor={(page) => dealSearchHref({ ...query, page })} />
             </>
           )}
+          {/* Gutscheine erst nach den Angeboten: am Handy kamen sonst rund zwölf Gutschein-Karten vor dem ersten Deal */}
+          <AffiliatePromotions promotions={promotions} />
         </div>
 
         <p className="mt-8 flex gap-2 text-xs leading-relaxed text-ink-500">

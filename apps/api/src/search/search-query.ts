@@ -68,8 +68,11 @@ export function meiliSort(search: ResolvedSearch): string[] {
       return ['priceCents:desc', ...newest];
     case 'entfernung':
       return center ? [`_geoPoint(${num(center.latitude)}, ${num(center.longitude)}):asc`, ...newest] : newest;
+    case 'relevanz':
+      // „Beste Treffer“: keine Sortierung mitschicken – sonst würde sie (Rang direkt nach „words“, siehe
+      // indexSettings) die Treffergüte überstimmen. Gleichstand entscheidet die Regel „sortedAt:desc“ am Ende.
+      return [];
     default:
-      // „Relevanz“: zuerst das Ranking von Meilisearch (Treffergüte), danach wie „Neueste“
       return newest;
   }
 }

@@ -37,7 +37,8 @@ export const Select = forwardRef<HTMLSelectElement, SelectHTMLAttributes<HTMLSel
         ref={ref}
         className={cn(
           control,
-          'select-chevron h-11',
+          // pr-10: Platz für den Pfeil (sonst läuft z. B. „Wien (21., Floridsdorf, Wien)“ darunter)
+          'select-chevron h-11 truncate pr-10',
           className,
         )}
         {...props}

@@ -113,20 +113,20 @@ async function ListingContent({
         </Link>
       </nav>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
-        <div className="space-y-6">
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        <div className="min-w-0 space-y-6">
           <ListingGallery images={listing.images} title={listing.title} />
 
           <Card className="p-5 sm:p-7">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-wrap items-center gap-2 pt-2">
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div className="flex min-w-0 flex-wrap items-center gap-2 pt-2">
                 <AvailabilityBadge listing={listing} />
                 {listing.isBusiness ? <Badge tone="brand">Gewerblicher Anbieter</Badge> : <Badge>Privat</Badge>}
                 {listing.top ? <Badge tone="accent">Top-Anzeige</Badge> : listing.highlighted ? <Badge tone="accent">Hervorgehoben</Badge> : null}
                 {listing.sponsored ? <Badge title="Bezahlte Platzierung">Gesponsert</Badge> : null}
                 {listing.condition ? <Badge tone="neutral">Zustand: {ITEM_CONDITION_LABELS[listing.condition]}</Badge> : null}
               </div>
-              <div className="flex shrink-0 gap-2">
+              <div className="ml-auto flex shrink-0 gap-2">
                 {listing.status === 'ACTIVE' ? <ShareButton url={`${serverEnv.webUrl}/anzeige/${listing.id}`} title={listing.title} /> : null}
                 {listing.isOwner || listing.status === 'SOLD' ? null : (
                   <FavoriteButton listingId={listing.id} title={listing.title} initial={token ? listing.isFavorite : false} variant="detail" returnTo={`/anzeige/${listing.id}`} />
@@ -165,8 +165,19 @@ async function ListingContent({
           </Card>
         </div>
 
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <Card className="scroll-mt-20 p-5" id="kontakt">
+            {/* Am PC steht der Titel unter dem großen Foto; hier oben sieht man Titel und Preis gleich im ersten Bildschirm (auch mit Zoom). Doppelt für Screenreader nicht nötig. */}
+            <div className="mb-4 hidden border-b border-line pb-4 lg:block" aria-hidden="true">
+              <p className="line-clamp-2 font-semibold leading-snug text-ink-900">{listing.title}</p>
+              <PriceTag
+                priceType={listing.priceType}
+                priceCents={listing.priceCents}
+                suffix={listing.priceSuffix}
+                salary={listing.vertical === 'JOBS' ? listing.salary : undefined}
+                className="mt-1 text-2xl"
+              />
+            </div>
             <div className="flex items-center gap-3">
               {seller.avatarUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element -- Profilbild bzw. Logo ist serverseitig verkleinert (WebP)
@@ -380,8 +391,8 @@ function OwnerActions({ listing }: { listing: ListingDetail }) {
         <span className="font-semibold">Deine Anzeige</span>
         <ListingStatusBadge status={listing.status} />
         {listing.reserved && listing.status === 'ACTIVE' ? <Badge tone="warning">Reserviert</Badge> : null}
-        {listing.expiresAt && listing.status === 'ACTIVE' ? <span>· läuft bis {formatDate(listing.expiresAt)}</span> : null}
-        {listing.status === 'SOLD' ? <span>· für andere noch {SOLD_PUBLIC_DAYS} Tage als „Verkauft“ sichtbar</span> : null}
+        {listing.expiresAt && listing.status === 'ACTIVE' ? <span>online bis {formatDate(listing.expiresAt)}</span> : null}
+        {listing.status === 'SOLD' ? <span>für andere noch {SOLD_PUBLIC_DAYS} Tage als „Verkauft“ sichtbar</span> : null}
       </div>
       <div className="flex flex-wrap gap-2">
         <Link href={`/anzeige/${listing.id}/bearbeiten`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
@@ -394,7 +405,7 @@ function OwnerActions({ listing }: { listing: ListingDetail }) {
           <BarChart3 className="size-4" aria-hidden="true" /> Statistik
         </Link>
         <Link href={`/konto/anzeigen/${listing.id}/leistungen`} className={buttonClasses({ variant: 'outline', size: 'sm' })}>
-          <Sparkles className="size-4" aria-hidden="true" /> Leistungen
+          <Sparkles className="size-4" aria-hidden="true" /> Mehr Sichtbarkeit
         </Link>
         <form action={listingStatusAction} className="flex flex-wrap gap-2">
           <input type="hidden" name="id" value={listing.id} />

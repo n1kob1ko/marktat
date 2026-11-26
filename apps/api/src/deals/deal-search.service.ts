@@ -149,8 +149,10 @@ const INDEX_SETTINGS = {
     'verifiedUntil',
   ],
   sortableAttributes: ['discountPercent', 'endsAt', 'id', 'priceCents', 'publishedAt'],
-  rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
-  typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },
+  // Wie bei den Inseraten: eine gewählte Sortierung (Preis, Rabatt) gilt auch mit Suchbegriff genau;
+  // „Relevanz“ schickt keine Sortierung mit, Gleichstand entscheidet das Datum.
+  rankingRules: ['words', 'sort', 'typo', 'proximity', 'attribute', 'exactness', 'publishedAt:desc'],
+  typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 5, twoTypos: 9 } },
   localizedAttributes: null,
   pagination: { maxTotalHits: MAX_TOTAL_HITS },
   // Häufigste Werte zuerst, damit bei vielen Marken die wichtigen nicht abgeschnitten werden
@@ -310,7 +312,7 @@ export class DealSearchService implements OnApplicationBootstrap, OnModuleDestro
     const without = (key?: FacetKey) => filter.filter((part) => !key || part.key !== key).map((part) => part.expr);
     const newest = ['publishedAt:desc', 'id:desc'];
     const sort = {
-      relevanz: newest,
+      relevanz: [],
       top: TOP_LANE_SORT,
       neueste: newest,
       endet_bald: ['endsAt:asc', 'id:desc'],

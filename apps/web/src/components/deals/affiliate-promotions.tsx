@@ -10,7 +10,7 @@ import { AdLabel } from './ad-label';
 export function AffiliatePromotions({ promotions }: { promotions: AffiliatePromotionView[] }) {
   if (!promotions.length) return null;
   return (
-    <section aria-labelledby="promotions-heading" className="mb-8">
+    <section aria-labelledby="promotions-heading" className="mt-10">
       <div className="flex flex-wrap items-center gap-2">
         <h2 id="promotions-heading" className="text-lg font-bold text-ink-950">Aktionen & Gutscheine</h2>
         <AdLabel />

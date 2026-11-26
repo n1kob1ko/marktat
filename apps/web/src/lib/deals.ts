@@ -69,6 +69,6 @@ export function dealChips(query: DealSearchQuery, location: LocationSummary | nu
     chips.push({ id: 'preis', label, removeHref: without({ priceMin: undefined, priceMax: undefined }) });
   }
   if (query.discountMin !== undefined) chips.push({ id: 'rabatt', label: `ab ${query.discountMin} % Rabatt`, removeHref: without({ discountMin: undefined }) });
-  if (query.hideAccessories) chips.push({ id: 'zubehoer', label: 'Ohne Zubehör', removeHref: without({ hideAccessories: undefined }) });
+  if (query.hideAccessories === false) chips.push({ id: 'zubehoer', label: 'Mit Zubehör', removeHref: without({ hideAccessories: true }) });
   return chips;
 }

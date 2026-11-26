@@ -7,6 +7,7 @@ import {
   type ItemCondition,
   type Vertical,
 } from '@marktat/shared';
+import { listingKeywords } from './search-keywords.js';
 import type { Prisma } from '../generated/prisma/client.js';
 
 /** Was für ein Suchdokument aus der Datenbank geladen wird */
@@ -29,6 +30,8 @@ export interface SearchDocument {
   /** Zusatzangaben als Text, z. B. „VW Golf 1.5 TSI Diesel Schaltgetriebe“ – damit „golf diesel“ trifft */
   attributesText: string;
   categoryNames: string[];
+  /** Alltagswörter aus Kategorie und Preisart („Auto“, „Handy“, „Radl“, „gratis“), siehe search-keywords.ts */
+  keywords: string[];
   place: string | null;
   vertical: Vertical;
   /** Kategorie und alle Oberkategorien, z. B. ["marktplatz", "marktplatz/sport-sportgeraete", …] */
@@ -77,8 +80,11 @@ export function ancestorPaths(path: string): string[] {
 
 const seconds = (date: Date) => Math.floor(date.getTime() / 1000);
 
-/** Erhöhen, wenn sich der Aufbau der Dokumente ändert (2 = Phase 7: sortedAt, topUntil; 3 = neuer Kategoriebaum) */
-export const SEARCH_DOCUMENT_VERSION = 3;
+/**
+ * Erhöhen, wenn sich der Aufbau der Dokumente ändert
+ * (2 = Phase 7: sortedAt, topUntil; 3 = neuer Kategoriebaum; 4 = Stichwörter aus Kategorie und Preisart)
+ */
+export const SEARCH_DOCUMENT_VERSION = 4;
 
 export function toSearchDocument(listing: IndexableListing, categoryNames: (path: string) => string[]): SearchDocument {
   const path = listing.category?.path ?? null;
@@ -95,6 +101,7 @@ export function toSearchDocument(listing: IndexableListing, categoryNames: (path
       .map((item) => item.value)
       .join(' · '),
     categoryNames: path ? categoryNames(path) : [],
+    keywords: listingKeywords(path ? ancestorPaths(path) : [], listing.priceType === 'FREE'),
     place: location ? `${location.postalCode} ${location.place}` : null,
     vertical: listing.vertical,
     categoryPaths: path ? ancestorPaths(path) : [],
@@ -118,23 +125,38 @@ export function toSearchDocument(listing: IndexableListing, categoryNames: (path
 export function indexSettings() {
   return {
     displayedAttributes: ['id', 'updatedAt', 'v'],
-    searchableAttributes: ['title', 'attributesText', 'categoryNames', 'description', 'place'],
+    searchableAttributes: ['title', 'attributesText', 'categoryNames', 'keywords', 'description', 'place'],
     filterableAttributes: [
       'vertical', 'categoryPaths', 'priceCents', 'condition', 'isBusiness', 'stateSlug', 'postalCode', '_geo', 'expiresAt', 'publishedAt', 'topUntil',
       ...allSearchFilters().map((f) => `attributes.${f.key}`),
     ].sort(),
     sortableAttributes: ['_geo', 'id', 'priceCents', 'publishedAt', 'sortedAt'],
-    rankingRules: ['words', 'typo', 'proximity', 'attribute', 'sort', 'exactness'],
+    // „sort“ direkt nach „words“: wer nach Preis oder Entfernung sortiert, bekommt genau diese Reihenfolge,
+    // auch mit Suchbegriff (vorher stand ein Rad um € 1.200 vor einem um € 60). Bei „Beste Treffer“ schickt die
+    // Suche keine Sortierung mit (meiliSort), dann entscheiden Tippfehler, Nähe und Feld und zuletzt das Datum.
+    rankingRules: ['words', 'sort', 'typo', 'proximity', 'attribute', 'exactness', 'sortedAt:desc'],
     // Bewusst ohne deutsche Wortzerlegung (localizedAttributes „deu“): sie verhindert Tippfehlertoleranz
     // bei zusammengesetzten Wörtern („Fahrad“ fände „Fahrrad“ nicht mehr).
-    typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 4, twoTypos: 8 } },
+    // Ein Tippfehler erst ab 5 Buchstaben: bei 4 fand „Sofa“ auch „Software…“ und „Schi“ das „Schlaf…sofa“.
+    typoTolerance: { enabled: true, minWordSizeForTypos: { oneTypo: 5, twoTypos: 9 } },
+    // Füllwörter zählen nicht als Pflichtwort („zu verschenken“, „Wohnung in Wien“)
+    stopWords: SEARCH_STOP_WORDS,
     localizedAttributes: null,
     pagination: { maxTotalHits: MAX_TOTAL_HITS },
     // Trefferzahlen je Kategorie (categoryPaths) für die Kategorienavigation – mehr als alle Kategorien zusammen
     faceting: { maxValuesPerFacet: MAX_FACET_VALUES },
     synonyms: {
-      fahrrad: ['rad', 'bike'],
-      rad: ['fahrrad'],
+      fahrrad: ['rad', 'bike', 'radl'],
+      rad: ['fahrrad', 'radl'],
+      radl: ['fahrrad', 'rad'],
+      schi: ['ski'],
+      ski: ['schi'],
+      gewand: ['kleidung'],
+      kleidung: ['gewand'],
+      eiskasten: ['kühlschrank'],
+      kühlschrank: ['eiskasten'],
+      sessel: ['stuhl'],
+      stuhl: ['sessel'],
       'e-bike': ['ebike', 'pedelec'],
       ebike: ['e-bike', 'pedelec'],
       auto: ['pkw', 'wagen'],
@@ -149,6 +171,9 @@ export function indexSettings() {
     },
   };
 }
+
+/** Kurze Füllwörter, die bei „alle Wörter müssen passen“ sonst Treffer verhindern */
+export const SEARCH_STOP_WORDS = ['zu', 'in', 'im', 'am', 'an', 'der', 'die', 'das', 'den', 'dem', 'des', 'ein', 'eine', 'einen', 'und', 'für', 'von', 'bei', 'aus'];
 
 /** Mehr Treffer zählt Meilisearch nicht genau – die Seitenanzahl wird entsprechend begrenzt. */
 export const MAX_TOTAL_HITS = 10_000;

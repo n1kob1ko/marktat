@@ -68,6 +68,19 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   const [state, formAction, isPending] = useActionState(action, initialFormState);
   const [, startTransition] = useTransition();
   const [intent, setIntent] = useState<'draft' | 'publish'>('publish');
+  const formRef = useRef<HTMLFormElement>(null);
+
+  // Nach einem abgelehnten Absenden zum ersten markierten Feld springen: am Handy steht der Knopf ganz unten,
+  // die Fehler weit oben – ohne Sprung sieht es aus, als passiere gar nichts.
+  useEffect(() => {
+    if (!state.fieldErrors && !state.message) return;
+    const form = formRef.current;
+    const target = form?.querySelector<HTMLElement>('[aria-invalid="true"]') ?? form?.querySelector<HTMLElement>('[role="alert"]');
+    if (!target) return;
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    target.scrollIntoView({ block: 'center', behavior: reduce ? 'auto' : 'smooth' });
+    target.focus({ preventScroll: true });
+  }, [state]);
 
   // Bewusst onSubmit statt action-Prop: React setzt Formulare nach einer Action sonst zurück,
   // was bei kontrollierten Auswahllisten die sichtbare Auswahl verliert.
@@ -235,7 +248,7 @@ export function ListingForm({ categories, action, listing, terms = { days: 60, f
   const errors = state.fieldErrors ?? {};
 
   return (
-    <form onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[1fr_20rem]" noValidate>
+    <form ref={formRef} onSubmit={handleSubmit} className="grid gap-8 lg:grid-cols-[minmax(0,1fr)_20rem]" noValidate>
       {listing ? <input type="hidden" name="id" value={listing.id} /> : <ClientIdField name="clientRequestId" />}
       <div className="space-y-6">
         {state.message ? <Alert tone="danger">{state.message}</Alert> : null}

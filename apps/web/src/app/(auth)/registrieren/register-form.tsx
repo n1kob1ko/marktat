@@ -7,23 +7,33 @@ import { Alert, Checkbox, cn, Field, Input } from '@marktat/ui';
 import { Captcha } from '@/components/captcha';
 import { SubmitButton } from '@/components/submit-button';
 import { initialFormState } from '@/lib/form-state';
+import { ResendConfirmation } from '@/components/resend-confirmation';
 import { registerAction } from '../actions';
 
-export function RegisterForm() {
+export function RegisterForm({ next }: { next?: string }) {
   const [state, action] = useActionState(registerAction, initialFormState);
   const [accountType, setAccountType] = useState(state.values?.accountType ?? 'PRIVATE');
 
   if (state.status === 'success' && state.message) {
     return (
-      <Alert tone="success" title="Bitte bestätige deine E-Mail-Adresse">
-        {state.message}
-      </Alert>
+      <div className="space-y-4">
+        <Alert tone="success" title="Bitte bestätige deine E-Mail-Adresse">
+          {state.message}
+        </Alert>
+        {state.values?.email ? (
+          <>
+            <p className="text-sm text-ink-600">Keine E-Mail bekommen? Schau im Spam-Ordner nach oder lass sie dir nochmal schicken.</p>
+            <ResendConfirmation email={state.values.email} next={next} />
+          </>
+        ) : null}
+      </div>
     );
   }
 
   return (
     <form action={action} className="space-y-5" noValidate>
       {state.message ? <Alert tone="danger">{state.message}</Alert> : null}
+      {next ? <input type="hidden" name="weiter" value={next} /> : null}
 
       <fieldset>
         <legend className="text-sm font-semibold text-ink-900">Kontoart</legend>
@@ -48,7 +58,8 @@ export function RegisterForm() {
                 className="sr-only"
               />
               <option.icon className="size-5 text-brand-700" aria-hidden="true" />
-              <span className="font-semibold text-ink-900">{option.label}</span>
+              {/* hyphens-auto: „Gewerblich“ brach auf 320 px sonst als „Gewerblic h“ um */}
+              <span className="font-semibold break-words hyphens-auto text-ink-900" lang="de">{option.label}</span>
               <span className="text-xs text-ink-500">{option.hint}</span>
             </label>
           ))}

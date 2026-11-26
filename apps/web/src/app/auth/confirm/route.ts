@@ -16,7 +16,10 @@ export async function GET(request: NextRequest) {
   const origin = serverEnv.webUrl;
   const tokenHash = searchParams.get('token_hash');
   const type = searchParams.get('type') as EmailOtpType | null;
-  const next = safeRedirectPath(searchParams.get('next'), '/konto');
+  let next = safeRedirectPath(searchParams.get('next'), '/konto');
+  // Beim Registrieren gemerktes Ziel (z. B. /inserieren) – nur im selben Browser vorhanden, sonst bleibt /konto
+  const remembered = request.cookies.get('nach_bestaetigung')?.value;
+  if (type !== 'recovery' && next === '/konto' && remembered) next = safeRedirectPath(remembered, '/konto');
 
   if (tokenHash && type && ALLOWED_TYPES.includes(type)) {
     const supabase = await createSupabaseServerClient();
@@ -24,7 +27,9 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const target = new URL(next, origin);
       if (type !== 'recovery') target.searchParams.set('bestaetigt', '1');
-      return NextResponse.redirect(target);
+      const response = NextResponse.redirect(target);
+      if (remembered) response.cookies.delete('nach_bestaetigung');
+      return response;
     }
   }
   return NextResponse.redirect(new URL('/anmelden?fehler=link', origin));

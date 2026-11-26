@@ -1,12 +1,15 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { Suspense } from 'react';
+import { Skeleton } from '@marktat/ui';
 import { AuthShell } from '@/components/auth-shell';
 import { SocialLogin } from '@/components/social-login';
+import { safeRedirectPath } from '@/lib/auth';
 import { RegisterForm } from './register-form';
 
 export const metadata: Metadata = { title: 'Registrieren', robots: { index: false } };
 
-export default function RegisterPage() {
+export default function RegisterPage({ searchParams }: PageProps<'/registrieren'>) {
   return (
     <AuthShell
       title="Konto erstellen"
@@ -20,8 +23,21 @@ export default function RegisterPage() {
         </>
       }
     >
-      <SocialLogin verb="registrieren" className="mb-5" />
-      <RegisterForm />
+      <Suspense fallback={<Skeleton className="h-96" />}>
+        <RegisterContent searchParams={searchParams} />
+      </Suspense>
     </AuthShell>
+  );
+}
+
+/** ?weiter=/inserieren: nach der Bestätigung dorthin, wo die Person hinwollte */
+async function RegisterContent({ searchParams }: Pick<PageProps<'/registrieren'>, 'searchParams'>) {
+  const params = await searchParams;
+  const next = safeRedirectPath(params.weiter, '') || undefined;
+  return (
+    <>
+      <SocialLogin verb="registrieren" next={next} className="mb-5" />
+      <RegisterForm next={next} />
+    </>
   );
 }
