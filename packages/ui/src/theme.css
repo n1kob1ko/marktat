@@ -1,19 +1,19 @@
 /*
  * Markterl-Designtokens (Tailwind CSS v4).
- * Farben: „Tanne“ (Primär, tiefes Grün), „Marille“ (Akzent, Apricot), „Kalk“ (warme Neutraltöne).
+ * Farben: „Nachtblau“ (Primär), „Marille“ (Akzent, Apricot), „Kalk“ (warme Neutraltöne).
  * Alle Text-/Hintergrundkombinationen der Komponenten erfüllen WCAG 2.2 AA (Kontrast ≥ 4.5:1).
  */
 @theme {
-  --color-brand-50: #ecf6f1;
-  --color-brand-100: #d2ebdf;
-  --color-brand-200: #a6d6bf;
-  --color-brand-300: #6fb999;
-  --color-brand-400: #3d9874;
-  --color-brand-500: #1f7a5b;
-  --color-brand-600: #156249;
-  --color-brand-700: #0f4c3a;
-  --color-brand-800: #0b3a2c;
-  --color-brand-900: #072a20;
+  --color-brand-50: #eef2fa;
+  --color-brand-100: #d9e1f2;
+  --color-brand-200: #b3c3e5;
+  --color-brand-300: #8199cf;
+  --color-brand-400: #5272b4;
+  --color-brand-500: #355596;
+  --color-brand-600: #29447c;
+  --color-brand-700: #1e2f5c;
+  --color-brand-800: #172447;
+  --color-brand-900: #101a33;
 
   --color-accent-50: #fef3e8;
   --color-accent-100: #fde2c6;
@@ -22,13 +22,13 @@
   --color-accent-600: #d9731f;
   --color-accent-700: #a95614;
 
-  --color-ink-950: #121715;
-  --color-ink-900: #1c2321;
-  --color-ink-700: #3a4441;
-  --color-ink-600: #4b5552;
-  --color-ink-500: #5b6461;
-  --color-ink-400: #858d8a;
-  --color-ink-300: #a9b0ad;
+  --color-ink-950: #12151c;
+  --color-ink-900: #1c2029;
+  --color-ink-700: #3a404b;
+  --color-ink-600: #4b525d;
+  --color-ink-500: #5b6270;
+  --color-ink-400: #858b96;
+  --color-ink-300: #a9aeb7;
 
   --color-canvas: #f6f4ef;
   --color-surface: #ffffff;
@@ -44,14 +44,14 @@
   --color-warning-700: #b54708;
 
   /* Flächen mit weißer Schrift: bleiben in beiden Modi dunkel genug (nicht invertieren) */
-  --color-primary: #0f4c3a;
-  --color-primary-hover: #0b3a2c;
-  --color-primary-active: #072a20;
-  --color-hero: #0b3a2c;
-  --color-hero-deep: #072a20;
-  --color-hero-muted: #d2ebdf;
-  --color-tooltip: #121715;
-  --color-on-accent: #121715;
+  --color-primary: #1e2f5c;
+  --color-primary-hover: #172447;
+  --color-primary-active: #101a33;
+  --color-hero: #172447;
+  --color-hero-deep: #101a33;
+  --color-hero-muted: #d9e1f2;
+  --color-tooltip: #12151c;
+  --color-on-accent: #12151c;
   --color-danger-fill: #b42318;
   --color-danger-fill-hover: #912018;
 
@@ -71,16 +71,16 @@
 :root[data-theme='dark'] {
   color-scheme: dark;
 
-  --color-brand-50: #11241c;
-  --color-brand-100: #163126;
-  --color-brand-200: #1e4434;
-  --color-brand-300: #2b5f48;
-  --color-brand-400: #3d8a69;
-  --color-brand-500: #52a882;
-  --color-brand-600: #6fb999;
-  --color-brand-700: #8dcdaf;
-  --color-brand-800: #a9dac2;
-  --color-brand-900: #d2ebdf;
+  --color-brand-50: #121a2c;
+  --color-brand-100: #17213a;
+  --color-brand-200: #1f2d4f;
+  --color-brand-300: #2b3f6d;
+  --color-brand-400: #3d5a99;
+  --color-brand-500: #5677bd;
+  --color-brand-600: #7b97d0;
+  --color-brand-700: #9db3de;
+  --color-brand-800: #bccbe8;
+  --color-brand-900: #d9e1f2;
 
   --color-accent-50: #2c2015;
   --color-accent-100: #44301c;
@@ -89,19 +89,19 @@
   --color-accent-600: #d9731f;
   --color-accent-700: #f7b177;
 
-  --color-ink-950: #f3f6f4;
-  --color-ink-900: #e4e9e6;
-  --color-ink-800: #d0d7d4;
-  --color-ink-700: #bcc4c0;
-  --color-ink-600: #a6afab;
-  --color-ink-500: #939c98;
-  --color-ink-400: #767f7b;
-  --color-ink-300: #5a635f;
+  --color-ink-950: #f3f5f8;
+  --color-ink-900: #e4e8ee;
+  --color-ink-800: #d0d6df;
+  --color-ink-700: #bcc3ce;
+  --color-ink-600: #a6aebb;
+  --color-ink-500: #939ba8;
+  --color-ink-400: #767e8b;
+  --color-ink-300: #5a616d;
 
-  --color-canvas: #0e1311;
-  --color-surface: #161d1a;
-  --color-line: #29322f;
-  --color-line-strong: #3b4642;
+  --color-canvas: #0d111a;
+  --color-surface: #151b26;
+  --color-line: #283041;
+  --color-line-strong: #3a4457;
 
   --color-danger-50: #2c1513;
   --color-danger-600: #f97066;
@@ -111,12 +111,12 @@
   --color-warning-50: #2d2210;
   --color-warning-700: #fdb022;
 
-  --color-primary: #1f7a5b;
-  --color-primary-hover: #19694e;
-  --color-primary-active: #156249;
-  --color-hero: #0b2a20;
-  --color-hero-deep: #08201a;
-  --color-tooltip: #3b4642;
+  --color-primary: #355596;
+  --color-primary-hover: #2f4c88;
+  --color-primary-active: #29447c;
+  --color-hero: #111a30;
+  --color-hero-deep: #0c1324;
+  --color-tooltip: #3a4457;
 
   --shadow-card: 0 1px 2px rgb(0 0 0 / 0.3), 0 4px 16px -4px rgb(0 0 0 / 0.4);
   --shadow-card-hover: 0 2px 4px rgb(0 0 0 / 0.35), 0 12px 32px -8px rgb(0 0 0 / 0.55);

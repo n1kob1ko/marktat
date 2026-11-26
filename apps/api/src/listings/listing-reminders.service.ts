@@ -139,7 +139,7 @@ export class ListingRemindersService implements OnModuleInit {
           `Hallo ${escapeHtml(seller.displayName)},`,
           escapeHtml(content.intro),
           `<ul style="margin:0;padding-left:20px">${shown
-            .map((l) => `<li><a href="${escapeHtml(`${web}/anzeige/${l.id}`)}" style="color:#0f4c3a">${escapeHtml(l.title)}</a> – bis ${formatDate(l.expiresAt)}</li>`)
+            .map((l) => `<li><a href="${escapeHtml(`${web}/anzeige/${l.id}`)}" style="color:#1e2f5c">${escapeHtml(l.title)}</a> – bis ${formatDate(l.expiresAt)}</li>`)
             .join('')}${more > 0 ? `<li>… und ${more} weitere</li>` : ''}</ul>`,
         ],
         action: { label: content.action, url },
