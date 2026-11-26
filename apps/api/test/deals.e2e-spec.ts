@@ -361,7 +361,7 @@ describe('Deals & Angebote', () => {
       expect(other.body.otherOffers.map((o: { id: string }) => o.id)).toEqual([variant.id]);
     });
 
-    it('blendet mit zubehoer=aus Hüllen, Kabel und Co. aus – in Meilisearch und im Ausweichbetrieb', async () => {
+    it('blendet Hüllen, Kabel und Co. standardmäßig aus, zubehoer=an zeigt sie – in Meilisearch und im Ausweichbetrieb', async () => {
       const merchant = await signInMerchant(app);
       const phone = await publishDeal(app, merchant.auth, { title: 'Smartphone 256 GB', url: 'https://shop.example.at/p' });
       const headphones = await publishDeal(app, merchant.auth, { title: 'Kabelloser Kopfhörer', url: 'https://shop.example.at/k' });
@@ -369,7 +369,8 @@ describe('Deals & Angebote', () => {
       const cable = await publishDeal(app, merchant.auth, { title: 'USB-C-Kabel 2 m', url: 'https://shop.example.at/u' });
       const products = [phone.id, headphones.id].sort();
 
-      expect((await searchIds()).sort()).toEqual([phone.id, headphones.id, cover.id, cable.id].sort());
+      expect((await searchIds('zubehoer=an')).sort()).toEqual([phone.id, headphones.id, cover.id, cable.id].sort());
+      expect((await searchIds()).sort()).toEqual(products);
       expect((await searchIds('zubehoer=aus')).sort()).toEqual(products);
       await request(server()).get('/v1/deals?zubehoer=vielleicht').expect(400);
 
